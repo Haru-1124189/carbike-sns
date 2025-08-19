@@ -1,12 +1,13 @@
-import { AlertTriangle, ArrowLeft, Calendar, Clock, DollarSign, Heart, Image, MapPin, MessageCircle, MoreHorizontal, Package, Share, Wrench } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, DollarSign, Heart, MapPin, MessageCircle, MoreHorizontal, Package, Share2, Wrench } from 'lucide-react';
 import React, { useState } from 'react';
-import { MotoIcon } from '../components/icons/MotoIcon';
+import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
-import { MaintenancePost } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { MaintenancePostDoc } from '../types';
 
 interface MaintenanceDetailPageProps {
-  post: MaintenancePost;
+  post: MaintenancePostDoc;
   onBackClick: () => void;
   onUserClick?: (author: string) => void;
 }
@@ -18,6 +19,8 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
 }) => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
+  const [showMenu, setShowMenu] = useState(false);
+  const { user } = useAuth();
 
   // スワイプバック機能を有効化
   useSwipeBack({
@@ -30,7 +33,34 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
   };
 
   const handleUserClick = () => {
-    onUserClick?.(post.author);
+    onUserClick?.(post.authorName);
+  };
+
+  const handleComment = () => {
+    // TODO: コメント機能を実装
+    console.log('Comment clicked');
+  };
+
+  const handleShare = () => {
+    // TODO: シェア機能を実装
+    console.log('Share clicked');
+  };
+
+  const handleDelete = async () => {
+    if (!user?.uid) return;
+    
+    if (window.confirm('この整備記録を削除しますか？この操作は取り消せません。')) {
+      // TODO: 削除機能を実装
+      console.log('Delete clicked');
+      setShowMenu(false);
+    }
+  };
+
+  const handleReport = () => {
+    if (window.confirm('この整備記録を通報しますか？')) {
+      // TODO: 通報機能を実装
+      console.log('Report clicked');
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -81,307 +111,297 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
     return labels[difficulty] || '初級';
   };
 
+  const isAuthor = user?.uid === post.authorId;
+
   return (
-    <div className="min-h-screen bg-background container-mobile">
-      {/* ヘッダー */}
-      <div className="sticky top-0 bg-background z-10 border-b border-surface-light">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button
-            onClick={onBackClick}
-            className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
-          >
-            <ArrowLeft size={20} className="text-white" />
-          </button>
-          <h1 className="text-lg font-bold text-white">整備記録</h1>
-          <button className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm">
-            <MoreHorizontal size={20} className="text-white" />
-          </button>
-        </div>
-      </div>
-
-      <main className="p-4 pb-20">
-        <BannerAd />
+    <div className="min-h-screen bg-background">
+      <div className="max-w-[420px] mx-auto">
+        <AppHeader
+          user={{ id: '', name: '', avatar: '', cars: [], interestedCars: [] }}
+        />
         
-        {/* 投稿者情報 */}
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handleUserClick}
-            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-          >
-            <img
-              src={post.authorAvatar}
-              alt={post.author}
-              className="w-12 h-12 rounded-full"
-            />
-            <div>
-              <div className="text-base font-semibold text-white">{post.author}</div>
-              <div className="text-sm text-gray-400">{post.createdAt}</div>
-            </div>
-          </button>
-          <span className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryColor(post.category)}`}>
-            {getCategoryLabel(post.category)}
-          </span>
-        </div>
-
-        {/* 車種情報 */}
-        <div className="flex items-center space-x-2 mb-4">
-          <MotoIcon size={20} className="text-primary" />
-          <span className="text-lg text-white font-medium">{post.carModel}</span>
-        </div>
-
-        {/* メイン画像 */}
-        {post.carImage && (
-          <div className="mb-4">
-            <img
-              src={post.carImage}
-              alt={post.carModel}
-              className="w-full h-64 object-cover rounded-xl"
-            />
+        <main className="px-4 pb-20 pt-0">
+          <BannerAd />
+          
+          {/* 戻るボタン */}
+          <div className="flex items-center space-x-3 mb-4 mt-4">
+            <button
+              onClick={onBackClick}
+              className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
+            >
+              <ArrowLeft size={20} className="text-white" />
+            </button>
+            <span className="text-base text-text-primary font-medium">整備記録詳細</span>
           </div>
-        )}
 
-        {/* タイトルとコンテンツ */}
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-white mb-3">{post.title}</h2>
-          <p className="text-base text-gray-300 leading-relaxed">{post.content}</p>
-        </div>
-
-        {/* 詳細情報 */}
-        <div className="bg-surface rounded-xl border border-surface-light p-4 mb-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2">
-              <Calendar size={18} className="text-primary" />
-              <div>
-                <div className="text-xs text-gray-400">作業日</div>
-                <div className="text-sm text-white font-medium">{post.workDate}</div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <MapPin size={18} className="text-primary" />
-              <div>
-                <div className="text-xs text-gray-400">走行距離</div>
-                <div className="text-sm text-white font-medium">{post.mileage.toLocaleString()}km</div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <DollarSign size={18} className="text-primary" />
-              <div>
-                <div className="text-xs text-gray-400">費用</div>
-                <div className="text-sm text-white font-medium">¥{post.cost.toLocaleString()}</div>
-              </div>
-            </div>
-            {post.totalTime && (
-              <div className="flex items-center space-x-2">
-                <Clock size={18} className="text-primary" />
-                <div>
-                  <div className="text-xs text-gray-400">作業時間</div>
-                  <div className="text-sm text-white font-medium">{post.totalTime}</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 作業情報 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1 text-sm text-gray-400">
-              <Wrench size={16} />
-              <span>{post.steps.length}手順</span>
-            </div>
-            {post.difficulty && (
-              <span className={`px-3 py-1 text-sm font-medium rounded-full ${getDifficultyColor(post.difficulty)}`}>
-                {getDifficultyLabel(post.difficulty)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 工具・パーツ情報 */}
-        {(post.tools || post.parts) && (
-          <div className="bg-surface rounded-xl border border-surface-light p-4 mb-6">
-            <h3 className="text-sm font-semibold text-white mb-3">必要な工具・パーツ</h3>
-            <div className="space-y-3">
-              {post.tools && (
-                <div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Wrench size={16} className="text-primary" />
-                    <span className="text-sm font-medium text-white">工具 ({post.tools.length}点)</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {post.tools.map((tool, index) => (
-                      <span key={index} className="px-2 py-1 text-xs bg-primary bg-opacity-20 text-primary rounded-full">
-                        {tool}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {post.parts && (
-                <div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Package size={16} className="text-primary" />
-                    <span className="text-sm font-medium text-white">パーツ ({post.parts.length}点)</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {post.parts.map((part, index) => (
-                      <span key={index} className="px-2 py-1 text-xs bg-green-500 bg-opacity-20 text-green-400 rounded-full">
-                        {part}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 作業手順 */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-white mb-4">作業手順</h3>
-          <div className="space-y-6">
-            {post.steps.map((step, index) => (
-              <div key={step.id} className="bg-surface rounded-xl border border-surface-light p-4">
-                <div className="flex items-center space-x-3 mb-3">
+          {/* 整備記録詳細 */}
+          <div className="bg-surface rounded-xl border border-surface-light p-4 mb-4">
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={handleUserClick}
+                  className="flex items-center space-x-2"
+                >
                   <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">{step.order}</span>
+                    <span className="text-white text-sm font-bold">
+                      {post.authorName.charAt(0).toUpperCase()}
+                    </span>
                   </div>
-                  <h4 className="text-base font-semibold text-white">{step.title}</h4>
+                  <span className="text-sm font-medium text-text-primary">
+                    {post.authorName}
+                  </span>
+                </button>
+              </div>
+              
+              <div className="text-xs text-text-secondary">
+                {post.createdAt instanceof Date 
+                  ? post.createdAt.toLocaleString('ja-JP', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : typeof post.createdAt === 'string'
+                  ? new Date(post.createdAt).toLocaleString('ja-JP', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : '日付不明'
+                }
+              </div>
+            </div>
+
+            {/* カテゴリータグ */}
+            <div className="mb-3">
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(post.category)}`}>
+                {getCategoryLabel(post.category)}
+              </span>
+            </div>
+
+            {/* 車種情報 */}
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="text-sm text-text-secondary">車種:</span>
+              <span className="text-sm font-medium text-text-primary">{post.carModel}</span>
+            </div>
+
+            {/* メイン画像 */}
+            {post.carImage && (
+              <div className="mb-3">
+                <img
+                  src={post.carImage}
+                  alt={post.carModel}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+              </div>
+            )}
+
+            {/* タイトルとコンテンツ */}
+            <div className="mb-4">
+              <h1 className="text-lg font-semibold text-text-primary mb-2">
+                {post.title}
+              </h1>
+              <p className="text-text-secondary leading-relaxed">
+                {post.content}
+              </p>
+            </div>
+
+            {/* 詳細情報 */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="flex items-center space-x-2">
+                <Calendar size={16} className="text-primary" />
+                <div>
+                  <div className="text-xs text-text-secondary">作業日</div>
+                  <div className="text-sm text-text-primary font-medium">{post.workDate}</div>
                 </div>
-                
-                <p className="text-sm text-gray-300 leading-relaxed mb-3">{step.description}</p>
-                
-                {step.image && (
-                  <div className="mb-3">
-                    <img
-                      src={step.image}
-                      alt={step.title}
-                      className="w-full h-64 object-cover rounded-lg transition-all duration-300 hover:scale-105"
-                    />
+              </div>
+              <div className="flex items-center space-x-2">
+                <MapPin size={16} className="text-primary" />
+                <div>
+                  <div className="text-xs text-text-secondary">走行距離</div>
+                  <div className="text-sm text-text-primary font-medium">{post.mileage.toLocaleString()}km</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <DollarSign size={16} className="text-primary" />
+                <div>
+                  <div className="text-xs text-text-secondary">費用</div>
+                  <div className="text-sm text-text-primary font-medium">¥{post.cost.toLocaleString()}</div>
+                </div>
+              </div>
+              {post.totalTime && (
+                <div className="flex items-center space-x-2">
+                  <Clock size={16} className="text-primary" />
+                  <div>
+                    <div className="text-xs text-text-secondary">作業時間</div>
+                    <div className="text-sm text-text-primary font-medium">{post.totalTime}</div>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* 作業情報 */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1 text-sm text-text-secondary">
+                  <Wrench size={16} />
+                  <span>{post.steps.length}手順</span>
+                </div>
+                {post.difficulty && (
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDifficultyColor(post.difficulty)}`}>
+                    {getDifficultyLabel(post.difficulty)}
+                  </span>
                 )}
-                
-                {!step.image && (
-                  <div className="mb-3">
-                    <div className="w-full h-32 bg-surface-light rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <Image size={32} className="text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-400">写真がありません</p>
+              </div>
+            </div>
+
+            {/* 工具・パーツ情報 */}
+            {(post.tools || post.parts) && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-2">必要な工具・パーツ</h3>
+                <div className="space-y-2">
+                  {post.tools && (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Wrench size={14} className="text-primary" />
+                        <span className="text-xs font-medium text-text-primary">工具 ({post.tools.length}点)</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {post.tools.map((tool, index) => (
+                          <span key={index} className="px-2 py-1 text-xs bg-primary bg-opacity-20 text-primary rounded-full">
+                            {tool}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                )}
-                
-                {step.tips && (
-                  <div className="bg-yellow-500 bg-opacity-10 border border-yellow-500 border-opacity-20 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <AlertTriangle size={16} className="text-yellow-400" />
-                      <span className="text-sm font-medium text-yellow-400">ポイント</span>
+                  )}
+                  {post.parts && (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Package size={14} className="text-primary" />
+                        <span className="text-xs font-medium text-text-primary">パーツ ({post.parts.length}点)</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {post.parts.map((part, index) => (
+                          <span key={index} className="px-2 py-1 text-xs bg-green-500 bg-opacity-20 text-green-400 rounded-full">
+                            {part}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-sm text-yellow-300">{step.tips}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 投稿日時 */}
+            <div className="text-xs text-text-secondary mb-4">
+              {post.createdAt instanceof Date 
+                ? post.createdAt.toLocaleString('ja-JP', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : typeof post.createdAt === 'string'
+                ? new Date(post.createdAt).toLocaleString('ja-JP', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : '日付不明'
+              }
+            </div>
+
+            {/* アクション */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleLike}
+                  className={`flex items-center space-x-1 transition-colors ${
+                    isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500'
+                  }`}
+                >
+                  <Heart size={16} className={isLiked ? 'fill-current' : ''} />
+                  <span className="text-sm">{likeCount}</span>
+                </button>
+                <button
+                  onClick={handleComment}
+                  className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
+                >
+                  <MessageCircle size={16} />
+                  <span className="text-sm">{post.comments}</span>
+                </button>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-1 rounded-full hover:bg-surface-light transition-colors"
+                >
+                  <MoreHorizontal size={16} className="text-text-secondary" />
+                </button>
+                
+                {showMenu && (
+                  <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+                    {isAuthor ? (
+                      <button
+                        onClick={handleDelete}
+                        className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 flex items-center space-x-2"
+                      >
+                        <span>削除</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleReport}
+                        className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50 flex items-center space-x-2"
+                      >
+                        <span>通報</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* タグ */}
-        {post.tags.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-white mb-2">タグ</h3>
-            <div className="flex flex-wrap gap-2">
-              {post.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 text-sm bg-primary bg-opacity-20 text-primary rounded-full"
-                >
-                  #{tag}
-                </span>
-              ))}
             </div>
           </div>
-        )}
 
-        {/* アクションボタン */}
-        <div className="flex items-center justify-between py-4 border-t border-surface-light">
-          <div className="flex items-center space-x-6">
-            <button
-              onClick={handleLike}
-              className={`flex items-center space-x-2 transition-colors ${
-                isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
-              }`}
-            >
-              <Heart size={20} className={isLiked ? 'fill-current' : ''} />
-              <span className="text-sm font-medium">{likeCount}</span>
-            </button>
-            <button className="flex items-center space-x-2 text-gray-400 hover:text-primary transition-colors">
-              <MessageCircle size={20} />
-              <span className="text-sm font-medium">{post.comments}</span>
-            </button>
-            <button className="flex items-center space-x-2 text-gray-400 hover:text-primary transition-colors">
-              <Share size={20} />
-              <span className="text-sm font-medium">シェア</span>
-            </button>
-          </div>
-        </div>
-
-        {/* コメントセクション */}
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-white mb-4">コメント ({post.comments})</h3>
-          
-          {/* コメント入力 */}
-          <div className="flex items-center space-x-3 mb-6">
-            <img
-              src="https://via.placeholder.com/32x32/3B82F6/FFFFFF?text=U"
-              alt="User"
-              className="w-8 h-8 rounded-full"
-            />
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="コメントを入力..."
-                className="w-full px-3 py-2 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary"
-              />
-            </div>
-            <button className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors">
-              投稿
-            </button>
-          </div>
-
-          {/* ダミーコメント */}
-          <div className="space-y-4">
-            <div className="flex space-x-3">
-              <img
-                src="https://via.placeholder.com/32x32/10B981/FFFFFF?text=E"
-                alt="User"
-                className="w-8 h-8 rounded-full"
-              />
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-sm font-medium text-white">EK9整備</span>
-                  <span className="text-xs text-gray-400">1時間前</span>
-                </div>
-                <p className="text-sm text-gray-300">素晴らしい整備記録ですね！手順が分かりやすくて参考になります。</p>
+          {/* タグ */}
+          {post.tags.length > 0 && (
+            <div className="bg-surface rounded-xl border border-surface-light p-4 mb-4">
+              <h3 className="text-sm font-semibold text-text-primary mb-2">タグ</h3>
+              <div className="flex flex-wrap gap-2">
+                {post.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 text-xs bg-primary bg-opacity-20 text-primary rounded-full"
+                  >
+                    #{tag}
+                  </span>
+                ))}
               </div>
             </div>
-            <div className="flex space-x-3">
-              <img
-                src="https://via.placeholder.com/32x32/8B5CF6/FFFFFF?text=R"
-                alt="User"
-                className="w-8 h-8 rounded-full"
-              />
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-sm font-medium text-white">R34オーナー</span>
-                  <span className="text-xs text-gray-400">2時間前</span>
-                </div>
-                <p className="text-sm text-gray-300">同じ車種なので、とても参考になりました。写真付きで分かりやすいです！</p>
+          )}
+
+          {/* コメントセクション（プレースホルダー） */}
+          <div className="bg-surface rounded-xl border border-surface-light p-4">
+            <h3 className="text-lg font-semibold text-text-primary mb-4">
+              コメント ({post.comments})
+            </h3>
+            <div className="text-center py-8">
+              <div className="text-text-secondary">
+                コメント機能は準備中です
               </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

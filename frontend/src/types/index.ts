@@ -22,9 +22,11 @@ export interface Thread {
   replies: number;
   likes: number;
   tags: string[];
-  createdAt: string;
+  createdAt: Date | string;
   type: 'post' | 'question' | 'ad';
   adType?: 'parts' | 'video' | 'service' | 'contest' | 'event';
+  vehicleKey?: string; // 車種キー
+  isDeleted?: boolean; // 削除フラグ
 }
 
 export interface ThreadDoc {

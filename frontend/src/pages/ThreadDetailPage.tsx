@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
@@ -167,18 +167,83 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
                   onClick={handleUserClick}
                   className="flex items-center space-x-2"
                 >
-                  <img
-                    src="https://via.placeholder.com/32x32"
-                    alt={thread.authorName}
-                    className="w-8 h-8 rounded-full"
-                  />
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">
+                      {thread.authorName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                   <span className="text-sm font-medium text-text-primary">
                     {thread.authorName}
                   </span>
                 </button>
               </div>
               
-              <div className="relative">
+              <div className="text-xs text-text-secondary">
+                {thread.createdAt instanceof Date 
+                  ? thread.createdAt.toLocaleString('ja-JP', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : typeof thread.createdAt === 'string'
+                  ? new Date(thread.createdAt).toLocaleString('ja-JP', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : '日付不明'
+                }
+              </div>
+            </div>
+
+            {/* 投稿内容 */}
+            <div className="mb-4">
+              <h1 className="text-lg font-semibold text-text-primary mb-2">
+                {thread.title}
+              </h1>
+              <p className="text-text-secondary leading-relaxed">
+                {thread.content}
+              </p>
+            </div>
+
+            {/* タグ */}
+            {thread.tags && thread.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {thread.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* アクション */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={handleLike}
+                  className="flex items-center space-x-1 text-text-secondary hover:text-red-500 transition-colors"
+                >
+                  <Heart size={16} />
+                  <span className="text-sm">{thread.likes}</span>
+                </button>
+                <button
+                  onClick={handleComment}
+                  className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
+                >
+                  <MessageCircle size={16} />
+                  <span className="text-sm">{thread.replies}</span>
+                </button>
+              </div>
+              
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setShowMenu(!showMenu)}
                   className="p-1 rounded-full hover:bg-surface-light transition-colors"
@@ -207,63 +272,6 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* 投稿内容 */}
-            <div className="mb-4">
-              <h1 className="text-lg font-semibold text-text-primary mb-2">
-                {thread.title}
-              </h1>
-              <p className="text-text-secondary leading-relaxed">
-                {thread.content}
-              </p>
-            </div>
-
-            {/* タグ */}
-            {thread.tags && thread.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {thread.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* 投稿日時 */}
-            <div className="text-xs text-text-secondary mb-4">
-              {new Date(thread.createdAt).toLocaleString('ja-JP')}
-            </div>
-
-            {/* アクション */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={handleLike}
-                  className="flex items-center space-x-1 text-text-secondary hover:text-red-500 transition-colors"
-                >
-                  <Heart size={16} />
-                  <span className="text-sm">{thread.likes}</span>
-                </button>
-                <button
-                  onClick={handleComment}
-                  className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
-                >
-                  <MessageCircle size={16} />
-                  <span className="text-sm">{thread.replies}</span>
-                </button>
-              </div>
-              
-              <button
-                onClick={handleShare}
-                className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
-              >
-                <Share2 size={16} />
-                <span className="text-sm">シェア</span>
-              </button>
             </div>
           </div>
 

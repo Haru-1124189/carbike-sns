@@ -2,9 +2,10 @@ import { ArrowLeft, Bell, Settings, User } from 'lucide-react';
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { User as UserType } from '../../types';
+import { UserDoc } from '../../types/user';
 
 interface AppHeaderProps {
-  user: UserType;
+  user: UserType | UserDoc | null;
   onNotificationClick?: () => void;
   onProfileClick?: () => void;
   onBackClick?: () => void;
@@ -44,7 +45,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent-red rounded-xl flex items-center justify-center shadow-lg bounce-in">
               <User size={24} className="text-white" />
             </div>
-            <span className="text-base text-text-primary font-medium slide-in-left pl-0">{user.name}</span>
+            <span className="text-base text-text-primary font-medium slide-in-left pl-0">
+              {user ? ('displayName' in user ? user.displayName : user.name) : 'ユーザー'}
+            </span>
           </>
         )}
       </div>
@@ -77,15 +80,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           >
             <Settings size={20} className="text-text-primary" />
           </button>
-          {authUser && (
-            <button
-              onClick={logout}
-              className="icon-button bg-surface/80 backdrop-blur-sm border border-surface-light/50 shadow-md hover:shadow-lg ml-2"
-              data-testid="logout-button"
-            >
-              <User size={20} className="text-text-primary" />
-            </button>
-          )}
         </div>
       )}
       </div>

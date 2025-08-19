@@ -79,7 +79,26 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
           </div>
           <div>
             <div className="text-sm font-medium text-text-primary">{thread.author}</div>
-            <div className="text-xs text-text-secondary">{thread.createdAt}</div>
+                         <div className="text-xs text-text-secondary">
+               {thread.createdAt instanceof Date 
+                 ? thread.createdAt.toLocaleString('ja-JP', {
+                     year: 'numeric',
+                     month: '2-digit',
+                     day: '2-digit',
+                     hour: '2-digit',
+                     minute: '2-digit'
+                   })
+                 : typeof thread.createdAt === 'string'
+                 ? new Date(thread.createdAt).toLocaleString('ja-JP', {
+                     year: 'numeric',
+                     month: '2-digit',
+                     day: '2-digit',
+                     hour: '2-digit',
+                     minute: '2-digit'
+                   })
+                 : '日付不明'
+               }
+             </div>
           </div>
         </div>
         

@@ -18,10 +18,15 @@ export const useMaintenancePosts = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const posts = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as MaintenancePostDoc[];
+        const posts = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
+          } as MaintenancePostDoc;
+        });
         
         setMaintenancePosts(posts);
         setLoading(false);

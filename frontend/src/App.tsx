@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { LoadingScreen } from './components/ui/LoadingScreen';
 import { TabBar } from './components/ui/TabBar';
-import { carModels, currentUser, interestedCarMaintenancePosts, maintenancePosts, myGarage, videos } from './data/dummy';
+import { carModels, currentUser, videos } from './data/dummy';
 import { useAuth } from './hooks/useAuth';
+import { useMaintenancePosts } from './hooks/useMaintenancePosts';
+import { useThreads } from './hooks/useThreads';
 import { deleteMaintenancePost } from './lib/threads';
 import { AddVehiclePage } from './pages/AddVehiclePage';
 import { AuthPage } from './pages/AuthPage';
@@ -34,6 +37,8 @@ import { AuthProvider } from './providers/AuthProvider';
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const { threads: allThreads } = useThreads();
+  const { maintenancePosts: allMaintenancePosts } = useMaintenancePosts();
   const [activeTab, setActiveTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSubPage, setSettingsSubPage] = useState<string | null>(null);
@@ -59,16 +64,25 @@ function AppContent() {
   const [showNewThread, setShowNewThread] = useState(false);
   const [showNewMaintenance, setShowNewMaintenance] = useState(false);
   const [initialThreadTab, setInitialThreadTab] = useState<'post' | 'question'>('post');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // 初期ローディング状態を管理
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 3000); // 3秒間ローディング画面を表示
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 初期ローディング中はローディング画面を表示
+  if (isInitialLoading) {
+    return <LoadingScreen />;
+  }
 
   // 認証状態をチェック
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-white">Loading...</div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // 未認証の場合は認証ページを表示
@@ -78,8 +92,16 @@ function AppContent() {
 
   const handleThreadClick = (threadId: string) => {
     console.log('handleThreadClick called with threadId:', threadId);
-    setSelectedThread({ id: threadId }); // 最小限のオブジェクトを設定
-    setShowThreadDetail(true);
+    console.log('handleThreadClick - Available threads:', allThreads.map(t => ({ id: t.id, title: t.title, type: t.type })));
+    // 実際のスレッドデータを取得
+    const thread = allThreads.find(t => t.id === threadId);
+    if (thread) {
+      console.log('handleThreadClick - Found thread:', thread);
+      setSelectedThread(thread);
+      setShowThreadDetail(true);
+    } else {
+      console.error('handleThreadClick - Thread not found:', threadId);
+    }
   };
 
   const handleVideoClick = (videoId: string) => {
@@ -112,72 +134,15 @@ function AppContent() {
 
   const handleMaintenanceClick = (postId: string) => {
     console.log('handleMaintenanceClick called with postId:', postId);
-    try {
-      console.log('myGarage data:', myGarage);
-      console.log('maintenancePosts data:', maintenancePosts);
-      console.log('interestedCarMaintenancePosts data:', interestedCarMaintenancePosts);
-      
-      const allPosts = [...maintenancePosts, ...interestedCarMaintenancePosts];
-      
-      // myGarageのデータをMaintenancePost形式に変換
-      const myGaragePosts = myGarage.map((record: any) => {
-        console.log('Processing record:', record);
-        return {
-          id: record.id,
-          title: record.title,
-          content: record.description,
-          author: "RevLinkユーザー",
-          authorAvatar: currentUser.avatar,
-          carModel: "Nissan S13", // デフォルトの車種
-          mileage: record.mileage,
-          cost: record.cost,
-          workDate: record.date,
-          category: "other",
-          difficulty: "medium",
-          totalTime: "2時間",
-          tools: ["レンチ", "ドライバー"],
-          parts: ["マフラー", "ガスケット"],
-          steps: [
-            {
-              id: `${record.id}-s1`,
-              order: 1,
-              title: "準備",
-              description: "工具とパーツを準備する",
-              image: undefined
-            },
-            {
-              id: `${record.id}-s2`,
-              order: 2,
-              title: "作業",
-              description: record.description,
-              image: undefined
-            }
-          ],
-          likes: 15,
-          comments: 3,
-          createdAt: record.date,
-          tags: ["整備", "メンテナンス"]
-        };
-      });
-      
-      console.log('Converted myGaragePosts:', myGaragePosts);
-      
-      const allMaintenancePosts = [...allPosts, ...myGaragePosts];
-      console.log('All maintenance posts:', allMaintenancePosts);
-      
-      const post = allMaintenancePosts.find((p: any) => p.id === postId);
-      console.log('Found post:', post);
-      
-      if (post) {
-        console.log('Setting selectedMaintenance and showing detail page');
-        setSelectedMaintenance(post);
-        setShowMaintenanceDetail(true);
-      } else {
-        console.error('Maintenance post not found:', postId);
-        console.error('Available post IDs:', allMaintenancePosts.map(p => p.id));
-      }
-    } catch (error) {
-      console.error('Error in handleMaintenanceClick:', error);
+    console.log('handleMaintenanceClick - Available maintenance posts:', allMaintenancePosts.map(p => ({ id: p.id, title: p.title })));
+    // 実際のメンテナンスデータを取得
+    const post = allMaintenancePosts.find((p: any) => p.id === postId);
+    if (post) {
+      console.log('handleMaintenanceClick - Found post:', post);
+      setSelectedMaintenance(post);
+      setShowMaintenanceDetail(true);
+    } else {
+      console.error('handleMaintenanceClick - Maintenance post not found:', postId);
     }
   };
 
@@ -513,12 +478,10 @@ function AppContent() {
     <div className="App">
       {/* 認証状態のデバッグ表示 */}
       <div style={{ position: 'fixed', top: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '4px 8px', fontSize: '12px', zIndex: 9999 }}>
-        Auth: {user ? `Logged In (${user.email})` : 'Not Logged In'}
+        Auth: {user ? `Logged In (${user.email})` : 'Not Logged In'} | Active Tab: {activeTab}
       </div>
       {renderPage()}
-      {!showSettings && !showNotifications && !showThreadDetail && !showVideoDetail && !showAddVehicle && !showVehicleDetail && !showUserProfile && !showMaintenanceDetail && !showCarList && !showRegisteredCars && !showCreatePost && !showAuth && !showNewThread && !showNewMaintenance && (
-        <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
-      )}
+      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
   );
 }

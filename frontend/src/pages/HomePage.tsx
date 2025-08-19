@@ -84,14 +84,14 @@ export const HomePage: React.FC<HomePageProps> = ({
 
          <main className="px-4 pb-20 pt-0 fade-in">
            {/* ユーザー情報 */}
-           <AppHeader
-             user={currentUser}
-             onNotificationClick={handleNotificationClick}
-             onProfileClick={() => console.log('Profile clicked')}
-             showLogo={true}
-             showActions={true}
-             unreadNotifications={notifications.filter(n => !n.isRead).length}
-           />
+                       <AppHeader
+              user={currentUser}
+              onNotificationClick={handleNotificationClick}
+              onProfileClick={() => console.log('Profile clicked')}
+              showLogo={true}
+              showActions={true}
+              unreadNotifications={notifications.filter(n => !n.isRead).length}
+            />
 
            {/* 愛車セクション */}
            <Section spacing="md">

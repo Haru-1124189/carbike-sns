@@ -1,0 +1,61 @@
+<svg viewBox="0 0 256 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="256" height="128" fill="#000000"/>
+  
+  <!-- 中央の分割線 -->
+  <line x1="128" y1="0" x2="128" y2="128" stroke="#ff6b35" stroke-width="1"/>
+  
+  <!-- 左側：車 -->
+  <g>
+    <!-- 車のボディ -->
+    <path d="M20 80 L40 80 L50 70 L90 70 L100 80 L120 80 L120 90 L20 90 Z" 
+          fill="url(#carGradient)" stroke="#ff6b35" stroke-width="2"/>
+    
+    <!-- ヘッドライト -->
+    <ellipse cx="35" cy="75" rx="8" ry="4" fill="url(#headlightGradient)" stroke="#ff6b35" stroke-width="1"/>
+    <ellipse cx="85" cy="75" rx="8" ry="4" fill="url(#headlightGradient)" stroke="#ff6b35" stroke-width="1"/>
+    
+    <!-- フロントガラス -->
+    <path d="M45 70 L55 60 L85 60 L95 70" fill="none" stroke="#ff6b35" stroke-width="1"/>
+    
+    <!-- タイヤ -->
+    <circle cx="40" cy="90" r="8" fill="none" stroke="#ff6b35" stroke-width="2"/>
+    <circle cx="100" cy="90" r="8" fill="none" stroke="#ff6b35" stroke-width="2"/>
+  </g>
+  
+  <!-- 右側：バイク -->
+  <g>
+    <!-- バイクのボディ -->
+    <path d="M140 80 L160 80 L170 70 L190 70 L200 80 L220 80 L220 90 L140 90 Z" 
+          fill="url(#bikeGradient)" stroke="#ff6b35" stroke-width="2"/>
+    
+    <!-- ヘッドライト -->
+    <ellipse cx="155" cy="75" rx="6" ry="3" fill="url(#headlightGradient)" stroke="#ff6b35" stroke-width="1"/>
+    
+    <!-- フェアリング -->
+    <path d="M150 70 L160 65 L180 65 L190 70" fill="none" stroke="#ff6b35" stroke-width="1"/>
+    
+    <!-- フロントタイヤ -->
+    <circle cx="160" cy="90" r="8" fill="none" stroke="#ff6b35" stroke-width="2"/>
+    <circle cx="200" cy="90" r="8" fill="none" stroke="#ff6b35" stroke-width="2"/>
+    
+    <!-- ハンドルバー -->
+    <line x1="150" y1="75" x2="150" y2="85" stroke="#ff6b35" stroke-width="1"/>
+  </g>
+  
+  <!-- グラデーション定義 -->
+  <defs>
+    <linearGradient id="carGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#1a1a1a" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="bikeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b35" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#1a1a1a" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="headlightGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#ff6b35" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+</svg>

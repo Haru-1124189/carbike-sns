@@ -26,7 +26,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthProvider: Starting auth state listener');
     const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
+      console.log('AuthProvider: Auth state changed', { 
+        user: user?.uid, 
+        email: user?.email 
+      });
+      
       setUser(user);
       if (user) {
         try {
@@ -35,26 +41,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           if (userDocSnap.exists()) {
             const data = userDocSnap.data() as any;
-            setUserDoc({
+            const userDoc = {
               ...data,
               createdAt: data.createdAt?.toDate?.() || new Date(),
               updatedAt: data.updatedAt?.toDate?.() || new Date(),
+            };
+            console.log('AuthProvider: Found existing user doc', { 
+              displayName: userDoc.displayName 
             });
+            setUserDoc(userDoc);
           } else {
-                    // 新規ユーザーの場合、デフォルトデータを作成
-        const defaultUserDoc: UserDoc = {
-          uid: user.uid,
-          email: user.email || '',
-          displayName: user.displayName || '',
-          photoURL: user.photoURL || undefined,
-          role: 'user',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          cars: [],
-          interestedCars: [],
-          blockedUsers: [],
-          mutedWords: [],
-        };
+            // 新規ユーザーの場合、デフォルトデータを作成
+            const defaultUserDoc: UserDoc = {
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || '',
+              photoURL: user.photoURL || undefined,
+              role: 'user',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              cars: [],
+              interestedCars: [],
+              blockedUsers: [],
+              mutedWords: [],
+            };
+            console.log('AuthProvider: Creating new user doc', { 
+              displayName: defaultUserDoc.displayName 
+            });
             await setDoc(userDocRef, defaultUserDoc);
             setUserDoc(defaultUserDoc);
           }
@@ -62,6 +75,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error('Error fetching user document:', error);
         }
       } else {
+        console.log('AuthProvider: No user, setting userDoc to null');
         setUserDoc(null);
       }
       setLoading(false);
@@ -116,7 +130,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const updateUserDoc = async (updates: Partial<UserDoc>) => {
-    if (!user) return;
+    if (!user) {
+      console.error('updateUserDoc: No user found');
+      return;
+    }
     
     try {
       const userDocRef = doc(db, 'users', user.uid);
@@ -126,7 +143,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       
       // ローカル状態も更新
-      setUserDoc(prev => prev ? { ...prev, ...updates, updatedAt: new Date() } : null);
+      setUserDoc(prev => {
+        if (!prev) {
+          console.error('updateUserDoc: No userDoc found');
+          return null;
+        }
+        return { ...prev, ...updates, updatedAt: new Date() };
+      });
     } catch (error) {
       console.error('Update user doc error:', error);
       throw error;
