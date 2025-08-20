@@ -5,11 +5,11 @@ import { BannerAd } from '../components/ui/BannerAd';
 import { SectionTitle } from '../components/ui/SectionTitle';
 import { ThreadCard } from '../components/ui/ThreadCard';
 import { VehicleCard } from '../components/ui/VehicleCard';
+import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { threadAds } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
 import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
 import { useThreads } from '../hooks/useThreads';
-import { uploadToStorage } from '../lib/upload';
 
 type ProfileTab = 'posts' | 'questions' | 'maintenance';
 
@@ -273,22 +273,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     onMaintenanceClick?.(maintenanceId);
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user?.uid) return;
+  const handleAvatarChange = async (imageUrl: string | null) => {
+    if (!user?.uid) return;
 
     setUploadingAvatar(true);
     setAvatarError('');
 
     try {
-      if (!file.type.startsWith('image/')) {
-        throw new Error('画像ファイルのみアップロード可能です');
-      }
-
-      const url = await uploadToStorage(user.uid, file);
-      await updateUserDoc({ photoURL: url });
+      await updateUserDoc({ photoURL: imageUrl || '' });
     } catch (err: any) {
-      setAvatarError(err.message || 'アバターのアップロードに失敗しました');
+      setAvatarError(err.message || 'アバターの更新に失敗しました');
     } finally {
       setUploadingAvatar(false);
     }
@@ -486,36 +480,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 プロフィール画像
               </label>
               <div className="flex items-center space-x-3">
-                <div className="relative">
-                                     <img
-                     src={userDoc?.photoURL || user.photoURL || "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U"}
-                     alt="プロフィール画像"
-                     className="w-16 h-16 rounded-full object-cover"
-                   />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={uploadingAvatar}
-                    className="hidden"
-                    id="avatar-upload"
-                    data-testid="avatar-upload"
-                  />
-                  <label
-                    htmlFor="avatar-upload"
-                    className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
-                  >
-                    <Camera size={12} />
-                  </label>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-gray-400">
-                    {uploadingAvatar ? 'アップロード中...' : '画像をクリックして変更'}
-                  </p>
-                  {avatarError && (
-                    <p className="text-xs text-red-400 mt-1">{avatarError}</p>
-                  )}
-                </div>
+                                <SingleImageUpload
+                  image={userDoc?.photoURL || user.photoURL || null}
+                  onImageChange={handleAvatarChange}
+                  aspectRatio="square"
+                  placeholder="プロフィール画像を選択"
+                />
+                {avatarError && (
+                  <p className="text-xs text-red-400 mt-1">{avatarError}</p>
+                )}
               </div>
             </div>
             

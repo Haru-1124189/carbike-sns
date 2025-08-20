@@ -2,6 +2,8 @@ import { ArrowLeft, Camera, Car, HelpCircle, Image, Minus, Plus, Send, Video, Wr
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { ImageUpload } from '../components/ui/ImageUpload';
+import { StepImageUpload } from '../components/ui/StepImageUpload';
 import { carModels, currentUser } from '../data/dummy';
 
 interface CreatePostPageProps {
@@ -59,15 +61,8 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
   const postTypeInfo = getPostTypeInfo();
   const IconComponent = postTypeInfo.icon;
 
-  const handleImageUpload = () => {
-    // 実際のアプリではファイル選択ダイアログを開く
-    // ここではダミー画像URLを追加
-    const dummyImageUrl = `/images/posts/photo-${images.length + 1}.jpg`;
-    setImages([...images, dummyImageUrl]);
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+  const handleImagesChange = (newImages: string[]) => {
+    setImages(newImages);
   };
 
   const handleAddTool = () => {
@@ -118,9 +113,8 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
     ));
   };
 
-  const handleStepImageUpload = (stepId: string) => {
-    const dummyImageUrl = `/images/steps/step-${steps.find(s => s.id === stepId)?.order}.jpg`;
-    handleUpdateStep(stepId, 'image', dummyImageUrl);
+  const handleStepImageChange = (stepId: string, image: string) => {
+    handleUpdateStep(stepId, 'image', image);
   };
 
   const handleSubmit = () => {
@@ -368,30 +362,11 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
                           rows={2}
                           className="w-full px-3 py-2 bg-surface-light border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
                         />
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleStepImageUpload(step.id)}
-                            className="flex items-center space-x-2 px-3 py-2 bg-primary bg-opacity-20 text-primary rounded-lg hover:bg-primary hover:bg-opacity-30 transition-all duration-300 hover:scale-105"
-                          >
-                            <Image size={16} />
-                            <span className="text-sm">画像追加</span>
-                          </button>
-                          {step.image && (
-                            <div className="relative">
-                              <img
-                                src={step.image}
-                                alt={`Step ${step.order}`}
-                                className="w-16 h-12 object-cover rounded-lg transition-all duration-300 hover:scale-110"
-                              />
-                              <button
-                                onClick={() => handleUpdateStep(step.id, 'image', '')}
-                                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all duration-300"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <StepImageUpload
+                          image={step.image}
+                          onImageChange={(image) => handleStepImageChange(step.id, image)}
+                          stepNumber={step.order}
+                        />
                       </div>
                     </div>
                   ))}
@@ -410,30 +385,11 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
           {/* 画像アップロード */}
           <div>
             <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">画像</label>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              {images.map((image, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={image}
-                    alt={`Upload ${index + 1}`}
-                    className="w-full h-20 object-cover rounded-lg transition-all duration-300 hover:scale-110"
-                  />
-                  <button
-                    onClick={() => handleRemoveImage(index)}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all duration-300"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={handleImageUpload}
-              className="w-full py-3 border-2 border-dashed border-surface-light rounded-xl text-gray-400 hover:text-white hover:border-primary transition-all duration-300 hover:scale-105"
-            >
-              <Image size={20} className="inline mr-2" />
-              画像を追加
-            </button>
+            <ImageUpload
+              images={images}
+              onImagesChange={handleImagesChange}
+              maxImages={5}
+            />
           </div>
 
           {/* 内容入力 */}

@@ -2,6 +2,7 @@ import { ArrowLeft, Bike, Camera, Car } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 
 interface AddVehiclePageProps {
   onBackClick?: () => void;
@@ -13,11 +14,8 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
   const [selectedType, setSelectedType] = useState<'car' | 'bike' | null>(null);
   const [customContent, setCustomContent] = useState('');
 
-  const handleImageUpload = () => {
-    // 実際のアプリではファイル選択ダイアログを開く
-    console.log('Image upload clicked');
-    // ダミー画像を設定
-    setSelectedImage('/images/cars/s13.jpg');
+  const handleImageChange = (image: string | null) => {
+    setSelectedImage(image);
   };
 
   const handleSave = () => {
@@ -67,36 +65,12 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
           {/* 車両画像 */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-white mb-3">車両画像</label>
-            <div
-              onClick={handleImageUpload}
-              className={`w-full h-48 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
-                selectedImage
-                  ? 'border-surface-light'
-                  : 'border-surface-light hover:border-primary'
-              } flex items-center justify-center relative overflow-hidden`}
-            >
-              {selectedImage ? (
-                <>
-                  <img
-                    src={selectedImage}
-                    alt="車両画像"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
-                    <div className="bg-white bg-opacity-90 rounded-full p-2">
-                      <Camera size={20} className="text-black" />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-surface-light rounded-full flex items-center justify-center mb-3 mx-auto">
-                    <Camera size={24} className="text-gray-400" />
-                  </div>
-                  <p className="text-sm text-gray-400">画像をタップして選択</p>
-                </div>
-              )}
-            </div>
+            <SingleImageUpload
+              image={selectedImage}
+              onImageChange={handleImageChange}
+              aspectRatio="landscape"
+              placeholder="車両画像を選択"
+            />
           </div>
 
           {/* 車両名 */}
