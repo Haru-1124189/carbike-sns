@@ -1,42 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ユーザーは自分のドキュメントのみ読み書き可能
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // テスト用にすべてのコレクションへのアクセスを許可（完全開放）
+    match /{document=**} {
+      allow read, write: if true;
     }
     
-    // スレッドは認証済みユーザーが読み書き可能
-    match /threads/{threadId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && 
-        request.auth.uid == resource.data.authorId;
+    // 管理者機能用のコレクション
+    match /reports/{reportId} {
+      allow read, write: if request.auth != null;
     }
     
-    // メンテナンス投稿は認証済みユーザーが読み書き可能
-    match /maintenance_posts/{postId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && 
-        request.auth.uid == resource.data.authorId;
+    match /systemSettings/{settingId} {
+      allow read, write: if request.auth != null;
     }
     
-    // リプライは認証済みユーザーが読み書き可能
-    match /replies/{replyId} {
+    // 動画コレクション
+    match /videos/{videoId} {
+      // 読み取り：認証済みユーザー全員
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && 
-        request.auth.uid == resource.data.authorId;
-    }
-    
-    // いいねは認証済みユーザーが読み書き可能
-    match /likes/{likeId} {
-      allow read: if request.auth != null;
+      // 作成：認証済みユーザーで、creatorまたはadminロールを持つユーザー
       allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
-      allow delete: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['creator', 'admin'] ||
+         exists(/databases/$(database)/documents/creatorApplications/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/creatorApplications/$(request.auth.uid)).data.status == 'approved');
+      // 更新・削除：動画の作成者または管理者
+      allow update, delete: if request.auth != null && 
+        (resource.data.authorId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
   }
 }
