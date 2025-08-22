@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSearch } from '../hooks/useSearch';
 import { useThreads } from '../hooks/useThreads';
+import { useVehicles } from '../hooks/useVehicles';
 import { useVideos } from '../hooks/useVideos';
 
 interface HomePageProps {
@@ -52,6 +53,15 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { threads } = useThreads();
   const { videos } = useVideos(user?.uid);
   const { unreadCount } = useNotifications();
+  const { vehicles, loading: vehiclesLoading, error: vehiclesError } = useVehicles();
+  
+  // 車両データのデバッグログ
+  console.log('HomePage - Vehicles data:', {
+    vehicles,
+    vehiclesLoading,
+    vehiclesError,
+    vehiclesLength: vehicles.length
+  });
   
   // 検索機能を実装
   const { searchQuery, setSearchQuery, filteredItems: searchedThreads } = useSearch(threads, ['title', 'content', 'tags']);
@@ -132,20 +142,34 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
 
            {/* 愛車セクション */}
-           <Section spacing="md">
+           <Section spacing="md" className="mb-6">
             <SectionTitle
               title="愛車"
               action={{ label: "追加", onClick: handleAddVehicleClick }}
             />
-            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
-              {(userDoc?.cars || []).map((car) => (
-                <div key={car} className="flex-shrink-0 snap-start">
-                  <VehicleCard
-                    car={car}
-                    onClick={() => handleVehicleClick(car)}
-                  />
+            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+              {vehiclesLoading ? (
+                <div className="text-center py-4 w-full">
+                  <div className="text-sm text-gray-400">読み込み中...</div>
                 </div>
-              ))}
+              ) : vehicles && vehicles.length > 0 ? (
+                vehicles.map((vehicle) => (
+                  <VehicleCard
+                    key={vehicle.id}
+                    car={{
+                      id: vehicle.id,
+                      name: vehicle.name,
+                      image: vehicle.image,
+                      type: vehicle.type
+                    }}
+                    onClick={() => handleVehicleClick(vehicle.id)}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-4 w-full">
+                  <div className="text-sm text-gray-400">愛車がありません</div>
+                </div>
+              )}
             </div>
           </Section>
 

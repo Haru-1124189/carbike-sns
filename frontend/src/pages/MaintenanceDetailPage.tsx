@@ -2,6 +2,7 @@ import { ArrowLeft, Calendar, Clock, DollarSign, Heart, MapPin, MessageCircle, M
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { PersistentImage } from '../components/ui/PersistentImage';
 import { FloatingReplyBar } from '../components/ui/FloatingReplyBar';
 import { ReplySection } from '../components/ui/ReplySection';
 import { ReportButton } from '../components/ui/ReportButton';
@@ -162,22 +163,22 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
                 >
                                                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-primary">
                     {authorPhotoURL ? (
-                      <img
+                      <PersistentImage
                         src={authorPhotoURL}
                         alt={authorDisplayName || post.authorName || 'ユーザー'}
                         className="w-full h-full object-cover"
                         loading="lazy"
-                        onError={(e) => {
-                          // 画像読み込みエラー時はフォールバック
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling?.classList.remove('hidden');
-                        }}
+                        fallback={
+                          <span className="text-white text-sm font-bold">
+                            {(authorDisplayName || post.authorName || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        }
                       />
-                    ) : null}
-                    <span className={`text-white text-sm font-bold ${authorPhotoURL ? 'hidden' : ''}`}>
-                      {(authorDisplayName || post.authorName || 'U').charAt(0).toUpperCase()}
-                    </span>
+                    ) : (
+                      <span className="text-white text-sm font-bold">
+                        {(authorDisplayName || post.authorName || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                    <span className="text-sm font-medium text-text-primary">
                      {authorLoading ? '読み込み中...' : (authorDisplayName || post.authorName || 'Unknown User')}

@@ -11,7 +11,7 @@ import { useVideos } from '../hooks/useVideos';
 
 interface VideosPageProps {
   onVideoClick?: (videoId: string) => void;
-  onUserClick?: (author: string) => void;
+  onUserClick?: (userId: string, displayName: string) => void;
   onDeleteVideo?: (videoId: string) => void;
   onUploadVideo?: () => void;
   onCreatorApplication?: () => void;
@@ -63,8 +63,8 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
     console.log('Subscribe toggle:', channelId);
   };
 
-  const handleUserClick = (author: string) => {
-    onUserClick?.(author);
+  const handleUserClick = (userId: string, displayName: string) => {
+    onUserClick?.(userId, displayName);
   };
 
   const handleChannelClick = (channelId: string) => {
@@ -381,7 +381,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleUserClick(video.author);
+                          handleUserClick(video.authorId || '', video.author);
                         }}
                         className="text-xs text-gray-400 hover:text-primary transition-colors"
                       >

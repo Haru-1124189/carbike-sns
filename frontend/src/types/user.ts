@@ -3,6 +3,7 @@ export interface UserDoc {
   email: string;
   displayName: string;
   photoURL?: string | null;
+  bio?: string; // 自己紹介文（120文字制限）
   role: 'user' | 'creator' | 'admin';
   isAdmin?: boolean; // 管理者権限フラグ
   createdAt: Date;

@@ -42,10 +42,10 @@ export const SingleImageUpload: React.FC<SingleImageUploadProps> = ({
 
     const file = files[0];
     
-    // ファイルサイズチェック (プロフィール画像は1MB、その他は3MB制限)
-    const maxSize = isProfileImage ? 1 * 1024 * 1024 : 3 * 1024 * 1024;
+    // ファイルサイズチェック (プロフィール画像は5MB、その他は10MB制限)
+    const maxSize = isProfileImage ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      alert(`ファイルサイズが大きすぎます。${isProfileImage ? '1MB' : '3MB'}以下のファイルを選択してください。`);
+      alert(`ファイルサイズが大きすぎます。${isProfileImage ? '5MB' : '10MB'}以下のファイルを選択してください。`);
       return;
     }
 
@@ -202,7 +202,7 @@ export const SingleImageUpload: React.FC<SingleImageUploadProps> = ({
                 </div>
                 <p className="text-sm text-gray-400">{placeholder}</p>
                 {isProfileImage && (
-                  <p className="text-xs text-gray-500 mt-1">推奨: 150x150px, 1MB以下</p>
+                  <p className="text-xs text-gray-500 mt-1">推奨: 150x150px, 5MB以下</p>
                 )}
               </div>
             )}

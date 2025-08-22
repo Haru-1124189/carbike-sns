@@ -254,6 +254,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
                 onDelete={handleDeleteThread}
                 onBlockUser={onBlockUser}
                 onReportThread={onReportThread}
+                onUserClick={onUserClick}
               />
             ))}
           </div>

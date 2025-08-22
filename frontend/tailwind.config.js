@@ -6,25 +6,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // メインカラー - 車・バイクらしい力強いオレンジレッドグラデーション
-        primary: {
-          DEFAULT: '#F97316', // オレンジ500
-          light: '#FB923C',
-          dark: '#EA580C',
-          gradient: 'linear-gradient(135deg, #F97316 0%, #DC2626 100%)',
-        },
-        // 背景色 - より深みのあるダークテーマ
-        background: {
-          DEFAULT: '#0F172A', // スレート900
-          light: '#1E293B',   // スレート800
-          dark: '#020617',    // スレート950
-        },
-        // サーフェス色 - より洗練されたグレー
-        surface: {
-          DEFAULT: '#334155', // スレート700
-          light: '#475569',   // スレート600
-          dark: '#1E293B',    // スレート800
-        },
+        // CSS変数を使用したテーマ対応カラー
+        background: 'var(--background)',
+        surface: 'var(--surface)',
+        'surface-light': 'var(--surface-light)',
+        primary: 'var(--primary)',
+        'primary-dark': 'var(--primary-dark)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        border: 'var(--border)',
         // アクセントカラー - 車・バイクらしい色合い
         accent: {
           orange: '#F97316',  // オレンジ500
@@ -34,12 +24,6 @@ module.exports = {
           blue: '#3B82F6',    // ブルー500
           purple: '#8B5CF6',  // バイオレット500
         },
-        // テキスト色
-        text: {
-          primary: '#F8FAFC',   // スレート50
-          secondary: '#CBD5E1', // スレート300
-          muted: '#64748B',     // スレート500
-        }
       },
       spacing: {
         '2': '8px',

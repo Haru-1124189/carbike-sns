@@ -2,7 +2,12 @@ import React from 'react';
 import { Car } from 'lucide-react';
 
 interface VehicleCardProps {
-  car: string;
+  car: string | {
+    id?: string;
+    name: string;
+    image?: string;
+    type?: 'car' | 'bike';
+  };
   onClick?: () => void;
 }
 
@@ -140,6 +145,10 @@ const getCarImageUrl = (carName: string): string => {
 };
 
 export const VehicleCard: React.FC<VehicleCardProps> = ({ car, onClick }) => {
+  // carが文字列かオブジェクトかを判定
+  const carName = typeof car === 'string' ? car : car.name;
+  const carImage = typeof car === 'object' && car.image ? car.image : getCarImageUrl(carName);
+  
   return (
     <div
       onClick={onClick}
@@ -147,16 +156,20 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, onClick }) => {
     >
       <div className="w-full h-20 bg-surface-light relative overflow-hidden">
         <img 
-          src={getCarImageUrl(car)}
-          alt={car}
+          src={carImage}
+          alt={carName}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+          onError={(e) => {
+            // 画像の読み込みに失敗した場合はデフォルト画像を使用
+            (e.target as HTMLImageElement).src = getCarImageUrl(carName);
+          }}
         />
         <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-0 transition-all duration-300" />
       </div>
       <div className="p-2">
         <div className="flex items-center space-x-1 mb-1">
           <Car size={12} className="text-primary" />
-          <span className="text-xs font-medium text-text-primary truncate">{car}</span>
+          <span className="text-xs font-medium text-text-primary truncate">{carName}</span>
         </div>
       </div>
     </div>

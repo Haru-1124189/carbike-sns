@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { SingleImageUpload } from '../components/ui/SingleImageUpload';
+import { useVehicles } from '../hooks/useVehicles';
 
 interface AddVehiclePageProps {
   onBackClick?: () => void;
@@ -12,20 +13,65 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
   const [vehicleName, setVehicleName] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<'car' | 'bike' | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [customContent, setCustomContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const { addVehicle } = useVehicles();
 
   const handleImageChange = (image: string | null) => {
     setSelectedImage(image);
   };
 
-  const handleSave = () => {
-    console.log('Save vehicle:', { 
-      name: vehicleName, 
-      image: selectedImage, 
-      type: selectedType,
-      customContent: customContent 
-    });
-    onBackClick?.();
+  const handleSave = async () => {
+    if (!vehicleName.trim() || !selectedType) {
+      alert('車両名と車種を入力してください。');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      
+      console.log('車両保存開始:', {
+        name: vehicleName.trim(),
+        type: selectedType,
+        image: selectedImage,
+        year: selectedYear,
+        customContent: customContent.trim()
+      });
+      
+      const vehicleData: any = {
+        name: vehicleName.trim(),
+        type: selectedType
+      };
+
+      // 値が存在する場合のみ追加
+      if (selectedImage) {
+        vehicleData.image = selectedImage;
+      }
+      if (selectedYear) {
+        vehicleData.year = selectedYear;
+      }
+      if (customContent.trim()) {
+        vehicleData.customContent = customContent.trim();
+      }
+
+      const vehicleId = await addVehicle(vehicleData);
+
+      console.log('車両保存成功:', vehicleId);
+      
+      // 成功時にフィードバック
+      alert('車両を登録しました！');
+      onBackClick?.();
+    } catch (error) {
+      console.error('車両の保存に失敗しました:', error);
+      
+      // より詳細なエラーメッセージを表示
+      const errorMessage = error instanceof Error ? error.message : '不明なエラーが発生しました';
+      alert(`車両の保存に失敗しました:\n${errorMessage}\n\nブラウザのコンソールでより詳細な情報を確認してください。`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -50,14 +96,14 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
             </div>
             <button
               onClick={handleSave}
-              disabled={!vehicleName.trim() || !selectedType}
+              disabled={!vehicleName.trim() || !selectedType || isSaving}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                vehicleName.trim() && selectedType
+                vehicleName.trim() && selectedType && !isSaving
                   ? 'bg-primary text-white hover:scale-95 active:scale-95'
                   : 'bg-surface-light text-gray-400 cursor-not-allowed'
               }`}
             >
-              保存
+              {isSaving ? '保存中...' : '保存'}
             </button>
           </div>
 
@@ -125,7 +171,11 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
           {/* 年式 */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-white mb-3">年式</label>
-            <select className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20">
+            <select 
+              value={selectedYear || ''}
+              onChange={(e) => setSelectedYear(e.target.value ? parseInt(e.target.value) : null)}
+              className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20"
+            >
               <option value="">選択してください</option>
               {Array.from({ length: 30 }, (_, i) => 2024 - i).map((year) => (
                 <option key={year} value={year}>{year}年</option>

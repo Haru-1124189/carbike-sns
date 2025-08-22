@@ -7,7 +7,7 @@ import { Video } from '../types';
 interface VideoDetailPageProps {
   video: Video;
   onBackClick?: () => void;
-  onUserClick?: (author: string) => void;
+  onUserClick?: (userId: string, displayName: string) => void;
 }
 
 export const VideoDetailPage: React.FC<VideoDetailPageProps> = ({ video, onBackClick, onUserClick }) => {
@@ -46,8 +46,8 @@ export const VideoDetailPage: React.FC<VideoDetailPageProps> = ({ video, onBackC
     console.log('More clicked');
   };
 
-  const handleUserClick = (author: string) => {
-    onUserClick?.(author);
+  const handleUserClick = (userId: string, displayName: string) => {
+    onUserClick?.(userId, displayName);
   };
 
   return (
@@ -104,7 +104,7 @@ export const VideoDetailPage: React.FC<VideoDetailPageProps> = ({ video, onBackC
                 </div>
                 <div className="flex-1">
                   <button
-                    onClick={() => handleUserClick(video.author)}
+                    onClick={() => handleUserClick(video.authorId || '', video.author)}
                     className="text-sm font-semibold text-white hover:text-primary transition-colors"
                   >
                     {video.author}

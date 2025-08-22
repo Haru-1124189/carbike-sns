@@ -129,7 +129,7 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
  
       <main className="p-4 pb-24 pt-0 fade-in">
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-background z-10 border-b border-surface-light">
+        <div className="sticky top-0 bg-background z-10">
           {/* タブ切り替え */}
           <div className="px-4 pb-2">
             <div className="flex space-x-1 bg-surface rounded-xl p-0.5">

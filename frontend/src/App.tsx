@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 import { TabBar } from './components/ui/TabBar';
-import { carModels, currentUser, videos } from './data/dummy';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { currentUser, videos } from './data/dummy';
 import { useAuth } from './hooks/useAuth';
 import { useMaintenancePosts } from './hooks/useMaintenancePosts';
 import { useNotifications } from './hooks/useNotifications';
 import { useThreads } from './hooks/useThreads';
+import { useVehicles } from './hooks/useVehicles';
 import { deleteMaintenancePost } from './lib/threads';
 import { AddVehiclePage } from './pages/AddVehiclePage';
 import { AdminApplicationsPage } from './pages/AdminApplicationsPage';
@@ -18,6 +20,7 @@ import { ContactPage } from './pages/ContactPage';
 import { CreatePostPage } from './pages/CreatePostPage';
 import { CreatorApplicationPage } from './pages/CreatorApplicationPage';
 import { CreatorUploadPage } from './pages/CreatorUploadPage';
+import { EditVehiclePage } from './pages/EditVehiclePage';
 import { HelpPage } from './pages/HelpPage';
 import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
@@ -33,6 +36,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { RegisteredInterestedCarsPage } from './pages/RegisteredInterestedCarsPage';
 import { ReportPage } from './pages/ReportPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ThemeSettingsPage } from './pages/ThemeSettingsPage';
 import { ThreadDetailPage } from './pages/ThreadDetailPage';
 import { ThreadsPage } from './pages/ThreadsPage';
 import { UploadVideoPage } from './pages/UploadVideoPage';
@@ -42,12 +46,14 @@ import { VehicleDetailPage } from './pages/VehicleDetailPage';
 import { VideoDetailPage } from './pages/VideoDetailPage';
 import { VideosPage } from './pages/VideosPage';
 import { AuthProvider } from './providers/AuthProvider';
+import { cleanupExpiredCache } from './utils/imageCache';
 
 function AppContent() {
   const { user, userDoc, loading } = useAuth();
   const { threads: allThreads } = useThreads();
   const { maintenancePosts: allMaintenancePosts } = useMaintenancePosts();
   const { unreadCount, fetchUnreadCount } = useNotifications();
+  const { vehicles, deleteVehicle } = useVehicles();
   const [activeTab, setActiveTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSubPage, setSettingsSubPage] = useState<string | null>(null);
@@ -56,6 +62,8 @@ function AppContent() {
   const [showVideoDetail, setShowVideoDetail] = useState(false);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showVehicleDetail, setShowVehicleDetail] = useState(false);
+  const [showEditVehicle, setShowEditVehicle] = useState(false);
+  const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [showMaintenanceDetail, setShowMaintenanceDetail] = useState(false);
   const [showCarList, setShowCarList] = useState(false);
@@ -87,6 +95,11 @@ function AppContent() {
     }, 3000); // 3秒間ローディング画面を表示
 
     return () => clearTimeout(timer);
+  }, []);
+
+  // アプリ起動時にキャッシュのクリーンアップを実行
+  useEffect(() => {
+    cleanupExpiredCache();
   }, []);
 
   // 初期ローディング中はローディング画面を表示
@@ -145,23 +158,81 @@ function AppContent() {
   };
 
   const handleVehicleClick = (vehicleId: string) => {
-    const vehicle = carModels.find(v => v === vehicleId);
+    const vehicle = vehicles.find(v => v.id === vehicleId);
     if (vehicle) {
       setSelectedVehicle(vehicle);
       setShowVehicleDetail(true);
     }
   };
 
-  const handleUserClick = (author: string) => {
-    // ダミーユーザーデータを作成
-    const user = {
-      id: author,
-      name: author,
-      avatar: `https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=${author.charAt(0)}`,
-      cars: carModels.slice(0, 2) // 最初の2台の車を割り当て
-    };
-    setSelectedUser(user);
-    setShowUserProfile(true);
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    try {
+      await deleteVehicle(vehicleId);
+      setShowVehicleDetail(false);
+      alert('車両を削除しました');
+    } catch (error) {
+      console.error('車両の削除に失敗しました:', error);
+      alert('車両の削除に失敗しました');
+    }
+  };
+
+  const handleEditVehicle = () => {
+    console.log('App.tsx: handleEditVehicle が呼ばれました');
+    console.log('selectedVehicle:', selectedVehicle);
+    setShowVehicleDetail(false);
+    setShowEditVehicle(true);
+    console.log('showEditVehicle を true に設定しました');
+  };
+
+  const handleUserClick = async (userId: string, displayName?: string) => {
+    console.log('handleUserClick called:', { userId, displayName });
+    
+    try {
+      // Firestoreからユーザー情報を取得
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('./firebase/init');
+      
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const user = {
+          id: userId,
+          name: userData.displayName || displayName || 'Unknown User',
+          avatar: userData.photoURL || '',
+          cars: userData.cars || [],
+          interestedCars: userData.interestedCars || []
+        };
+        
+        console.log('User data retrieved:', user);
+        setSelectedUser(user);
+        setShowUserProfile(true);
+      } else {
+        console.warn('User not found in Firestore:', userId);
+        // フォールバック：基本的なユーザー情報を作成
+        const user = {
+          id: userId,
+          name: displayName || 'Unknown User',
+          avatar: '',
+          cars: [],
+          interestedCars: []
+        };
+        setSelectedUser(user);
+        setShowUserProfile(true);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      // エラー時のフォールバック
+      const user = {
+        id: userId,
+        name: displayName || 'Unknown User',
+        avatar: '',
+        cars: [],
+        interestedCars: []
+      };
+      setSelectedUser(user);
+      setShowUserProfile(true);
+    }
   };
 
   const handleMaintenanceClick = (postId: string) => {
@@ -222,6 +293,8 @@ function AppContent() {
     setShowVideoDetail(false);
     setShowAddVehicle(false);
     setShowVehicleDetail(false);
+    setShowEditVehicle(false);
+    setShowThemeSettings(false);
     setShowUserProfile(false);
     setShowMaintenanceDetail(false);
     setShowCarList(false);
@@ -284,6 +357,13 @@ function AppContent() {
   };
 
   const renderPage = () => {
+    console.log('renderPage 状態:', { 
+      showEditVehicle, 
+      showVehicleDetail, 
+      selectedVehicle: selectedVehicle?.id,
+      settingsSubPage 
+    });
+    
     if (settingsSubPage) {
       switch (settingsSubPage) {
         case 'contact':
@@ -312,6 +392,8 @@ function AppContent() {
           return <AdminDashboardPage onBackClick={() => setSettingsSubPage(null)} />;
         case 'profile':
           return <ProfileEditPage onBackClick={() => setSettingsSubPage(null)} />;
+        case 'theme':
+          return <ThemeSettingsPage onBackClick={() => setSettingsSubPage(null)} />;
         default:
           setSettingsSubPage(null);
       }
@@ -364,14 +446,31 @@ function AppContent() {
     if (showVehicleDetail) {
       return <VehicleDetailPage 
         vehicle={selectedVehicle} 
-        onBackClick={() => setShowVehicleDetail(false)} 
+        onBackClick={() => setShowVehicleDetail(false)}
+        onEditClick={handleEditVehicle}
+        onDeleteClick={() => handleDeleteVehicle(selectedVehicle?.id)}
       />;
+    }
+
+    if (showEditVehicle) {
+      return <EditVehiclePage 
+        vehicle={selectedVehicle} 
+        onBackClick={() => {
+          setShowEditVehicle(false);
+          setShowVehicleDetail(true);
+        }}
+      />;
+    }
+
+    if (showThemeSettings) {
+      return <ThemeSettingsPage onBackClick={() => setShowThemeSettings(false)} />;
     }
 
     if (showUserProfile) {
       return <UserProfilePage 
         user={selectedUser} 
-        onBackClick={() => setShowUserProfile(false)} 
+        onBackClick={() => setShowUserProfile(false)}
+        onUserClick={handleUserClick}
       />;
     }
 
@@ -540,6 +639,7 @@ function AppContent() {
             blockedUsers={blockedUsers}
             onBlockUser={handleBlockUser}
             onReportThread={handleReportThread}
+            onUserClick={handleUserClick}
           />
         );
       default:
@@ -577,7 +677,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </AuthProvider>
   );
 }

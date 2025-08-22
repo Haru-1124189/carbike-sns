@@ -3,6 +3,7 @@ import React from 'react';
 import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
+import { PersistentImage } from './PersistentImage';
 
 interface AppHeaderProps {
   user?: {
@@ -50,22 +51,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           {showLogo && (
             <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-primary">
               {userDoc?.photoURL || user?.avatar ? (
-                <img
-                  src={userDoc?.photoURL || user?.avatar}
+                <PersistentImage
+                  src={userDoc?.photoURL || user?.avatar || ''}
                   alt={userDoc?.displayName || user?.name || 'ユーザー'}
                   className="w-full h-full object-cover"
                   loading="eager"
-                  onError={(e) => {
-                    // 画像読み込みエラー時はフォールバック
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.nextElementSibling?.classList.remove('hidden');
-                  }}
+                  fallback={
+                    <span className="text-white text-sm font-bold">
+                      {(userDoc?.displayName || user?.name || 'C').charAt(0)}
+                    </span>
+                  }
                 />
-              ) : null}
-              <span className={`text-white text-sm font-bold ${userDoc?.photoURL || user?.avatar ? 'hidden' : ''}`}>
-                {(userDoc?.displayName || user?.name || 'C').charAt(0)}
-              </span>
+              ) : (
+                <span className="text-white text-sm font-bold">
+                  {(userDoc?.displayName || user?.name || 'C').charAt(0)}
+                </span>
+              )}
             </div>
           )}
           {showTitle && (
@@ -113,22 +114,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             >
               <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-primary">
                 {userDoc?.photoURL || user?.avatar ? (
-                  <img
-                    src={userDoc?.photoURL || user?.avatar}
+                  <PersistentImage
+                    src={userDoc?.photoURL || user?.avatar || ''}
                     alt={userDoc?.displayName || user?.name || 'ユーザー'}
                     className="w-full h-full object-cover"
                     loading="eager"
-                    onError={(e) => {
-                      // 画像読み込みエラー時はフォールバック
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      target.nextElementSibling?.classList.remove('hidden');
-                    }}
+                    fallback={
+                      <span className="text-white text-sm font-bold">
+                        {(userDoc?.displayName || user?.name || 'U').charAt(0)}
+                      </span>
+                    }
                   />
-                ) : null}
-                <span className={`text-white text-sm font-bold ${userDoc?.photoURL || user?.avatar ? 'hidden' : ''}`}>
-                  {(userDoc?.displayName || user?.name || 'U').charAt(0)}
-                </span>
+                ) : (
+                  <span className="text-white text-sm font-bold">
+                    {(userDoc?.displayName || user?.name || 'U').charAt(0)}
+                  </span>
+                )}
               </div>
             </button>
           )}

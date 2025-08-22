@@ -31,9 +31,9 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       for (let i = 0; i < files.length && images.length + newImages.length < maxImages; i++) {
         const file = files[i];
         
-        // ファイルサイズチェック (5MB制限)
-        if (file.size > 5 * 1024 * 1024) {
-          alert(`${file.name} のサイズが大きすぎます。5MB以下のファイルを選択してください。`);
+        // ファイルサイズチェック (10MB制限)
+        if (file.size > 10 * 1024 * 1024) {
+          alert(`${file.name} のサイズが大きすぎます。10MB以下のファイルを選択してください。`);
           continue;
         }
 

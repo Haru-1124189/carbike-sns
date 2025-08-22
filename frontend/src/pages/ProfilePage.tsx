@@ -1,7 +1,8 @@
-import { Edit, MessageSquare, Wrench } from 'lucide-react';
+import { Edit, MessageSquare, Wrench, Users, UserCheck } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { PersistentImage } from '../components/ui/PersistentImage';
 import { SectionTitle } from '../components/ui/SectionTitle';
 import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { ThreadCard } from '../components/ui/ThreadCard';
@@ -10,6 +11,8 @@ import { threadAds } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
 import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
 import { useThreads } from '../hooks/useThreads';
+import { useVehicles } from '../hooks/useVehicles';
+import { useMyFollowData } from '../hooks/useFollow';
 
 type ProfileTab = 'posts' | 'questions' | 'maintenance';
 
@@ -23,6 +26,7 @@ interface ProfilePageProps {
   blockedUsers?: string[];
   onBlockUser?: (author: string) => void;
   onReportThread?: (threadId: string, author: string) => void;
+  onUserClick?: (userId: string, displayName: string) => void;
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
@@ -34,7 +38,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onDeleteThread,
   blockedUsers = [],
   onBlockUser,
-  onReportThread
+  onReportThread,
+  onUserClick
 }) => {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [isAdminEditing, setIsAdminEditing] = useState(false);
@@ -43,6 +48,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
 
   const { user, userDoc, updateUserDoc, loading: authLoading } = useAuth();
+  const { vehicles, loading: vehiclesLoading, error: vehiclesError } = useVehicles();
+  const { followersCount, followingCount } = useMyFollowData();
   
   // デバッグ用：認証状態をコンソールに出力
   console.log('ProfilePage - Auth state:', {
@@ -51,7 +58,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     authLoading,
     isLoggedIn: !!user && !!userDoc,
     userEmail: user?.email,
-    userDocExists: !!userDoc
+    userDocExists: !!userDoc,
+    vehiclesCount: vehicles.length,
+    vehiclesLoading,
+    vehiclesError
+  });
+  
+  // 車両データの詳細ログ
+  console.log('ProfilePage - Vehicles data:', {
+    vehicles,
+    vehiclesLoading,
+    vehiclesError,
+    vehiclesLength: vehicles.length
   });
 
   // 一時的なデバッグ表示
@@ -316,6 +334,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   onDelete={onDeleteThread}
                   onBlockUser={onBlockUser}
                   onReportThread={onReportThread}
+                  onUserClick={onUserClick}
                 />
               ))
             ) : (
@@ -337,6 +356,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   onDelete={onDeleteThread}
                   onBlockUser={onBlockUser}
                   onReportThread={onReportThread}
+                  onUserClick={onUserClick}
                 />
               ))
             ) : (
@@ -545,23 +565,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <div className="relative">
               <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-primary">
                 {userDoc?.photoURL || user?.photoURL ? (
-                  <>
-                    <img
-                      src={userDoc?.photoURL || user?.photoURL || ''}
-                      alt="プロフィール画像"
-                      className="w-full h-full object-cover"
-                      loading="eager"
-                      onError={(e) => {
-                        // 画像読み込みエラー時はフォールバック
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <span className="text-white text-lg font-bold hidden">
-                      {(userDoc?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
-                    </span>
-                  </>
+                  <PersistentImage
+                    src={userDoc?.photoURL || user?.photoURL || ''}
+                    alt="プロフィール画像"
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    fallback={
+                      <span className="text-white text-lg font-bold">
+                        {(userDoc?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    }
+                  />
                 ) : (
                   <span className="text-white text-lg font-bold">
                     {(userDoc?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
@@ -586,6 +600,29 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 {userDoc?.displayName || user?.displayName || 'ユーザー'}
               </h2>
               <p className="text-sm text-gray-400">登録メール: {user?.email}</p>
+              
+              {/* フォロー統計 */}
+              <div className="flex items-center space-x-4 mt-2">
+                <div className="flex items-center space-x-1">
+                  <UserCheck size={14} className="text-text-secondary" />
+                  <span className="text-sm text-text-secondary">
+                    <span className="font-semibold text-text-primary">{followingCount}</span> フォロー中
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Users size={14} className="text-text-secondary" />
+                  <span className="text-sm text-text-secondary">
+                    <span className="font-semibold text-text-primary">{followersCount}</span> フォロワー
+                  </span>
+                </div>
+              </div>
+              
+              {/* 自己紹介 */}
+              {userDoc?.bio && userDoc.bio.trim() && (
+                <p className="text-sm text-gray-300 mt-2 leading-relaxed">
+                  {userDoc.bio}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -597,19 +634,32 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             action={{ label: "追加", onClick: handleAddVehicleClick }}
           />
           <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-             {userDoc?.cars && userDoc.cars.length > 0 ? (
-               userDoc.cars.map((car, index) => (
-              <VehicleCard
-                   key={index}
-                car={car}
-                onClick={() => handleVehicleClick(car)}
-              />
-               ))
-             ) : (
-               <div className="text-center py-4 w-full">
-                 <div className="text-sm text-gray-400">愛車がありません</div>
-               </div>
-             )}
+            {vehiclesLoading ? (
+              <div className="text-center py-4 w-full">
+                <div className="text-sm text-gray-400">読み込み中...</div>
+              </div>
+            ) : vehiclesError ? (
+              <div className="text-center py-4 w-full">
+                <div className="text-sm text-red-400">車両データの読み込みに失敗しました</div>
+              </div>
+            ) : vehicles && vehicles.length > 0 ? (
+              vehicles.map((vehicle) => (
+                <VehicleCard
+                  key={vehicle.id}
+                  car={{
+                    id: vehicle.id,
+                    name: vehicle.name,
+                    image: vehicle.image,
+                    type: vehicle.type
+                  }}
+                  onClick={() => handleVehicleClick(vehicle.id)}
+                />
+              ))
+            ) : (
+              <div className="text-center py-4 w-full">
+                <div className="text-sm text-gray-400">愛車がありません</div>
+              </div>
+            )}
           </div>
         </div>
 

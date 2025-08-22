@@ -4,12 +4,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { useMaintenanceLikes } from '../../hooks/useLikes';
 import { useUserName } from '../../hooks/useUserName';
 import { MaintenancePost } from '../../types';
+import { PersistentImage } from './PersistentImage';
 import { ReportButton } from './ReportButton';
+import { ClickableUserName } from './ClickableUserName';
+import { FollowButton } from './FollowButton';
 
 interface MaintenanceCardProps {
   post: MaintenancePost;
   onClick?: () => void;
-  onUserClick?: (author: string) => void;
+  onUserClick?: (userId: string, displayName: string) => void;
   onDelete?: (postId: string) => void;
 }
 
@@ -35,7 +38,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
 
   const handleUserClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onUserClick?.(authorDisplayName || post.author);
+    onUserClick?.(post.authorId || '', authorDisplayName || post.author);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -106,37 +109,25 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
     >
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleUserClick}
-            className="flex items-center space-x-2 hover:opacity-80 transition-all duration-300"
-          >
-            <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-primary">
-              {authorPhotoURL ? (
-                <img
-                  src={authorPhotoURL}
-                  alt={authorDisplayName || post.author}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  onError={(e) => {
-                    // 画像読み込みエラー時はフォールバック
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    target.nextElementSibling?.classList.remove('hidden');
-                  }}
-                />
-              ) : null}
-              <span className={`text-white text-xs font-medium ${authorPhotoURL ? 'hidden' : ''}`}>
-                {(authorDisplayName || post.author).charAt(0)}
-              </span>
-            </div>
-                         <div className="flex items-center space-x-2">
-               <span className="text-sm font-medium text-text-primary transition-all duration-300">
-                 {authorLoading ? '読み込み中...' : (authorDisplayName || post.author)}
-               </span>
-               <span className="text-xs text-text-secondary transition-all duration-300">{post.createdAt}</span>
-             </div>
-          </button>
+        <div className="flex items-center space-x-2 flex-1">
+          <ClickableUserName
+            userId={post.authorId || ''}
+            fallbackName={post.author}
+            size="sm"
+            onClick={onUserClick}
+          />
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-text-secondary transition-all duration-300">{post.createdAt}</span>
+            {/* 自分以外の投稿にフォローボタンを表示 */}
+            {post.authorId && post.authorId !== user?.uid && (
+              <FollowButton
+                targetUserId={post.authorId}
+                variant="ghost"
+                size="xs"
+                className="text-xs px-2 py-1 h-auto min-h-0"
+              />
+            )}
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           <span className={`px-2 py-1 text-xs font-medium rounded-full transition-all duration-300 ${getCategoryColor(post.category)}`}>

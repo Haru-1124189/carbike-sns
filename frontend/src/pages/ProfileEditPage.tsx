@@ -13,6 +13,7 @@ export const ProfileEditPage: React.FC<ProfileEditPageProps> = ({ onBackClick })
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const [editingName, setEditingName] = useState('');
+  const [editingBio, setEditingBio] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
 
@@ -22,7 +23,10 @@ export const ProfileEditPage: React.FC<ProfileEditPageProps> = ({ onBackClick })
     if (userDoc?.displayName || user?.displayName) {
       setEditingName(userDoc?.displayName || user?.displayName || '');
     }
-  }, [userDoc?.displayName, user?.displayName]);
+    if (userDoc?.bio) {
+      setEditingBio(userDoc.bio);
+    }
+  }, [userDoc?.displayName, user?.displayName, userDoc?.bio]);
 
   const handleAvatarChange = async (imageUrl: string | null) => {
     if (!user?.uid) return;
@@ -58,7 +62,15 @@ export const ProfileEditPage: React.FC<ProfileEditPageProps> = ({ onBackClick })
         return;
       }
 
-      await updateUserDoc({ displayName: editingName.trim() });
+      if (editingBio.trim().length > 120) {
+        setProfileError('自己紹介は120文字以内で入力してください');
+        return;
+      }
+
+      await updateUserDoc({ 
+        displayName: editingName.trim(),
+        bio: editingBio.trim()
+      });
       alert('プロフィールを更新しました');
       onBackClick?.();
     } catch (err: any) {
@@ -110,6 +122,26 @@ export const ProfileEditPage: React.FC<ProfileEditPageProps> = ({ onBackClick })
               {profileError && (
                 <span className="text-xs text-red-400">{profileError}</span>
               )}
+            </div>
+          </div>
+
+          {/* 自己紹介編集 */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              自己紹介
+            </label>
+            <textarea
+              value={editingBio}
+              onChange={(e) => setEditingBio(e.target.value)}
+              placeholder="自己紹介や趣味などを入力してください（例：車の整備が趣味です。週末は愛車のメンテナンスを楽しんでいます。）"
+              maxLength={120}
+              rows={3}
+              className="w-full p-3 bg-transparent border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary resize-none"
+            />
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-xs text-gray-400">
+                {editingBio.length}/120文字
+              </span>
             </div>
           </div>
           

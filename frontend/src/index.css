@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* デフォルトテーマ（紺色）のCSS変数 */
+  --background: #0f172a;
+  --surface: #1e293b;
+  --surface-light: #334155;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --border: #334155;
+}
+
+/* ライトテーマ用の追加スタイル */
+:root[data-theme="light"] {
+  --background: #ffffff;
+  --surface: #f1f5f9;
+  --surface-light: #e2e8f0;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --border: #cbd5e1;
+}
+
 @layer base {
   body {
     @apply bg-background text-text-primary font-sans;
@@ -30,6 +54,12 @@
     backdrop-filter: blur(10px);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     transform: translateY(0);
+  }
+
+  /* ライトテーマ用のカードスタイル */
+  :root[data-theme="light"] .card {
+    background: linear-gradient(135deg, rgba(241, 245, 249, 0.9) 0%, rgba(226, 232, 240, 0.8) 100%);
+    border-color: var(--border);
   }
   
   .card:hover {
@@ -79,6 +109,34 @@
   .btn-secondary {
     @apply bg-surface-light text-text-primary px-4 py-2 rounded-xl font-medium shadow-md;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ライトテーマ用のボタンスタイル */
+  :root[data-theme="light"] .btn-secondary {
+    background-color: var(--surface-light);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
+
+  /* ライトテーマ用の追加スタイル調整 */
+  :root[data-theme="light"] .text-white {
+    color: var(--text-primary) !important;
+  }
+
+  :root[data-theme="light"] .text-gray-400 {
+    color: var(--text-secondary) !important;
+  }
+
+  :root[data-theme="light"] .bg-slate-800 {
+    background-color: var(--surface) !important;
+  }
+
+  :root[data-theme="light"] .bg-slate-700 {
+    background-color: var(--surface-light) !important;
+  }
+
+  :root[data-theme="light"] .border-slate-600 {
+    border-color: var(--border) !important;
   }
   
   .btn-secondary:hover {

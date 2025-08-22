@@ -22,10 +22,13 @@ export const useUserName = (authorId: string) => {
         
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
+          console.log(`useUserName: User found for ${authorId}:`, userData);
           setDisplayName(userData.displayName || 'ユーザー');
           setPhotoURL(userData.photoURL || '');
         } else {
-          setDisplayName('Unknown User');
+          console.warn(`useUserName: User not found in Firestore: ${authorId}`);
+          // より分かりやすいフォールバック名
+          setDisplayName(`ユーザー${authorId.slice(-4)}`); // IDの最後4文字を使用
           setPhotoURL('');
         }
       } catch (error) {
@@ -33,10 +36,11 @@ export const useUserName = (authorId: string) => {
         // 権限エラーの場合は、デフォルト名を使用
         if (error instanceof Error && error.message.includes('permission')) {
           console.log('Permission error for user data fetch, using default data');
-          setDisplayName('ユーザー');
+          setDisplayName(`ユーザー${authorId.slice(-4)}`);
           setPhotoURL('');
         } else {
-          setDisplayName('Unknown User');
+          console.error(`useUserName: Unexpected error for ${authorId}:`, error);
+          setDisplayName(`ユーザー${authorId.slice(-4)}`);
           setPhotoURL('');
         }
       } finally {

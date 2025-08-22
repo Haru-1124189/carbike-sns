@@ -3,6 +3,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import React, { createContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase/clients';
 import { UserDoc } from '../types/user';
+import { UserDataBackup } from '../utils/userDataBackup';
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +28,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     console.log('AuthProvider: Starting auth state listener');
+    
+    // 古いバックアップをクリーンアップ
+    UserDataBackup.cleanupOldBackups();
+    
     const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
       console.log('AuthProvider: Auth state changed', { 
         user: user?.uid, 
@@ -53,13 +58,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               isAdmin: userDoc.isAdmin
             });
             setUserDoc(userDoc);
+            
+            // ユーザーデータをバックアップ
+            await UserDataBackup.backupUserData(user.uid);
           } else {
+            // バックアップから復元を試行
+            const restored = await UserDataBackup.restoreUserData(user.uid);
+            
+            if (restored) {
+              // 復元成功時は再度データを取得
+              const restoredDocSnap = await getDoc(userDocRef);
+              if (restoredDocSnap.exists()) {
+                const data = restoredDocSnap.data() as any;
+                const userDoc = {
+                  ...data,
+                  createdAt: data.createdAt?.toDate?.() || new Date(),
+                  updatedAt: data.updatedAt?.toDate?.() || new Date(),
+                  isAdmin: data.isAdmin || false,
+                };
+                console.log('AuthProvider: Restored user doc from backup', { 
+                  displayName: userDoc.displayName 
+                });
+                setUserDoc(userDoc);
+                return;
+              }
+            }
+            
             // 新規ユーザーの場合、デフォルトデータを作成
             const defaultUserDoc: UserDoc = {
               uid: user.uid,
               email: user.email || '',
               displayName: user.displayName || '',
               photoURL: user.photoURL || null,
+              bio: '', // 空の自己紹介文
               role: 'user',
               isAdmin: false, // デフォルトはfalse
               createdAt: new Date(),
@@ -74,6 +105,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
             await setDoc(userDocRef, defaultUserDoc);
             setUserDoc(defaultUserDoc);
+            
+            // 新規ユーザーデータもバックアップ
+            await UserDataBackup.backupUserData(user.uid);
           }
         } catch (error) {
           console.error('Error fetching user document:', error);

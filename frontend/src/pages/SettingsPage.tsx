@@ -20,7 +20,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
     follows: true
   });
 
-  const [darkMode, setDarkMode] = useState(true);
+
 
   const toggleNotification = (key: keyof typeof notifications) => {
     setNotifications(prev => ({
@@ -62,8 +62,37 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
   };
 
   const settingsSections = [
-    ...(userDoc?.role === 'creator' ? [creatorSection] : []),
     ...(userDoc?.isAdmin ? [adminSection] : []),
+    {
+      title: "アカウント",
+      icon: User,
+      items: [
+        {
+          id: 'profile',
+          title: 'プロフィール編集',
+          description: 'プロフィール情報を変更',
+          type: 'action'
+        },
+        {
+          id: 'privacy',
+          title: 'プライバシー設定',
+          description: 'プライバシーを管理',
+          type: 'action'
+        },
+        {
+          id: 'logout',
+          title: 'ログアウト',
+          description: '現在のアカウントからサインアウト',
+          type: 'action'
+        },
+        {
+          id: 'deleteAccount',
+          title: 'アカウント削除',
+          description: 'アカウントとデータを完全に削除',
+          type: 'action'
+        }
+      ]
+    },
     {
       title: "通知設定",
       icon: Bell,
@@ -99,21 +128,57 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
       ]
     },
     {
+      title: "車両設定",
+      icon: Car,
+      items: [
+        {
+          id: 'addVehicle',
+          title: '車両を追加',
+          description: '新しい車両を登録',
+          type: 'action'
+        },
+        {
+          id: 'maintenance',
+          title: '整備スケジュール',
+          description: '整備予定を管理',
+          type: 'action'
+        }
+      ]
+    },
+    {
       title: "アプリ設定",
       icon: Palette,
       items: [
         {
-          id: 'darkMode',
-          title: 'ダークモード',
-          description: 'ダークテーマを使用',
-          type: 'toggle',
-          value: darkMode
+          id: 'theme',
+          title: 'テーマ設定',
+          description: '紺色・ダーク・ライトから選択',
+          type: 'action'
         },
         {
           id: 'language',
           title: '言語',
           description: '日本語',
           type: 'select'
+        }
+      ]
+    },
+    ...(userDoc?.role === 'creator' ? [creatorSection] : []),
+    {
+      title: "セーフティ",
+      icon: Shield,
+      items: [
+        {
+          id: 'blocklist',
+          title: 'ブロックしたユーザー',
+          description: 'ブロック中のユーザー一覧',
+          type: 'action'
+        },
+        {
+          id: 'mutedWords',
+          title: 'ミュートワード',
+          description: '表示しないキーワードを管理',
+          type: 'action'
         }
       ]
     },
@@ -142,24 +207,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
       ]
     },
     {
-      title: "セーフティ",
-      icon: Shield,
-      items: [
-        {
-          id: 'blocklist',
-          title: 'ブロックしたユーザー',
-          description: 'ブロック中のユーザー一覧',
-          type: 'action'
-        },
-        {
-          id: 'mutedWords',
-          title: 'ミュートワード',
-          description: '表示しないキーワードを管理',
-          type: 'action'
-        }
-      ]
-    },
-    {
       title: "ポリシー",
       icon: FileText,
       items: [
@@ -182,62 +229,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
           type: 'action'
         }
       ]
-    },
-    {
-      title: "車両設定",
-      icon: Car,
-      items: [
-        {
-          id: 'addVehicle',
-          title: '車両を追加',
-          description: '新しい車両を登録',
-          type: 'action'
-        },
-        {
-          id: 'maintenance',
-          title: '整備スケジュール',
-          description: '整備予定を管理',
-          type: 'action'
-        }
-      ]
-    },
-    {
-      title: "アカウント",
-      icon: User,
-      items: [
-        {
-          id: 'profile',
-          title: 'プロフィール編集',
-          description: 'プロフィール情報を変更',
-          type: 'action'
-        },
-        {
-          id: 'privacy',
-          title: 'プライバシー設定',
-          description: 'プライバシーを管理',
-          type: 'action'
-        },
-        {
-          id: 'logout',
-          title: 'ログアウト',
-          description: '現在のアカウントからサインアウト',
-          type: 'action'
-        },
-        {
-          id: 'deleteAccount',
-          title: 'アカウント削除',
-          description: 'アカウントとデータを完全に削除',
-          type: 'action'
-        }
-      ]
     }
   ];
 
   const handleSettingClick = (sectionTitle: string, itemId: string) => {
     if (itemId === 'likes' || itemId === 'replies' || itemId === 'maintenance' || itemId === 'follows') {
       toggleNotification(itemId as keyof typeof notifications);
-    } else if (itemId === 'darkMode') {
-      setDarkMode(!darkMode);
     } else {
       if (itemId === 'logout') {
         if (window.confirm('ログアウトしますか？')) {
@@ -249,6 +246,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
         if (window.confirm('アカウントを削除しますか？この操作は元に戻せません。')) {
           alert('アカウントを削除しました（ダミー）');
         }
+        return;
+      }
+      if (itemId === 'theme') {
+        onNavigate?.('theme');
         return;
       }
       onNavigate?.(itemId);

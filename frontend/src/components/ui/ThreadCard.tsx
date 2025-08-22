@@ -6,6 +6,8 @@ import { useReplies } from '../../hooks/useReplies';
 import { useUserName } from '../../hooks/useUserName';
 import { toggleThreadLike } from '../../lib/likes';
 import { Thread } from '../../types';
+import { ClickableUserName } from './ClickableUserName';
+import { FollowButton } from './FollowButton';
 import { ReportButton } from './ReportButton';
 
 interface ThreadCardProps {
@@ -14,6 +16,7 @@ interface ThreadCardProps {
   onDelete?: (threadId: string) => void;
   onBlockUser?: (author: string) => void;
   onReportThread?: (threadId: string, author: string) => void;
+  onUserClick?: (userId: string, displayName: string) => void;
 }
 
 export const ThreadCard: React.FC<ThreadCardProps> = ({
@@ -21,13 +24,16 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
   onClick,
   onDelete,
   onBlockUser,
-  onReportThread
+  onReportThread,
+  onUserClick
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
   const { user } = useAuth();
   const { isLiked, likeCount, loading } = useThreadLikes(thread.id, user?.uid || '');
   const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(thread.authorId || '');
   const { replies: replyList } = useReplies(thread.id, thread.type === 'question' ? 'question' : 'thread');
+
+
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -89,49 +95,42 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
       }}
     >
       <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-primary">
-            {authorPhotoURL ? (
-              <img
-                src={authorPhotoURL}
-                alt={displayAuthorName}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                onError={(e) => {
-                  // 画像読み込みエラー時はフォールバック
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.nextElementSibling?.classList.remove('hidden');
-                }}
-              />
-            ) : null}
-            <span className={`text-white text-xs font-medium ${authorPhotoURL ? 'hidden' : ''}`}>
-              {displayAuthorName.charAt(0)}
-            </span>
+        <div className="flex items-center space-x-2 flex-1">
+          <ClickableUserName
+            userId={thread.authorId || ''}
+            fallbackName={thread.author}
+            size="sm"
+            onClick={onUserClick}
+          />
+          <div className="flex items-center space-x-2">
+            <div className="text-xs text-text-secondary">
+              {thread.createdAt instanceof Date 
+                ? thread.createdAt.toLocaleString('ja-JP', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : typeof thread.createdAt === 'string'
+                ? new Date(thread.createdAt).toLocaleString('ja-JP', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : '日付不明'
+              }
+            </div>
+                         {/* 自分以外の投稿にフォローボタンを表示 */}
+             {thread.authorId && thread.authorId !== user?.uid && (
+               <FollowButton
+                 targetUserId={thread.authorId}
+                 variant="ghost"
+                 size="xs"
+                 className="text-xs px-2 py-1 h-auto min-h-0"
+               />
+             )}
           </div>
-                     <div className="flex items-center space-x-2">
-             <div className="text-sm font-medium text-text-primary">
-               {authorLoading ? '読み込み中...' : displayAuthorName}
-             </div>
-             <div className="text-xs text-text-secondary">
-               {thread.createdAt instanceof Date 
-                 ? thread.createdAt.toLocaleString('ja-JP', {
-                     month: '2-digit',
-                     day: '2-digit',
-                     hour: '2-digit',
-                     minute: '2-digit'
-                   })
-                 : typeof thread.createdAt === 'string'
-                 ? new Date(thread.createdAt).toLocaleString('ja-JP', {
-                     month: '2-digit',
-                     day: '2-digit',
-                     hour: '2-digit',
-                     minute: '2-digit'
-                   })
-                 : '日付不明'
-               }
-             </div>
-           </div>
         </div>
         
         <div className="relative">

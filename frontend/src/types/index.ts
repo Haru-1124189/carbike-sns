@@ -95,6 +95,42 @@ export interface Notification {
   time: string;
 }
 
+export type Theme = 'blue' | 'dark' | 'light';
+
+export interface Follow {
+  id: string;
+  followerId: string;
+  followingId: string;
+  createdAt: any; // Firestore Timestamp
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  email?: string;
+  photoURL?: string;
+  bio?: string;
+  followersCount: number;
+  followingCount: number;
+  postsCount: number;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+}
+
+export interface Vehicle {
+  id: string;
+  name: string;
+  type: 'car' | 'bike';
+  image?: string;
+  year?: number;
+  make?: string;
+  model?: string;
+  customContent?: string;
+  ownerId: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+}
+
 export interface User {
   id: string;
   name: string;

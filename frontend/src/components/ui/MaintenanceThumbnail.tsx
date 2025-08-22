@@ -4,7 +4,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useMaintenanceLikes } from '../../hooks/useLikes';
 import { toggleMaintenanceLike } from '../../lib/likes';
 import { MaintenancePost } from '../../types';
-import { Chip } from './Chip';
 
 interface MaintenanceThumbnailProps {
   post: MaintenancePost;
@@ -21,20 +20,7 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
   const { isLiked, likeCount, loading } = useMaintenanceLikes(post.id, user?.uid || '');
   const [showMenu, setShowMenu] = React.useState(false);
 
-  const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      engine: 'エンジン',
-      suspension: 'サスペンション',
-      brake: 'ブレーキ',
-      electrical: '電気',
-      body: 'ボディ',
-      tire: 'タイヤ',
-      oil: 'オイル',
-      custom: 'カスタム',
-      other: 'その他'
-    };
-    return labels[category] || 'その他';
-  };
+
 
   const handleLikeClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -79,12 +65,7 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
             className="w-full h-full object-cover transition-all duration-300"
           />
         </div>
-        {/* カテゴリーバッジ */}
-        <div className="absolute top-2 left-2">
-          <Chip variant="primary" size="sm">
-            {getCategoryLabel(post.category)}
-          </Chip>
-        </div>
+
       </div>
 
       {/* タイトル */}
