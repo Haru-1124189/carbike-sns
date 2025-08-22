@@ -43,7 +43,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick, onDelete }
         
         {/* 画像 */}
         <img
-          src={video.thumbnail}
+          src={video.thumbnailUrl}
           alt={video.title}
           className={`w-full h-32 object-cover rounded-lg transition-all duration-300 hover:scale-105 ${
             imageLoaded ? 'opacity-100' : 'opacity-0'

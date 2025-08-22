@@ -1,7 +1,10 @@
-import { Calendar, Car, Clock, DollarSign, Heart, MapPin, MessageCircle, Package, Trash2, Wrench } from 'lucide-react';
-import React, { useState } from 'react';
+import { Calendar, Car, Clock, DollarSign, Heart, MapPin, MessageCircle, MoreHorizontal, Package, Wrench } from 'lucide-react';
+import React from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { useMaintenanceLikes } from '../../hooks/useLikes';
+import { useUserName } from '../../hooks/useUserName';
 import { MaintenancePost } from '../../types';
-import { currentUser } from '../../data/dummy';
+import { ReportButton } from './ReportButton';
 
 interface MaintenanceCardProps {
   post: MaintenancePost;
@@ -11,13 +14,18 @@ interface MaintenanceCardProps {
 }
 
 export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick, onUserClick, onDelete }) => {
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(post.likes);
+  const { user } = useAuth();
+  const { isLiked, likeCount, toggleLike, loading: likeLoading } = useMaintenanceLikes(post.id, user?.uid || '');
+  const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(post.authorId || '');
+  const [showMenu, setShowMenu] = React.useState(false);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsLiked(!isLiked);
-    setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+    if (!user?.uid) {
+      alert('ログインが必要です');
+      return;
+    }
+    await toggleLike();
   };
 
   const handleComment = (e: React.MouseEvent) => {
@@ -27,7 +35,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
 
   const handleUserClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onUserClick?.(post.author);
+    onUserClick?.(authorDisplayName || post.author);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -35,6 +43,12 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
     if (window.confirm('この整備記録を削除しますか？')) {
       onDelete?.(post.id);
     }
+    setShowMenu(false);
+  };
+
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(!showMenu);
   };
 
   const getCategoryColor = (category: string) => {
@@ -88,60 +102,100 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
   return (
     <div
       onClick={onClick}
-      className="p-4 border-b border-surface-light transition-all duration-300 cursor-pointer fade-in hover:bg-surface/30"
+      className="p-3 border-b border-surface-light transition-all duration-300 cursor-pointer fade-in hover:bg-surface/30"
     >
       {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center space-x-2">
           <button
             onClick={handleUserClick}
             className="flex items-center space-x-2 hover:opacity-80 transition-all duration-300"
           >
-            <img
-              src={post.authorAvatar}
-              alt={post.author}
-              className="w-8 h-8 rounded-full transition-all duration-300 hover:scale-110"
-            />
-            <span className="text-sm font-medium text-text-primary transition-all duration-300">{post.author}</span>
+            <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-primary">
+              {authorPhotoURL ? (
+                <img
+                  src={authorPhotoURL}
+                  alt={authorDisplayName || post.author}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    // 画像読み込みエラー時はフォールバック
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <span className={`text-white text-xs font-medium ${authorPhotoURL ? 'hidden' : ''}`}>
+                {(authorDisplayName || post.author).charAt(0)}
+              </span>
+            </div>
+                         <div className="flex items-center space-x-2">
+               <span className="text-sm font-medium text-text-primary transition-all duration-300">
+                 {authorLoading ? '読み込み中...' : (authorDisplayName || post.author)}
+               </span>
+               <span className="text-xs text-text-secondary transition-all duration-300">{post.createdAt}</span>
+             </div>
           </button>
         </div>
         <div className="flex items-center space-x-2">
           <span className={`px-2 py-1 text-xs font-medium rounded-full transition-all duration-300 ${getCategoryColor(post.category)}`}>
             {getCategoryLabel(post.category)}
           </span>
-          <span className="text-xs text-text-secondary transition-all duration-300">{post.createdAt}</span>
-          {post.author === currentUser.name && (
+          <div className="relative">
             <button
-              onClick={handleDelete}
-              className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-all duration-300 hover:scale-110 icon-button"
-              title="削除"
+              onClick={handleMenuClick}
+              className="p-1 rounded-full hover:bg-surface/50 transition-colors"
             >
-              <Trash2 size={16} className="text-red-400 hover:text-red-300 transition-all duration-300" />
+              <MoreHorizontal size={16} className="text-text-secondary" />
             </button>
-          )}
+            
+            {showMenu && (
+              <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+                {user?.uid === post.authorId && (
+                  <button
+                    onClick={handleDelete}
+                    className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 flex items-center space-x-2"
+                  >
+                    <span>削除</span>
+                  </button>
+                )}
+                <div className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50">
+                  <ReportButton
+                    targetId={post.id}
+                    targetType="maintenance"
+                    targetTitle={post.title}
+                    targetAuthorId={post.authorId}
+                    targetAuthorName={authorDisplayName || post.author}
+                    className="flex items-center space-x-2 w-full"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 車種情報 */}
-      <div className="flex items-center space-x-2 mb-3">
-        <Car size={16} className="text-primary transition-all duration-300" />
+      <div className="flex items-center space-x-2 mb-2">
+        <Car size={14} className="text-primary transition-all duration-300" />
         <span className="text-sm text-text-secondary transition-all duration-300">{post.carModel}</span>
       </div>
 
       {/* メイン画像 */}
       {post.carImage && (
-        <div className="mb-3">
+        <div className="mb-2">
           <img
             src={post.carImage}
             alt={post.carModel}
-            className="w-full h-48 object-cover rounded-lg transition-all duration-300 hover:scale-105"
+            className="w-full h-32 object-cover rounded-lg transition-all duration-300 hover:scale-105"
           />
         </div>
       )}
 
       {/* 手順の写真プレビュー */}
       {post.steps.length > 0 && (
-        <div className="mb-3">
+        <div className="mb-2">
           <div className="flex space-x-2 overflow-x-auto pb-2">
             {post.steps.slice(0, 3).map((step, index) => (
               step.image && (
@@ -149,7 +203,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
                   <img
                     src={step.image}
                     alt={`Step ${step.order}`}
-                    className="w-20 h-16 object-cover rounded-lg transition-all duration-300 hover:scale-110"
+                    className="w-16 h-12 object-cover rounded-lg transition-all duration-300 hover:scale-110"
                   />
                 </div>
               )
@@ -164,9 +218,9 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
       )}
 
       {/* タイトルとコンテンツ */}
-      <div className="mb-3">
-        <h3 className="text-base font-semibold text-text-primary mb-2 transition-all duration-300">{post.title}</h3>
-        <p className="text-sm text-text-secondary leading-relaxed line-clamp-3 transition-all duration-300">{post.content}</p>
+      <div className="mb-2">
+        <h3 className="text-sm font-semibold text-text-primary mb-1 transition-all duration-300 line-clamp-1">{post.title}</h3>
+        <p className="text-xs text-text-secondary leading-relaxed line-clamp-2 transition-all duration-300">{post.content}</p>
       </div>
 
       {/* 作業情報 */}
@@ -247,18 +301,19 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
         <div className="flex items-center space-x-4">
           <button
             onClick={handleLike}
-            className={`flex items-center space-x-2 transition-all duration-300 ${
+            disabled={likeLoading}
+            className={`flex items-center space-x-1 transition-all duration-300 ${
               isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500'
             }`}
           >
-            <Heart size={16} className={`${isLiked ? 'fill-current' : ''} transition-all duration-300`} />
+            <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} className="transition-all duration-300" />
             <span className="text-xs transition-all duration-300">{likeCount}</span>
           </button>
           <button
             onClick={handleComment}
-            className="flex items-center space-x-2 text-text-secondary hover:text-primary transition-all duration-300"
+            className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-all duration-300"
           >
-            <MessageCircle size={16} className="transition-all duration-300" />
+            <MessageCircle size={12} className="transition-all duration-300" />
             <span className="text-xs transition-all duration-300">{post.comments}</span>
           </button>
         </div>

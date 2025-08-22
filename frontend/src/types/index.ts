@@ -52,14 +52,29 @@ export interface Video {
   id: string;
   title: string;
   description: string;
-  thumbnail: string;
+  thumbnailUrl: string;
+  videoUrl: string;
   duration: string;
   views: number;
   likes: number;
   author: string;
-  createdAt: string;
+  authorId: string;
+  channelId: string;
   uploadedAt: string;
-  channelId: string; // チャンネルIDを追加
+  createdAt: Date;
+  status: 'active' | 'hidden' | 'deleted';
+  tags: string[];
+  category: 'car' | 'bike' | 'maintenance' | 'review' | 'other';
+}
+
+export interface CreateVideoData {
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  duration: string;
+  tags: string[];
+  category: 'car' | 'bike' | 'maintenance' | 'review' | 'other';
 }
 
 export interface Channel {
@@ -160,4 +175,30 @@ export interface MaintenancePostDoc {
   tools?: string[];
   parts?: string[];
   isDeleted?: boolean;
+}
+
+// 動画配信申請の型定義
+export interface CreatorApplication {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatar?: string;
+  channelName: string;
+  channelDescription: string;
+  contentCategory: 'car_review' | 'maintenance' | 'racing' | 'custom' | 'news' | 'other';
+  experience: string;
+  motivation: string;
+  socialMediaLinks?: {
+    youtube?: string;
+    instagram?: string;
+    twitter?: string;
+    tiktok?: string;
+  };
+  status: 'pending' | 'approved' | 'rejected';
+  adminNotes?: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+  reviewedAt?: any; // Firestore Timestamp
+  reviewedBy?: string; // 管理者のUID
 }

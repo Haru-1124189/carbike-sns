@@ -103,12 +103,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
         <AppHeader
-          user={{ id: "1", name: "RevLinkユーザー", avatar: "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U", cars: [], interestedCars: [] }}
           onNotificationClick={() => console.log('Notifications clicked')}
           onProfileClick={() => console.log('Profile clicked')}
         />
         
-        <main className="px-4 pb-20 pt-0">
+        <main className="px-4 pb-24 pt-0">
           <BannerAd />
           
           {/* 戻るボタン */}
@@ -133,10 +132,10 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             </div>
           </div>
 
-          {/* 登録車種 */}
+          {/* 愛車 */}
           {user.cars.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-sm font-bold text-white mb-3">登録車種</h3>
+              <h3 className="text-sm font-bold text-white mb-3">愛車</h3>
               <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
                 {user.cars.map((car) => (
                   <VehicleCard

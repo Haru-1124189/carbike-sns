@@ -1,9 +1,12 @@
-import { Flag, Heart, MessageSquare, MoreHorizontal, UserX } from 'lucide-react';
+import { Heart, MessageSquare, MoreHorizontal, UserX } from 'lucide-react';
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useThreadLikes } from '../../hooks/useLikes';
+import { useReplies } from '../../hooks/useReplies';
+import { useUserName } from '../../hooks/useUserName';
 import { toggleThreadLike } from '../../lib/likes';
 import { Thread } from '../../types';
+import { ReportButton } from './ReportButton';
 
 interface ThreadCardProps {
   thread: Thread;
@@ -23,6 +26,8 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
   const [showMenu, setShowMenu] = React.useState(false);
   const { user } = useAuth();
   const { isLiked, likeCount, loading } = useThreadLikes(thread.id, user?.uid || '');
+  const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(thread.authorId || '');
+  const { replies: replyList } = useReplies(thread.id, thread.type === 'question' ? 'question' : 'thread');
 
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -35,12 +40,11 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
   };
 
   const handleBlockUser = () => {
-    onBlockUser?.(thread.author);
+    onBlockUser?.(displayAuthorName);
     setShowMenu(false);
   };
 
   const handleReportThread = () => {
-    onReportThread?.(thread.id, thread.author);
     setShowMenu(false);
   };
 
@@ -56,33 +60,62 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
       await toggleThreadLike(thread.id, user.uid);
     } catch (error: any) {
       console.error('Error toggling like:', error);
-      alert(`いいねの操作に失敗しました: ${error.message}`);
+      console.error('Error details:', {
+        threadId: thread.id,
+        userId: user.uid,
+        error: error.message
+      });
+      
+      // 権限エラーの場合は特別なメッセージを表示
+      if (error.message.includes('permission')) {
+        alert('いいねの操作に権限がありません。ログイン状態を確認してください。');
+      } else {
+        alert(`いいねの操作に失敗しました: ${error.message}`);
+      }
     }
   };
 
   // 投稿者本人かどうかをチェック
-  const isAuthor = user?.uid === thread.authorId || user?.email === thread.author;
+  const isAuthor = user?.uid === thread.authorId;
+  
+  // 表示するユーザー名（最新のユーザー名を優先）
+  const displayAuthorName = authorDisplayName || thread.author;
 
   return (
     <div
-      className="p-4 cursor-pointer border-b border-surface-light transition-all duration-300 hover:bg-surface/30"
+      className="p-3 cursor-pointer border-b border-surface-light transition-all duration-300 hover:bg-surface/30"
       onClick={() => {
         onClick?.();
       }}
     >
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-white text-xs font-medium">
-              {thread.author.charAt(0)}
+          <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-primary">
+            {authorPhotoURL ? (
+              <img
+                src={authorPhotoURL}
+                alt={displayAuthorName}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  // 画像読み込みエラー時はフォールバック
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+            ) : null}
+            <span className={`text-white text-xs font-medium ${authorPhotoURL ? 'hidden' : ''}`}>
+              {displayAuthorName.charAt(0)}
             </span>
           </div>
-          <div>
-            <div className="text-sm font-medium text-text-primary">{thread.author}</div>
-                         <div className="text-xs text-text-secondary">
+                     <div className="flex items-center space-x-2">
+             <div className="text-sm font-medium text-text-primary">
+               {authorLoading ? '読み込み中...' : displayAuthorName}
+             </div>
+             <div className="text-xs text-text-secondary">
                {thread.createdAt instanceof Date 
                  ? thread.createdAt.toLocaleString('ja-JP', {
-                     year: 'numeric',
                      month: '2-digit',
                      day: '2-digit',
                      hour: '2-digit',
@@ -90,7 +123,6 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                    })
                  : typeof thread.createdAt === 'string'
                  ? new Date(thread.createdAt).toLocaleString('ja-JP', {
-                     year: 'numeric',
                      month: '2-digit',
                      day: '2-digit',
                      hour: '2-digit',
@@ -99,7 +131,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                  : '日付不明'
                }
              </div>
-          </div>
+           </div>
         </div>
         
         <div className="relative">
@@ -127,28 +159,31 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                 <UserX size={14} />
                 <span>ユーザーをブロック</span>
               </button>
-              <button
-                onClick={handleReportThread}
-                className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50 flex items-center space-x-2"
-              >
-                <Flag size={14} />
-                <span>報告</span>
-              </button>
+              <div className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50">
+                <ReportButton
+                  targetId={thread.id}
+                  targetType="thread"
+                  targetTitle={thread.title}
+                  targetAuthorId={thread.authorId}
+                  targetAuthorName={displayAuthorName}
+                  className="flex items-center space-x-2 w-full"
+                />
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="mb-3">
-        <h3 className="text-sm font-medium text-text-primary mb-1 line-clamp-2">{thread.title}</h3>
+      <div className="mb-2">
+        <h3 className="text-sm font-medium text-text-primary mb-1 line-clamp-1">{thread.title}</h3>
         <p className="text-xs text-text-secondary line-clamp-2">{thread.content}</p>
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-1 text-text-secondary">
-            <MessageSquare size={12} />
-            <span className="text-xs">{thread.replies}</span>
+            <MessageSquare size={11} />
+            <span className="text-xs">{replyList.length}</span>
           </div>
           <button
             onClick={handleLikeClick}
@@ -159,22 +194,22 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
                 : 'text-text-secondary hover:text-red-500'
             }`}
           >
-            <Heart size={12} className={isLiked ? 'fill-current' : ''} />
+            <Heart size={11} className={isLiked ? 'fill-current' : ''} />
             <span className="text-xs">{likeCount}</span>
           </button>
         </div>
 
         <div className="flex items-center space-x-1">
-          {thread.tags.slice(0, 2).map((tag, index) => (
+          {thread.tags.slice(0, 1).map((tag, index) => (
             <span
               key={index}
-              className="px-1.5 py-0.5 bg-primary/5 text-primary text-xs rounded-full"
+              className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs rounded-full"
             >
               {tag}
             </span>
           ))}
-          {thread.tags.length > 2 && (
-            <span className="text-xs text-text-secondary">+{thread.tags.length - 2}</span>
+          {thread.tags.length > 1 && (
+            <span className="text-xs text-text-secondary">+{thread.tags.length - 1}</span>
           )}
         </div>
       </div>

@@ -2,15 +2,21 @@ import { ArrowLeft, Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { FloatingReplyBar } from '../components/ui/FloatingReplyBar';
+import { ReplySection } from '../components/ui/ReplySection';
+import { ReportButton } from '../components/ui/ReportButton';
 import { useAuth } from '../hooks/useAuth';
+import { useThreadLikes } from '../hooks/useLikes';
+import { useReplies } from '../hooks/useReplies';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { useThread } from '../hooks/useThread';
+import { useUserName } from '../hooks/useUserName';
 import { deleteThread } from '../lib/threads';
 
 interface ThreadDetailPageProps {
   threadId: string;
   onBackClick?: () => void;
-  onUserClick?: (userId: string) => void;
+  onUserClick?: (userId: string, userName?: string) => void;
 }
 
 export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({ 
@@ -22,6 +28,9 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useAuth();
   const { thread, loading, error } = useThread(threadId);
+  const { isLiked, likeCount, toggleLike, loading: likeLoading } = useThreadLikes(threadId, user?.uid || '');
+  const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(thread?.authorId || '');
+  const { replies: replyList } = useReplies(threadId, thread?.type === 'question' ? 'question' : 'thread');
 
   const handleBackClick = () => {
     onBackClick?.();
@@ -33,14 +42,26 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
   });
 
   const handleUserClick = () => {
-    if (thread?.authorName) {
-      onUserClick?.(thread.authorName);
+    if (thread?.authorId) {
+      onUserClick?.(thread.authorId, authorDisplayName || thread.authorName || '');
     }
   };
 
-  const handleLike = () => {
-    // TODO: いいね機能を実装
-    console.log('Like clicked');
+  const handleReplyUserClick = (authorId: string, authorName: string) => {
+    onUserClick?.(authorId, authorName);
+  };
+
+  const handleReplySubmitted = () => {
+    // 返信が投稿された後の処理（必要に応じて実装）
+    console.log('Reply submitted');
+  };
+
+  const handleLike = async () => {
+    if (!user?.uid) {
+      alert('ログインが必要です');
+      return;
+    }
+    await toggleLike();
   };
 
   const handleComment = () => {
@@ -73,10 +94,7 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
   };
 
   const handleReport = () => {
-    if (window.confirm('この投稿を通報しますか？')) {
-      // TODO: 通報機能を実装
-      console.log('Report clicked');
-    }
+    setShowMenu(false);
   };
 
   if (loading) {
@@ -84,9 +102,10 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
       <div className="min-h-screen bg-background">
         <div className="max-w-[420px] mx-auto">
           <AppHeader
-            user={{ id: '', name: '', avatar: '', cars: [], interestedCars: [] }}
+            onNotificationClick={() => {}}
+            onProfileClick={() => {}}
           />
-          <main className="px-4 pb-20 pt-0">
+          <main className="px-4 pb-24 pt-0">
             <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
@@ -112,9 +131,10 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
       <div className="min-h-screen bg-background">
         <div className="max-w-[420px] mx-auto">
           <AppHeader
-            user={{ id: '', name: '', avatar: '', cars: [], interestedCars: [] }}
+            onNotificationClick={() => {}}
+            onProfileClick={() => {}}
           />
-          <main className="px-4 pb-20 pt-0">
+          <main className="px-4 pb-24 pt-0">
             <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
@@ -141,10 +161,11 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
         <AppHeader
-          user={{ id: '', name: '', avatar: '', cars: [], interestedCars: [] }}
+          onNotificationClick={() => {}}
+          onProfileClick={() => {}}
         />
         
-        <main className="px-4 pb-20 pt-0">
+        <main className="px-4 pb-24 pt-0">
           <BannerAd />
           
           {/* 戻るボタン */}
@@ -158,8 +179,8 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
             <span className="text-base text-text-primary font-medium">投稿詳細</span>
           </div>
 
-          {/* 投稿詳細 */}
-          <div className="bg-surface rounded-xl border border-surface-light p-4 mb-4">
+                     {/* 投稿詳細 */}
+           <div className="p-4 mb-4">
             {/* ヘッダー */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3">
@@ -167,14 +188,28 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
                   onClick={handleUserClick}
                   className="flex items-center space-x-2"
                 >
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">
-                      {thread.authorName.charAt(0).toUpperCase()}
+                                                       <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-primary">
+                    {authorPhotoURL ? (
+                      <img
+                        src={authorPhotoURL}
+                        alt={authorDisplayName || thread.authorName || 'ユーザー'}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          // 画像読み込みエラー時はフォールバック
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <span className={`text-white text-sm font-bold ${authorPhotoURL ? 'hidden' : ''}`}>
+                      {(authorDisplayName || thread.authorName || 'U').charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-sm font-medium text-text-primary">
-                    {thread.authorName}
-                  </span>
+                   <span className="text-sm font-medium text-text-primary">
+                     {authorLoading ? '読み込み中...' : (authorDisplayName || thread.authorName || 'Unknown User')}
+                   </span>
                 </button>
               </div>
               
@@ -229,63 +264,78 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
               <div className="flex items-center space-x-4">
                 <button
                   onClick={handleLike}
-                  className="flex items-center space-x-1 text-text-secondary hover:text-red-500 transition-colors"
+                  disabled={likeLoading}
+                  className={`flex items-center space-x-1 transition-colors ${
+                    isLiked 
+                      ? 'text-red-500' 
+                      : 'text-text-secondary hover:text-red-500'
+                  }`}
                 >
-                  <Heart size={16} />
-                  <span className="text-sm">{thread.likes}</span>
+                  <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+                  <span className="text-sm">{likeCount}</span>
                 </button>
                 <button
                   onClick={handleComment}
                   className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
                 >
                   <MessageCircle size={16} />
-                  <span className="text-sm">{thread.replies}</span>
+                  <span className="text-sm">{replyList.length}</span>
                 </button>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-1 rounded-full hover:bg-surface-light transition-colors"
-                >
-                  <MoreHorizontal size={16} className="text-text-secondary" />
-                </button>
-                
-                {showMenu && (
-                  <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
-                    {isAuthor ? (
-                      <button
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <span>{isDeleting ? '削除中...' : '削除'}</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleReport}
-                        className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50 flex items-center space-x-2"
-                      >
-                        <span>通報</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+                             <div className="flex items-center space-x-2">
+                 {isAuthor && (
+                   <button
+                     onClick={() => setShowMenu(!showMenu)}
+                     className="p-1 rounded-full hover:bg-surface-light transition-colors"
+                   >
+                     <MoreHorizontal size={16} className="text-text-secondary" />
+                   </button>
+                 )}
+                 
+                 {isAuthor && showMenu && (
+                   <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+                     <button
+                       onClick={handleDelete}
+                       disabled={isDeleting}
+                       className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                     >
+                       <span>{isDeleting ? '削除中...' : '削除'}</span>
+                     </button>
+                   </div>
+                 )}
+                 
+                 <ReportButton
+                   targetId={thread.id}
+                   targetType="thread"
+                   targetTitle={thread.title}
+                   targetAuthorId={thread.authorId}
+                   targetAuthorName={authorDisplayName || thread.authorName || 'Unknown User'}
+                   className="flex items-center space-x-1 text-xs text-gray-400 hover:text-red-400 transition-colors"
+                 />
+               </div>
             </div>
           </div>
 
-          {/* コメントセクション（プレースホルダー） */}
-          <div className="bg-surface rounded-xl border border-surface-light p-4">
+                     {/* 返信セクション */}
+           <div className="p-4 pb-52">
             <h3 className="text-lg font-semibold text-text-primary mb-4">
-              コメント ({thread.replies})
+              返信 ({replyList.length})
             </h3>
-            <div className="text-center py-8">
-              <div className="text-text-secondary">
-                コメント機能は準備中です
-              </div>
-            </div>
+            <ReplySection
+              targetId={threadId}
+              targetType={thread.type === 'question' ? 'question' : 'thread'}
+              onUserClick={handleReplyUserClick}
+            />
           </div>
+
+          {/* 常駐返信バー */}
+          <FloatingReplyBar
+            targetId={threadId}
+            targetType={thread.type === 'question' ? 'question' : 'thread'}
+            targetAuthorName={authorDisplayName || thread.authorName || 'Unknown User'}
+            onReplySubmitted={handleReplySubmitted}
+          />
         </main>
       </div>
     </div>

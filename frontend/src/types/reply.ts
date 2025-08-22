@@ -1,6 +1,7 @@
 export interface ReplyDoc {
   id: string;
-  threadId: string;
+  targetId: string;
+  targetType: 'thread' | 'question' | 'maintenance';
   authorId: string;
   authorName: string;
   authorAvatar?: string;

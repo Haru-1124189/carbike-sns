@@ -4,14 +4,19 @@ import { TabBar } from './components/ui/TabBar';
 import { carModels, currentUser, videos } from './data/dummy';
 import { useAuth } from './hooks/useAuth';
 import { useMaintenancePosts } from './hooks/useMaintenancePosts';
+import { useNotifications } from './hooks/useNotifications';
 import { useThreads } from './hooks/useThreads';
 import { deleteMaintenancePost } from './lib/threads';
 import { AddVehiclePage } from './pages/AddVehiclePage';
+import { AdminApplicationsPage } from './pages/AdminApplicationsPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AuthPage } from './pages/AuthPage';
 import { BlockListPage } from './pages/BlockListPage';
 import { CarListPage } from './pages/CarListPage';
+import { ChannelsPage } from './pages/ChannelsPage';
 import { ContactPage } from './pages/ContactPage';
 import { CreatePostPage } from './pages/CreatePostPage';
+import { CreatorApplicationPage } from './pages/CreatorApplicationPage';
 import { CreatorUploadPage } from './pages/CreatorUploadPage';
 import { HelpPage } from './pages/HelpPage';
 import { HomePage } from './pages/HomePage';
@@ -23,12 +28,15 @@ import { NewMaintenancePage } from './pages/NewMaintenancePage';
 import { NewThreadPage } from './pages/NewThreadPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { PostPage } from './pages/PostPage';
+import { ProfileEditPage } from './pages/ProfileEditPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisteredInterestedCarsPage } from './pages/RegisteredInterestedCarsPage';
 import { ReportPage } from './pages/ReportPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ThreadDetailPage } from './pages/ThreadDetailPage';
 import { ThreadsPage } from './pages/ThreadsPage';
+import { UploadVideoPage } from './pages/UploadVideoPage';
+import { UserNameSetupPage } from './pages/UserNameSetupPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { VehicleDetailPage } from './pages/VehicleDetailPage';
 import { VideoDetailPage } from './pages/VideoDetailPage';
@@ -36,9 +44,10 @@ import { VideosPage } from './pages/VideosPage';
 import { AuthProvider } from './providers/AuthProvider';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, userDoc, loading } = useAuth();
   const { threads: allThreads } = useThreads();
   const { maintenancePosts: allMaintenancePosts } = useMaintenancePosts();
+  const { unreadCount, fetchUnreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSubPage, setSettingsSubPage] = useState<string | null>(null);
@@ -58,6 +67,8 @@ function AppContent() {
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedMaintenance, setSelectedMaintenance] = useState<any>(null);
+  const [previousPage, setPreviousPage] = useState<string>('home');
+  const [previousThreadTab, setPreviousThreadTab] = useState<'post' | 'question'>('post');
   const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
   const [interestedCars, setInterestedCars] = useState<string[]>(currentUser.interestedCars || []);
   const [showAuth, setShowAuth] = useState(false);
@@ -65,6 +76,9 @@ function AppContent() {
   const [showNewMaintenance, setShowNewMaintenance] = useState(false);
   const [initialThreadTab, setInitialThreadTab] = useState<'post' | 'question'>('post');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [showUserNameSetup, setShowUserNameSetup] = useState(false);
+  const [showUploadVideo, setShowUploadVideo] = useState(false);
+  const [showChannels, setShowChannels] = useState(false);
 
   // 初期ローディング状態を管理
   useEffect(() => {
@@ -90,13 +104,31 @@ function AppContent() {
     return <AuthPage onBackClick={() => {}} />;
   }
 
-  const handleThreadClick = (threadId: string) => {
+  // ユーザー名が設定されていない場合はユーザー名設定画面を表示
+  if (user && userDoc && !userDoc.displayName && !showUserNameSetup) {
+    return (
+      <UserNameSetupPage
+        onBackClick={() => {
+          // ログアウトして認証画面に戻る
+          // 実際のアプリでは、ここでログアウト処理を行う
+          window.location.reload();
+        }}
+        onComplete={() => setShowUserNameSetup(true)}
+      />
+    );
+  }
+
+  const handleThreadClick = (threadId: string, currentThreadTab?: 'post' | 'question') => {
     console.log('handleThreadClick called with threadId:', threadId);
     console.log('handleThreadClick - Available threads:', allThreads.map(t => ({ id: t.id, title: t.title, type: t.type })));
     // 実際のスレッドデータを取得
     const thread = allThreads.find(t => t.id === threadId);
     if (thread) {
       console.log('handleThreadClick - Found thread:', thread);
+      setPreviousPage(activeTab);
+      if (currentThreadTab) {
+        setPreviousThreadTab(currentThreadTab);
+      }
       setSelectedThread(thread);
       setShowThreadDetail(true);
     } else {
@@ -162,7 +194,7 @@ function AppContent() {
   const handleQuickAction = (actionId: string) => {
     switch (actionId) {
       case 'post':
-        setSelectedPostType('post');
+        setSelectedPostType('general');
         setShowNewThread(true);
         break;
       case 'question':
@@ -197,6 +229,9 @@ function AppContent() {
     setShowCreatePost(false);
     setShowNewThread(false);
     setShowNewMaintenance(false);
+    setShowChannels(false); // チャンネルページを閉じる
+    setShowUploadVideo(false); // 動画アップロードページも閉じる
+    setPreviousPage(tabId);
   };
 
   const handleAddInterestedCar = (carName: string) => {
@@ -269,6 +304,14 @@ function AppContent() {
           return <LegalPage type="about" onBackClick={() => setSettingsSubPage(null)} />;
         case 'creatorUpload':
           return <CreatorUploadPage onBackClick={() => setSettingsSubPage(null)} />;
+        case 'creatorApplication':
+          return <CreatorApplicationPage onBackClick={() => setSettingsSubPage(null)} />;
+        case 'adminApplications':
+          return <AdminApplicationsPage onBackClick={() => setSettingsSubPage(null)} />;
+        case 'adminDashboard':
+          return <AdminDashboardPage onBackClick={() => setSettingsSubPage(null)} />;
+        case 'profile':
+          return <ProfileEditPage onBackClick={() => setSettingsSubPage(null)} />;
         default:
           setSettingsSubPage(null);
       }
@@ -279,14 +322,26 @@ function AppContent() {
     }
 
     if (showNotifications) {
-      return <NotificationsPage onBackClick={() => setShowNotifications(false)} />;
+      return <NotificationsPage onBackClick={() => {
+        setShowNotifications(false);
+        // 通知ページから戻る際に未読カウントを再取得（複数回実行して確実に）
+        setTimeout(() => fetchUnreadCount(), 100);
+        setTimeout(() => fetchUnreadCount(), 500);
+        setTimeout(() => fetchUnreadCount(), 1000);
+      }} />;
     }
 
     if (showThreadDetail) {
       return (
         <ThreadDetailPage
           threadId={selectedThread?.id || ''}
-          onBackClick={() => setShowThreadDetail(false)}
+          onBackClick={() => {
+            setShowThreadDetail(false);
+            setActiveTab(previousPage);
+            if (previousPage === 'threads') {
+              setInitialThreadTab(previousThreadTab);
+            }
+          }}
           onUserClick={handleUserClick}
         />
       );
@@ -361,7 +416,7 @@ function AppContent() {
     if (showNewThread) {
       return (
         <NewThreadPage
-          postType={selectedPostType === 'thread' ? 'post' : selectedPostType as 'post' | 'question'}
+          postType={selectedPostType === 'general' ? 'post' : selectedPostType as 'post' | 'question'}
           onBackClick={() => setShowNewThread(false)}
           onSuccess={() => setShowNewThread(false)}
         />
@@ -376,10 +431,32 @@ function AppContent() {
       );
     }
 
+    if (showUploadVideo) {
+      return (
+        <UploadVideoPage onBack={() => setShowUploadVideo(false)} />
+      );
+    }
+
+    if (showChannels) {
+      return (
+        <ChannelsPage
+          onBack={() => setShowChannels(false)}
+          onChannelClick={(channelId) => {
+            // チャンネルを選択して動画ページに戻る
+            setShowChannels(false);
+            // TODO: 選択されたチャンネルの動画をフィルタリング
+            console.log('Selected channel:', channelId);
+          }}
+          onTabChange={handleTabChange}
+          activeTab="videos"
+        />
+      );
+    }
+
     if (showCreatePost) {
       return (
         <CreatePostPage
-          postType={selectedPostType}
+          postType={selectedPostType === 'post' ? 'general' : selectedPostType}
           onBackClick={() => setShowCreatePost(false)}
         />
       );
@@ -398,6 +475,8 @@ function AppContent() {
             onShowCarList={() => setShowCarList(true)}
             onShowRegisteredCars={() => setShowRegisteredCars(true)}
             onDeleteThread={handleDeleteThread}
+            onVideoClick={handleVideoClick}
+            onViewAllVideos={() => setActiveTab('videos')}
             blockedUsers={blockedUsers}
             onBlockUser={handleBlockUser}
             onReportThread={handleReportThread}
@@ -431,8 +510,12 @@ function AppContent() {
         );
       case 'post':
         return <PostPage onCreatePost={(postType) => {
-          setSelectedPostType(postType);
-          setShowNewThread(true);
+          if (postType === 'maintenance') {
+            setShowNewMaintenance(true);
+          } else {
+            setSelectedPostType(postType);
+            setShowNewThread(true);
+          }
         }} />;
       case 'videos':
         return (
@@ -440,6 +523,9 @@ function AppContent() {
             onVideoClick={handleVideoClick}
             onUserClick={handleUserClick}
             onDeleteVideo={handleDeleteVideo}
+            onUploadVideo={() => setShowUploadVideo(true)}
+            onCreatorApplication={() => setSettingsSubPage('creatorApplication')}
+            onShowChannels={() => setShowChannels(true)}
           />
         );
       case 'profile':
@@ -467,6 +553,8 @@ function AppContent() {
           onShowCarList={() => setShowCarList(true)}
           onShowRegisteredCars={() => setShowRegisteredCars(true)}
           onDeleteThread={handleDeleteThread}
+          onVideoClick={handleVideoClick}
+          onViewAllVideos={() => setActiveTab('videos')}
           blockedUsers={blockedUsers}
           onBlockUser={handleBlockUser}
           onReportThread={handleReportThread}
@@ -476,10 +564,10 @@ function AppContent() {
 
   return (
     <div className="App">
-      {/* 認証状態のデバッグ表示 */}
-      <div style={{ position: 'fixed', top: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '4px 8px', fontSize: '12px', zIndex: 9999 }}>
-        Auth: {user ? `Logged In (${user.email})` : 'Not Logged In'} | Active Tab: {activeTab}
-      </div>
+             {/* 認証状態のデバッグ表示 */}
+       <div style={{ position: 'fixed', top: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '4px 8px', fontSize: '12px', zIndex: 9999 }}>
+         Auth: {user ? `Logged In (${user.uid?.substring(0, 8)}...)` : 'Not Logged In'} | Active Tab: {activeTab} | PostType: {selectedPostType} | ShowNewThread: {showNewThread.toString()} | ShowCreatePost: {showCreatePost.toString()}
+       </div>
       {renderPage()}
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
     </div>

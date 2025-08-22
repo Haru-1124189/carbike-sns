@@ -55,7 +55,6 @@ export const CreatorUploadPage: React.FC<CreatorUploadPageProps> = ({ onBackClic
       <div className="max-w-[420px] mx-auto">
         <BannerAd />
         <AppHeader
-          user={{ id: "1", name: "RevLinkユーザー", avatar: "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U", cars: [], interestedCars: [] }}
           onNotificationClick={() => console.log('Notifications clicked')}
           onProfileClick={() => console.log('Profile clicked')}
         />

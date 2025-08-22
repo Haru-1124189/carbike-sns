@@ -1,5 +1,6 @@
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { getThreadById } from '../lib/threads';
+import { db } from '../firebase/clients';
 import { ThreadDoc } from '../types';
 
 export const useThread = (threadId: string) => {
@@ -8,19 +9,25 @@ export const useThread = (threadId: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchThread = async () => {
-      try {
-        console.log('useThread - Fetching thread with ID:', threadId);
-        setLoading(true);
-        setError(null);
-        
-        const threadData = await getThreadById(threadId);
-        console.log('useThread - Retrieved thread data:', threadData);
-        
-        if (threadData) {
+    if (!threadId) return;
+
+    console.log('useThread - Setting up real-time listener for thread ID:', threadId);
+    setLoading(true);
+    setError(null);
+
+    const threadRef = doc(db, 'threads', threadId);
+    
+    const unsubscribe = onSnapshot(
+      threadRef,
+      (doc) => {
+        if (doc.exists()) {
+          const threadData = doc.data() as ThreadDoc;
+          console.log('useThread - Real-time update received:', threadData);
+          
           // TimestampをDateオブジェクトに変換
           const convertedThreadData = {
             ...threadData,
+            id: doc.id,
             createdAt: threadData.createdAt?.toDate ? threadData.createdAt.toDate() : threadData.createdAt,
             updatedAt: threadData.updatedAt?.toDate ? threadData.updatedAt.toDate() : threadData.updatedAt,
           };
@@ -30,17 +37,19 @@ export const useThread = (threadId: string) => {
           console.error('useThread - Thread not found for ID:', threadId);
           setError('投稿が見つかりませんでした');
         }
-      } catch (err: any) {
-        console.error('useThread - Error fetching thread:', err);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('useThread - Error in real-time listener:', err);
         setError(err.message || '投稿の取得に失敗しました');
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    if (threadId) {
-      fetchThread();
-    }
+    return () => {
+      console.log('useThread - Cleaning up real-time listener');
+      unsubscribe();
+    };
   }, [threadId]);
 
   return { thread, loading, error };

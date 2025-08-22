@@ -1,11 +1,11 @@
-import { Camera, MessageSquare, Wrench } from 'lucide-react';
+import { Edit, MessageSquare, Wrench } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { SectionTitle } from '../components/ui/SectionTitle';
+import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { ThreadCard } from '../components/ui/ThreadCard';
 import { VehicleCard } from '../components/ui/VehicleCard';
-import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { threadAds } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
 import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
@@ -37,9 +37,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onReportThread
 }) => {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
-  const [showProfileEdit, setShowProfileEdit] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [avatarError, setAvatarError] = useState('');
+  const [isAdminEditing, setIsAdminEditing] = useState(false);
+  const [adminEditingAvatar, setAdminEditingAvatar] = useState(false);
+  const [adminAvatarError, setAdminAvatarError] = useState('');
+
 
   const { user, userDoc, updateUserDoc, loading: authLoading } = useAuth();
   
@@ -273,20 +274,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     onMaintenanceClick?.(maintenanceId);
   };
 
-  const handleAvatarChange = async (imageUrl: string | null) => {
-    if (!user?.uid) return;
+  // 管理者用のアバター変更機能
+  const handleAdminAvatarChange = async (imageUrl: string | null) => {
+    if (!user?.uid || !userDoc?.isAdmin) return;
 
-    setUploadingAvatar(true);
-    setAvatarError('');
+    setAdminEditingAvatar(true);
+    setAdminAvatarError('');
 
     try {
       await updateUserDoc({ photoURL: imageUrl || '' });
+      console.log('管理者によってプロフィール画像が更新されました');
+      setIsAdminEditing(false);
     } catch (err: any) {
-      setAvatarError(err.message || 'アバターの更新に失敗しました');
+      setAdminAvatarError(err.message || 'アバターの更新に失敗しました');
     } finally {
-      setUploadingAvatar(false);
+      setAdminEditingAvatar(false);
     }
   };
+
+
 
   const renderTabContent = () => {
     if (threadsLoading || maintenanceLoading) {
@@ -345,30 +351,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <div className="space-y-4">
             {userMaintenanceRecords.length > 0 ? (
               userMaintenanceRecords.map((record) => (
-                <div
-                  key={record.id}
-                  onClick={() => handleMaintenanceClick(record.id)}
-                  className="bg-surface rounded-xl border border-surface-light p-4 shadow-sm cursor-pointer hover:scale-95 active:scale-95 transition-transform"
-                >
-                  <div className="flex items-start space-x-3">
-                    {/* 整備写真 */}
-                    <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-surface-light">
+              <div
+                key={record.id}
+                onClick={() => handleMaintenanceClick(record.id)}
+                className="bg-surface rounded-xl border border-surface-light p-4 shadow-sm cursor-pointer hover:scale-95 active:scale-95 transition-transform"
+              >
+                <div className="flex items-start space-x-3">
+                  {/* 整備写真 */}
+                  <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-surface-light">
                       {record.images && record.images.length > 0 ? (
-                        <img 
+                    <img 
                           src={record.images[0]} 
-                          alt="整備作業"
-                          className="w-full h-full object-cover"
-                        />
+                      alt="整備作業"
+                      className="w-full h-full object-cover"
+                    />
                       ) : (
                         <div className="w-full h-full bg-surface-light flex items-center justify-center">
                           <Wrench size={20} className="text-gray-400" />
                         </div>
                       )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-bold text-white truncate">{record.title}</h3>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-bold text-white truncate">{record.title}</h3>
                         <span className="text-xs text-gray-400 flex-shrink-0">
                           {record.createdAt instanceof Date 
                             ? record.createdAt.toLocaleString('ja-JP', {
@@ -389,19 +395,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                             : '日付不明'
                           }
                         </span>
-                      </div>
+                    </div>
                       <p className="text-sm text-gray-300 mb-2 line-clamp-2">{record.content}</p>
-                      <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
                         {record.mileage && (
-                          <span className="text-xs text-gray-400">走行距離: {record.mileage}km</span>
+                      <span className="text-xs text-gray-400">走行距離: {record.mileage}km</span>
                         )}
                         {record.cost && (
-                          <span className="text-xs text-gray-400">費用: ¥{record.cost.toLocaleString()}</span>
+                      <span className="text-xs text-gray-400">費用: ¥{record.cost.toLocaleString()}</span>
                         )}
-                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
               ))
             ) : (
               <div className="text-center py-8">
@@ -421,13 +427,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       <div className="min-h-screen bg-background container-mobile">
         <BannerAd />
         <AppHeader
-          user={null}
+          user={{
+            id: '',
+            name: '',
+            avatar: '',
+            cars: [],
+            interestedCars: []
+          }}
           onNotificationClick={() => console.log('Notifications clicked')}
           onProfileClick={onSettingsClick}
+          onSettingsClick={onSettingsClick}
+          showTitle={true}
           showLogo={true}
           showSettings={true}
+          showProfileButton={false}
         />
-        <main className="p-4 pb-20 pt-0 fade-in">
+        <main className="p-4 pb-24 pt-0 fade-in">
           <div className="text-center py-8">
             <div className="text-sm text-gray-400">読み込み中...</div>
           </div>
@@ -442,13 +457,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       <div className="min-h-screen bg-background container-mobile">
         <BannerAd />
         <AppHeader
-          user={null}
+          user={{
+            id: '',
+            name: '',
+            avatar: '',
+            cars: [],
+            interestedCars: []
+          }}
           onNotificationClick={() => console.log('Notifications clicked')}
           onProfileClick={onSettingsClick}
+          onSettingsClick={onSettingsClick}
+          showTitle={true}
           showLogo={true}
           showSettings={true}
+          showProfileButton={false}
         />
-        <main className="p-4 pb-20 pt-0 fade-in">
+        <main className="p-4 pb-24 pt-0 fade-in">
           <div className="text-center py-8">
             <div className="text-sm text-gray-400">ログインが必要です</div>
           </div>
@@ -460,84 +484,139 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   return (
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
-             <AppHeader
-         user={userDoc || { id: user.uid, name: user.displayName || user.email || 'ユーザー', avatar: user.photoURL || '', cars: [], interestedCars: [] }}
-         onNotificationClick={() => console.log('Notifications clicked')}
-         onProfileClick={onSettingsClick}
-         showLogo={true}
-         showSettings={true}
-       />
+              <AppHeader
+          user={userDoc ? { 
+            id: user.uid, 
+            name: userDoc.displayName || user?.displayName || 'ユーザー', 
+            avatar: userDoc.photoURL || user?.photoURL || '', 
+            cars: userDoc.cars || [], 
+            interestedCars: userDoc.interestedCars || [] 
+          } : { 
+            id: user.uid, 
+            name: user?.displayName || 'ユーザー', 
+            avatar: user?.photoURL || '', 
+            cars: [], 
+            interestedCars: [] 
+          }}
+          onNotificationClick={() => console.log('Notifications clicked')}
+          onProfileClick={onSettingsClick}
+          onSettingsClick={onSettingsClick}
+          showTitle={true}
+          showLogo={true}
+          showSettings={true}
+          showProfileButton={false}
+        />
 
-      <main className="p-4 pb-20 pt-0 fade-in">
-        {/* プロフィール編集 */}
-        {showProfileEdit && (
-          <div className="mb-6 bg-surface rounded-xl border border-surface-light p-4">
-            <h3 className="text-sm font-bold text-white mb-4">プロフィール編集</h3>
-            
-            {/* アバターアップロード */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                プロフィール画像
-              </label>
-              <div className="flex items-center space-x-3">
-                                <SingleImageUpload
-                  image={userDoc?.photoURL || user.photoURL || null}
-                  onImageChange={handleAvatarChange}
+      <main className="p-4 pb-24 pt-0 fade-in">
+        {/* 現在のユーザー情報表示 */}
+        <div className="mb-4 p-4">
+          {/* 管理者用の編集機能 */}
+          {userDoc?.isAdmin && isAdminEditing && (
+            <div className="mb-6 bg-surface rounded-xl border border-surface-light p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-green-500">管理者編集モード</h3>
+                <button
+                  onClick={() => setIsAdminEditing(false)}
+                  className="text-xs text-gray-400 hover:text-white"
+                >
+                  キャンセル
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  プロフィール画像（管理者権限）
+                </label>
+                <SingleImageUpload
+                  image={userDoc?.photoURL || user?.photoURL || null}
+                  onImageChange={handleAdminAvatarChange}
                   aspectRatio="square"
-                  placeholder="プロフィール画像を選択"
+                  placeholder="プロフィール画像を変更"
+                  isProfileImage={true}
                 />
-                {avatarError && (
-                  <p className="text-xs text-red-400 mt-1">{avatarError}</p>
+                {adminAvatarError && (
+                  <p className="text-xs text-red-400 mt-2">{adminAvatarError}</p>
                 )}
               </div>
             </div>
-            
-            <button
-              onClick={() => setShowProfileEdit(false)}
-              className="w-full py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              完了
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* プロフィール編集ボタン */}
-        <div className="mb-4">
-          <button
-            onClick={() => setShowProfileEdit(!showProfileEdit)}
-            className="w-full py-3 bg-surface border border-surface-light rounded-xl text-white font-medium hover:bg-surface-light transition-colors"
-          >
-            {showProfileEdit ? 'プロフィール編集を閉じる' : 'プロフィール編集'}
-          </button>
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-primary">
+                {userDoc?.photoURL || user?.photoURL ? (
+                  <>
+                    <img
+                      src={userDoc?.photoURL || user?.photoURL || ''}
+                      alt="プロフィール画像"
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                      onError={(e) => {
+                        // 画像読み込みエラー時はフォールバック
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <span className="text-white text-lg font-bold hidden">
+                      {(userDoc?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-white text-lg font-bold">
+                    {(userDoc?.displayName || user?.displayName || 'U').charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              
+              {/* 管理者用編集ボタン */}
+              {userDoc?.isAdmin && !isAdminEditing && (
+                <button
+                  onClick={() => setIsAdminEditing(true)}
+                  className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm"
+                  title="管理者権限でプロフィール画像を編集"
+                >
+                  <Edit size={12} />
+                </button>
+              )}
+            </div>
+            
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-white">
+                {userDoc?.displayName || user?.displayName || 'ユーザー'}
+              </h2>
+              <p className="text-sm text-gray-400">登録メール: {user?.email}</p>
+            </div>
+          </div>
         </div>
 
-                 {/* 登録車種 */}
-         <div className="mb-8">
-           <SectionTitle
-             title="登録車種"
-             action={{ label: "追加", onClick: handleAddVehicleClick }}
-           />
-           <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+        {/* 愛車 */}
+        <div className="mb-8">
+          <SectionTitle
+            title="愛車"
+            action={{ label: "追加", onClick: handleAddVehicleClick }}
+          />
+          <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
              {userDoc?.cars && userDoc.cars.length > 0 ? (
                userDoc.cars.map((car, index) => (
-                 <VehicleCard
+              <VehicleCard
                    key={index}
-                   car={car}
-                   onClick={() => handleVehicleClick(car)}
-                 />
+                car={car}
+                onClick={() => handleVehicleClick(car)}
+              />
                ))
              ) : (
                <div className="text-center py-4 w-full">
-                 <div className="text-sm text-gray-400">登録車種がありません</div>
+                 <div className="text-sm text-gray-400">愛車がありません</div>
                </div>
              )}
-           </div>
-         </div>
+          </div>
+        </div>
 
                  
 
-         {/* タブ切り替え */}
-         <div className="flex space-x-1 mb-6 bg-surface rounded-xl p-0.5 shadow-sm">
+        {/* タブ切り替え */}
+        <div className="flex space-x-1 mb-6 bg-surface rounded-xl p-0.5 shadow-sm">
           <button
             onClick={() => setActiveTab('posts')}
             className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${

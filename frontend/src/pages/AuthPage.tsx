@@ -28,9 +28,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackClick }) => {
       } else {
         if (!displayName.trim()) {
           setError('表示名を入力してください');
+          setLoading(false);
           return;
         }
-        await register(email, password, displayName);
+        if (displayName.trim().length > 20) {
+          setError('表示名は20文字以内で入力してください');
+          setLoading(false);
+          return;
+        }
+        if (displayName.trim().length < 2) {
+          setError('表示名は2文字以上で入力してください');
+          setLoading(false);
+          return;
+        }
+        await register(email, password, displayName.trim());
       }
       onBackClick?.();
     } catch (error: any) {
@@ -77,7 +88,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackClick }) => {
               {!isLogin && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    表示名
+                    ユーザー名 *
                   </label>
                   <div className="relative">
                     <input
@@ -85,10 +96,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackClick }) => {
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       className="w-full bg-transparent border border-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-primary"
-                      placeholder="表示名を入力"
+                      placeholder="ユーザー名を入力"
+                      maxLength={20}
+                      required
                       data-testid="display-name-input"
                     />
                     <User size={20} className="absolute right-3 top-3 text-gray-400" />
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-gray-400">
+                      {displayName.length}/20文字
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      2-20文字で入力
+                    </span>
                   </div>
                 </div>
               )}

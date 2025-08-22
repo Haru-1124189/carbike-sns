@@ -1,11 +1,13 @@
-import { Plus, Search, Wrench } from 'lucide-react';
+import { Plus, Wrench } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { MaintenanceThumbnail } from '../components/ui/MaintenanceThumbnail';
+import { SearchBar } from '../components/ui/SearchBar';
 import { currentUser } from '../data/dummy';
-import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
 import { useAuth } from '../hooks/useAuth';
+import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
+import { useSearch } from '../hooks/useSearch';
 import { deleteMaintenancePost } from '../lib/threads';
 
 type TabType = 'all' | 'my-cars' | 'interested-cars';
@@ -24,15 +26,17 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
   onDeleteMaintenance
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuth();
 
   // useMaintenancePostsフックを使用してFirestoreからデータを取得
   const { maintenancePosts, loading, error, refresh } = useMaintenancePosts();
 
+  // 検索機能を実装
+  const { searchQuery, setSearchQuery, filteredItems: searchedPosts } = useSearch(maintenancePosts, ['title', 'content', 'carModel', 'tags']);
+
   // タブ別にフィルタリング
   const filteredPosts = useMemo(() => {
-    let allPosts = maintenancePosts;
+    let allPosts = searchedPosts;
     
     // タブでフィルタリング
     if (activeTab === 'my-cars') {
@@ -45,7 +49,7 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
         "Skyline R34": ["R34", "Skyline R34"]
       };
       
-      allPosts = allPosts.filter(post => {
+      allPosts = allPosts.filter((post: any) => {
         // carModelフィールドがある場合は直接比較
         if (post.carModel) {
           return myCarModels.includes(post.carModel);
@@ -56,7 +60,7 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
           return shortNames.some(shortName => 
             post.title.includes(shortName) || 
             post.content.includes(shortName) ||
-            post.tags.some(tag => tag.includes(shortName))
+            post.tags.some((tag: any) => tag.includes(shortName))
           );
         });
       });
@@ -81,24 +85,16 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
           return shortNames.some(shortName => 
             post.title.includes(shortName) || 
             post.content.includes(shortName) ||
-            post.tags.some(tag => tag.includes(shortName))
+            post.tags.some((tag: any) => tag.includes(shortName))
           );
         });
       });
     }
     
-    // 検索クエリでフィルタリング
-    if (searchQuery) {
-      allPosts = allPosts.filter(post =>
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.carModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
+
     
     return allPosts;
-  }, [activeTab, searchQuery, maintenancePosts]);
+  }, [activeTab, searchedPosts]);
 
   const handleMaintenanceClick = (postId: string) => {
     onMaintenanceClick?.(postId);
@@ -127,12 +123,11 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader
-        user={{ id: "1", name: "RevLinkユーザー", avatar: "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U", cars: [], interestedCars: [] }}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
  
-      <main className="p-4 pb-20 pt-0 fade-in">
+      <main className="p-4 pb-24 pt-0 fade-in">
         {/* ヘッダー */}
         <div className="sticky top-0 bg-background z-10 border-b border-surface-light">
           {/* タブ切り替え */}
@@ -174,19 +169,15 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
           {/* 検索バー */}
           <div className="px-4 pb-3">
             <div className="flex space-x-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="整備記録を検索..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20"
-                />
-              </div>
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="整備記録を検索..."
+                className="flex-1"
+              />
               <button
                 onClick={onAddMaintenance}
-                className="px-4 py-3 text-primary hover:text-primary/80 transition-colors"
+                className="px-4 py-1 text-primary hover:text-primary/80 transition-colors"
               >
                 <Plus size={20} />
               </button>

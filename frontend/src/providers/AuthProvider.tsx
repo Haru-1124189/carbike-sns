@@ -45,9 +45,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               ...data,
               createdAt: data.createdAt?.toDate?.() || new Date(),
               updatedAt: data.updatedAt?.toDate?.() || new Date(),
+              isAdmin: data.isAdmin || false, // isAdminフィールドを明示的に含める
             };
             console.log('AuthProvider: Found existing user doc', { 
-              displayName: userDoc.displayName 
+              displayName: userDoc.displayName,
+              role: userDoc.role,
+              isAdmin: userDoc.isAdmin
             });
             setUserDoc(userDoc);
           } else {
@@ -56,8 +59,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               uid: user.uid,
               email: user.email || '',
               displayName: user.displayName || '',
-              photoURL: user.photoURL || undefined,
+              photoURL: user.photoURL || null,
               role: 'user',
+              isAdmin: false, // デフォルトはfalse
               createdAt: new Date(),
               updatedAt: new Date(),
               cars: [],
@@ -104,8 +108,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         uid: user.uid,
         email: user.email || '',
         displayName,
-        photoURL: user.photoURL || undefined,
+        photoURL: user.photoURL || null,
         role: 'user',
+        isAdmin: false, // デフォルトはfalse
         createdAt: new Date(),
         updatedAt: new Date(),
         cars: [],

@@ -4,7 +4,7 @@ import { MotoIcon } from '../components/icons/MotoIcon';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { SectionTitle } from '../components/ui/SectionTitle';
-import { currentUser, postTemplates } from '../data/dummy';
+import { postTemplates } from '../data/dummy';
 
 interface PostPageProps {
   onCreatePost?: (postType: string) => void;
@@ -20,12 +20,11 @@ export const PostPage: React.FC<PostPageProps> = ({ onCreatePost }) => {
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader 
-        user={currentUser}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
         
-             <main className="p-4 pb-20 pt-0 fade-in">
+             <main className="p-4 pb-24 pt-0 fade-in">
         <SectionTitle title="投稿" />
         
                  {/* 投稿テンプレート */}

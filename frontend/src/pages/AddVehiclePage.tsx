@@ -1,4 +1,4 @@
-import { ArrowLeft, Bike, Camera, Car } from 'lucide-react';
+import { ArrowLeft, Bike, Car } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
@@ -32,12 +32,11 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader 
-        user={{ id: "1", name: "RevLinkユーザー", avatar: "/images/avatars/user1.jpg", cars: [], interestedCars: [] }}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
       
-      <main className="p-4 pb-20 pt-0">
+              <main className="p-4 pb-24 pt-0">
           {/* ヘッダー */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">

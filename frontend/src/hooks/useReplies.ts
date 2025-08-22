@@ -5,20 +5,21 @@ import { ReplyDoc } from '../types/reply';
 
 export interface Reply {
   id: string;
-  threadId: string;
+  targetId: string;
+  targetType: 'thread' | 'question' | 'maintenance';
   author: string;
   authorAvatar?: string;
   content: string;
   createdAt: string;
 }
 
-export const useReplies = (threadId: string) => {
+export const useReplies = (targetId: string, targetType: 'thread' | 'question' | 'maintenance') => {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!threadId) {
+    if (!targetId) {
       setReplies([]);
       setLoading(false);
       return;
@@ -27,12 +28,14 @@ export const useReplies = (threadId: string) => {
     setLoading(true);
     setError(null);
 
-    const q = query(
-      collection(db, 'replies'),
-      where('threadId', '==', threadId),
-      where('isDeleted', '==', false),
-      orderBy('createdAt', 'asc')
-    );
+    try {
+      const q = query(
+        collection(db, 'replies'),
+        where('targetId', '==', targetId),
+        where('targetType', '==', targetType),
+        where('isDeleted', '==', false),
+        orderBy('createdAt', 'asc')
+      );
 
     const unsubscribe = onSnapshot(
       q,
@@ -46,8 +49,9 @@ export const useReplies = (threadId: string) => {
             : data.createdAt;
 
           return {
-            id: data.id,
-            threadId: data.threadId,
+            id: doc.id, // ドキュメントのIDを使用
+            targetId: data.targetId,
+            targetType: data.targetType,
             author: data.authorName,
             authorAvatar: data.authorAvatar,
             content: data.content,
@@ -60,13 +64,20 @@ export const useReplies = (threadId: string) => {
       },
       (err) => {
         console.error('Error fetching replies:', err);
+        console.error('Error code:', err.code);
+        console.error('Error details:', err);
         setError(err.message);
         setLoading(false);
       }
     );
 
-    return () => unsubscribe();
-  }, [threadId]);
+      return () => unsubscribe();
+    } catch (err) {
+      console.error('Error setting up query:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setLoading(false);
+    }
+  }, [targetId, targetType]);
 
   return { replies, loading, error };
 };

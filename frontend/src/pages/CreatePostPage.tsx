@@ -1,10 +1,10 @@
-import { ArrowLeft, Camera, Car, HelpCircle, Image, Minus, Plus, Send, Video, Wrench, X } from 'lucide-react';
+import { ArrowLeft, Camera, Car, HelpCircle, Minus, Plus, Send, Video, Wrench, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { ImageUpload } from '../components/ui/ImageUpload';
 import { StepImageUpload } from '../components/ui/StepImageUpload';
-import { carModels, currentUser } from '../data/dummy';
+import { carModels } from '../data/dummy';
 
 interface CreatePostPageProps {
   postType?: string;
@@ -21,12 +21,15 @@ interface MaintenanceStep {
 }
 
 export const CreatePostPage: React.FC<CreatePostPageProps> = ({ 
-  postType = 'general',
+  postType: initialPostType = 'general',
   onBackClick 
 }) => {
+  const [selectedPostType, setSelectedPostType] = useState(initialPostType);
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
   
   // 整備記録専用の状態
   const [selectedCar, setSelectedCar] = useState('');
@@ -41,8 +44,10 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
   // みんから風の手順管理
   const [steps, setSteps] = useState<MaintenanceStep[]>([]);
 
+  console.log('CreatePostPage - selectedPostType:', selectedPostType);
+
   const getPostTypeInfo = () => {
-    switch (postType) {
+    switch (selectedPostType) {
       case 'car':
         return { icon: Car, title: '車両紹介', placeholder: '愛車について投稿しましょう...' };
       case 'photo':
@@ -53,6 +58,8 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
         return { icon: Video, title: '動画', placeholder: '車・バイクの動画を投稿しましょう...' };
       case 'maintenance':
         return { icon: Wrench, title: '整備記録', placeholder: '整備の詳細を記録しましょう...' };
+      case 'general':
+        return { icon: Car, title: '投稿', placeholder: '投稿内容を入力してください...' };
       default:
         return { icon: Car, title: '投稿作成', placeholder: '投稿内容を入力してください...' };
     }
@@ -63,6 +70,17 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
 
   const handleImagesChange = (newImages: string[]) => {
     setImages(newImages);
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setTags(tags.filter(t => t !== tag));
   };
 
   const handleAddTool = () => {
@@ -122,9 +140,10 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
       const postData = {
         title,
         content,
-        postType,
+        postType: selectedPostType,
         images,
-        ...(postType === 'maintenance' && {
+        tags,
+        ...(selectedPostType === 'maintenance' && {
           selectedCar,
           workTime,
           cost,
@@ -135,23 +154,21 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
         })
       };
       console.log('投稿内容:', postData);
-      // 実際のアプリではここでAPIを呼び出して投稿を保存
       onBackClick?.();
     }
   };
 
-  const isMaintenanceForm = postType === 'maintenance';
+  const isMaintenanceForm = selectedPostType === 'maintenance';
 
   return (
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader 
-        user={currentUser}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
       
-      <main className="p-4 pb-20 pt-0 fade-in">
+      <main className="p-4 pb-24 pt-0 fade-in" style={{ position: 'relative', zIndex: 9999 }}>
         {/* ヘッダー */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
@@ -179,6 +196,8 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
             投稿
           </button>
         </div>
+
+        
 
         {/* 投稿フォーム */}
         <div className="space-y-4">
@@ -381,6 +400,42 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
               </div>
             </>
           )}
+
+          {/* タグ */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">タグ</label>
+            <div className="flex space-x-2 mb-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                placeholder="タグを入力"
+                className="flex-1 px-4 py-2 bg-surface border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+              />
+              <button
+                onClick={handleAddTag}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all duration-300 hover:scale-105 active:scale-95"
+              >
+                追加
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <div
+                  key={tag}
+                  className="flex items-center space-x-2 px-3 py-1 bg-primary bg-opacity-20 text-primary rounded-lg transition-all duration-300 hover:scale-105"
+                >
+                  <span className="text-sm">#{tag}</span>
+                  <button
+                    onClick={() => handleRemoveTag(tag)}
+                    className="hover:text-red-400 transition-all duration-300"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* 画像アップロード */}
           <div>

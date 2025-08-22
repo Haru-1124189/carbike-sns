@@ -14,9 +14,9 @@ export const BlockListPage: React.FC<BlockListPageProps> = ({ onBackClick, block
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <AppHeader user={currentUser} onNotificationClick={() => {}} onProfileClick={() => {}} />
+      <AppHeader onNotificationClick={() => {}} onProfileClick={() => {}} />
       <BannerAd />
-      <main className="p-4 pb-20">
+              <main className="p-4 pb-24">
         <div className="flex items-center space-x-3 mb-6">
           <button onClick={onBackClick} className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm">
             <ArrowLeft size={20} className="text-white" />

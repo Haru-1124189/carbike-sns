@@ -1,5 +1,6 @@
 import { ArrowLeft, Hash, Image, Send, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
+import { BannerAd } from '../components/ui/BannerAd';
 import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { createThread } from '../lib/threads';
@@ -40,8 +41,22 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
       return;
     }
 
-    if (!title.trim() || !content.trim()) {
-      setError('タイトルと内容を入力してください');
+    // 質問の場合はタイトルが必要
+    if (postType === 'question' && !title.trim()) {
+      setError('タイトルを入力してください');
+      return;
+    }
+
+    // 内容は必須
+    if (!content.trim()) {
+      setError('内容を入力してください');
+      return;
+    }
+
+    // 字数制限チェック
+    const maxLength = postType === 'post' ? 150 : 200;
+    if (content.length > maxLength) {
+      setError(`内容は${maxLength}文字以内で入力してください`);
       return;
     }
 
@@ -63,8 +78,8 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
         threadData
       });
 
-      // userDocがnullでもuserの情報を使用
-      const displayName = userDoc?.displayName || user.displayName || user.email?.split('@')[0] || 'Unknown User';
+      // 最新のユーザー名を使用（userDocが優先）
+      const displayName = userDoc?.displayName || user?.displayName || 'ユーザー';
 
       const threadId = await createThread(threadData, user.uid, displayName);
       console.log('Thread created successfully:', threadId);
@@ -126,8 +141,13 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
-        {/* ヘッダー */}
-        <header className="bg-background/80 backdrop-blur-md sticky top-0 z-50">
+        {/* バナー広告 - 最上部に固定 */}
+        <div className="sticky top-0 z-50 bg-background">
+          <BannerAd />
+        </div>
+
+        {/* ヘッダー - バナー広告の下 */}
+        <header className="bg-background/80 backdrop-blur-md sticky top-[50px] z-40">
           <div className="max-w-[420px] mx-auto w-full flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <button
@@ -142,7 +162,7 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
             </div>
             <button
               onClick={handleSubmit}
-              disabled={loading || !title.trim() || !content.trim()}
+              disabled={loading || (postType === 'question' && !title.trim()) || !content.trim() || content.length > (postType === 'post' ? 150 : 200)}
               className="p-2 rounded-xl bg-primary border border-primary hover:scale-95 active:scale-95 transition-transform shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={20} className="text-white" />
@@ -159,65 +179,40 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 投稿タイプ選択 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
-                投稿タイプ
-              </label>
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  disabled
-                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                    postType === 'post'
-                      ? 'bg-primary text-white'
-                      : 'bg-surface border border-surface-light text-gray-400'
-                  }`}
-                >
-                  投稿
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                    postType === 'question'
-                      ? 'bg-primary text-white'
-                      : 'bg-surface border border-surface-light text-gray-400'
-                  }`}
-                >
-                  質問
-                </button>
-              </div>
-            </div>
 
-            {/* タイトル */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                タイトル
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-transparent border border-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-primary"
-                placeholder="タイトルを入力"
-                maxLength={100}
-              />
-            </div>
+            {/* タイトル - 質問の場合のみ表示 */}
+            {postType === 'question' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  タイトル *
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full bg-transparent border border-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-primary"
+                  placeholder="タイトルを入力"
+                  maxLength={100}
+                />
+              </div>
+            )}
 
             {/* 内容 */}
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                内容
+                内容 *
               </label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full bg-transparent border border-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-primary resize-none"
+                className="w-full bg-transparent border border-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-primary resize-none pr-12"
                 placeholder="内容を入力"
                 rows={8}
-                maxLength={1000}
+                maxLength={postType === 'post' ? 150 : 200}
               />
+              <div className="absolute bottom-3 right-3 text-xs text-gray-400">
+                {content.length}/{postType === 'post' ? 150 : 200}
+              </div>
             </div>
 
             {/* 画像アップロード */}

@@ -42,8 +42,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
     ]
   };
 
+  const adminSection = {
+    title: "管理者",
+    icon: Shield,
+    items: [
+      {
+        id: 'adminDashboard',
+        title: '管理者ダッシュボード',
+        description: 'システム全体の管理と統計',
+        type: 'action'
+      },
+      {
+        id: 'adminApplications',
+        title: '動画配信申請管理',
+        description: '動画配信権限の申請を管理',
+        type: 'action'
+      }
+    ]
+  };
+
   const settingsSections = [
     ...(userDoc?.role === 'creator' ? [creatorSection] : []),
+    ...(userDoc?.isAdmin ? [adminSection] : []),
     {
       title: "通知設定",
       icon: Bell,
@@ -238,14 +258,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
   return (
     <div className="min-h-screen bg-background container-mobile">
       <AppHeader 
-        user={{ id: "1", name: "RevLinkユーザー", avatar: "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U", cars: [], interestedCars: [] }}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
       
       <BannerAd />
       
-      <main className="p-4 pb-20">
+      <main className="p-4 pb-24">
         <div className="flex items-center space-x-3 mb-6">
           <button
             onClick={onBackClick}
@@ -263,7 +282,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
               <div key={section.title}>
                 <div className="flex items-center space-x-2 mb-4">
                   <IconComponent size={20} className="text-primary" />
-                  <h2 className="text-sm font-bold text-white">{section.title}</h2>
+                  <h2 className={`text-sm font-bold ${
+                    section.title === "管理者" ? 'text-green-500' : 
+                    (userDoc?.role === 'creator' || userDoc?.role === 'admin' || userDoc?.isAdmin === true) ? 'text-blue-500' : 
+                    'text-white'
+                  }`}>{section.title}</h2>
                 </div>
                 
                 <div className="space-y-2">
@@ -275,7 +298,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="text-sm font-bold text-white mb-1">{item.title}</h3>
+                          <h3 className={`text-sm font-bold mb-1 ${
+                            item.title === '管理者ダッシュボード' || item.title === '動画配信申請管理' ? 'text-green-500' : 
+                            (userDoc?.role === 'creator' || userDoc?.role === 'admin' || userDoc?.isAdmin === true) ? 'text-blue-500' : 
+                            'text-white'
+                          }`}>{item.title}</h3>
                           <p className="text-xs text-gray-400">{item.description}</p>
                         </div>
                         
@@ -309,7 +336,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
         </div>
 
         {/* アプリ情報 */}
-        <div className="mt-8 pt-6 border-t border-surface-light">
+        <div className="mt-8 pt-6 border-t border-surface-light mb-8">
           <div className="text-center">
             <h3 className="text-sm font-bold text-white mb-2">RevLink</h3>
             <p className="text-xs text-gray-400">Version 1.0.0</p>

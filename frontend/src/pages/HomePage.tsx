@@ -1,13 +1,17 @@
-import { Car, HelpCircle, MessageSquare, TrendingUp, Wrench } from 'lucide-react';
+import { Car, HelpCircle, MessageSquare, Play, TrendingUp, Wrench } from 'lucide-react';
 import React from 'react';
 import { MotoIcon } from '../components/icons/MotoIcon';
 import { AppHeader } from '../components/ui/AppHeader';
 import { Card } from '../components/ui/Card';
+import { SearchBar } from '../components/ui/SearchBar';
 import { Section } from '../components/ui/Section';
 import { SectionTitle } from '../components/ui/SectionTitle';
-import { ThreadCard } from '../components/ui/ThreadCard';
 import { VehicleCard } from '../components/ui/VehicleCard';
-import { currentUser, notifications, threads } from '../data/dummy';
+import { useAuth } from '../hooks/useAuth';
+import { useNotifications } from '../hooks/useNotifications';
+import { useSearch } from '../hooks/useSearch';
+import { useThreads } from '../hooks/useThreads';
+import { useVideos } from '../hooks/useVideos';
 
 interface HomePageProps {
   onThreadClick?: (threadId: string) => void;
@@ -19,6 +23,8 @@ interface HomePageProps {
   onShowCarList?: () => void;
   onShowRegisteredCars?: () => void;
   onDeleteThread?: (threadId: string) => void;
+  onVideoClick?: (videoId: string) => void;
+  onViewAllVideos?: () => void;
   blockedUsers?: string[];
   onBlockUser?: (author: string) => void;
   onReportThread?: (threadId: string, author: string) => void;
@@ -35,12 +41,20 @@ export const HomePage: React.FC<HomePageProps> = ({
   onShowCarList,
   onShowRegisteredCars,
   onDeleteThread,
+  onVideoClick,
+  onViewAllVideos,
   blockedUsers = [],
   onBlockUser,
   onReportThread,
   interestedCars = []
 }) => {
-  // interestedCars is controlled by parent via props now
+  const { user, userDoc } = useAuth();
+  const { threads } = useThreads();
+  const { videos } = useVideos(user?.uid);
+  const { unreadCount } = useNotifications();
+  
+  // 検索機能を実装
+  const { searchQuery, setSearchQuery, filteredItems: searchedThreads } = useSearch(threads, ['title', 'content', 'tags']);
 
   const handleThreadClick = (threadId: string) => {
     onThreadClick?.(threadId);
@@ -56,6 +70,14 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const handleViewAllThreads = () => {
     onViewAllThreads?.();
+  };
+
+  const handleVideoClick = (videoId: string) => {
+    onVideoClick?.(videoId);
+  };
+
+  const handleViewAllVideos = () => {
+    onViewAllVideos?.();
   };
 
   const handleQuickAction = (actionId: string) => {
@@ -82,16 +104,32 @@ export const HomePage: React.FC<HomePageProps> = ({
            </div>
          </div>
 
-         <main className="px-4 pb-20 pt-0 fade-in">
-           {/* ユーザー情報 */}
-                       <AppHeader
-              user={currentUser}
-              onNotificationClick={handleNotificationClick}
-              onProfileClick={() => console.log('Profile clicked')}
-              showLogo={true}
-              showActions={true}
-              unreadNotifications={notifications.filter(n => !n.isRead).length}
+                   <main className="px-4 pb-32 pt-0 fade-in">
+                     {/* ユーザー情報 */}
+          <AppHeader
+            user={{
+              id: user?.uid || '', 
+              name: userDoc?.displayName || user?.displayName || 'ユーザー', 
+              avatar: userDoc?.photoURL || user?.photoURL || '', 
+              cars: userDoc?.cars || [], 
+              interestedCars: userDoc?.interestedCars || [] 
+            }}
+            onNotificationClick={handleNotificationClick}
+            onProfileClick={() => console.log('Profile clicked')}
+            showLogo={true}
+            showNotification={true}
+            showUserName={true}
+            showProfileButton={false}
+          />
+
+          {/* 検索バー */}
+          <div className="px-4 pb-3">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="投稿を検索..."
             />
+          </div>
 
            {/* 愛車セクション */}
            <Section spacing="md">
@@ -100,7 +138,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               action={{ label: "追加", onClick: handleAddVehicleClick }}
             />
             <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
-              {currentUser.cars.map((car) => (
+              {(userDoc?.cars || []).map((car) => (
                 <div key={car} className="flex-shrink-0 snap-start">
                   <VehicleCard
                     car={car}
@@ -137,7 +175,7 @@ export const HomePage: React.FC<HomePageProps> = ({
            </Section>
 
           {/* 車種関連ボタン */}
-          <Section spacing="md">
+          <Section spacing="md" className="mb-6">
             <div className="grid grid-cols-2 gap-3">
               <Card onClick={() => onShowCarList?.()}>
                 <div className="flex items-center justify-center space-x-2">
@@ -158,26 +196,60 @@ export const HomePage: React.FC<HomePageProps> = ({
 
 
 
-          {/* 最新スレッド */}
-          <Section spacing="md">
+          {/* 最新動画 */}
+          <Section spacing="md" className="mb-6">
             <SectionTitle
-              title="最新スレッド"
-              action={{ label: "すべて見る", onClick: handleViewAllThreads }}
+              title="最新動画"
+              action={{ label: "すべて見る", onClick: handleViewAllVideos }}
             />
-            <div className="space-y-2">
-              {threads
-                .filter(thread => !blockedUsers.includes(thread.author))
-                .slice(0, 3)
-                .map((thread) => (
-                  <ThreadCard
-                    key={thread.id}
-                    thread={thread}
-                    onClick={() => handleThreadClick(thread.id)}
-                    onDelete={onDeleteThread}
-                    onBlockUser={onBlockUser}
-                    onReportThread={onReportThread}
-                  />
+            <div className="space-y-3">
+              {videos
+                .slice(0, 2)
+                .map((video) => (
+                  <div
+                    key={video.id}
+                    onClick={() => handleVideoClick(video.id)}
+                    className="bg-surface rounded-xl border border-surface-light p-3 cursor-pointer hover:scale-95 active:scale-95 transition-transform shadow-sm"
+                  >
+                    <div className="flex space-x-3">
+                      {/* サムネイル */}
+                      <div className="relative w-24 h-16 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
+                        <img
+                          src={video.thumbnailUrl || 'https://via.placeholder.com/96x64/666666/FFFFFF?text=Video'}
+                          alt={video.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+                          <Play size={16} className="text-white" />
+                        </div>
+                        <div className="absolute bottom-1 right-1 bg-black bg-opacity-80 text-white text-xs px-1 rounded">
+                          {video.duration || '0:00'}
+                        </div>
+                      </div>
+                      
+                      {/* 動画情報 */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-white truncate mb-1">
+                          {video.title}
+                        </h3>
+                        <p className="text-xs text-gray-400 mb-1">
+                          {video.author}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {video.views?.toLocaleString() || '0'} 回視聴 • {video.uploadedAt}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
+              
+              {videos.length === 0 && (
+                <div className="text-center py-8">
+                  <Play size={48} className="text-gray-400 mx-auto mb-4" />
+                  <div className="text-sm font-medium text-white mb-2">動画がありません</div>
+                  <div className="text-xs text-gray-400">動画配信者による動画をお待ちください</div>
+                </div>
+              )}
             </div>
           </Section>
 

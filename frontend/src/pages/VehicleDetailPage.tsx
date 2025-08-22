@@ -36,12 +36,11 @@ export const VehicleDetailPage: React.FC<VehicleDetailPageProps> = ({
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader 
-        user={{ id: "1", name: "RevLinkユーザー", avatar: "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U", cars: [], interestedCars: [] }}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
       
-      <main className="p-4 pb-20 pt-0">
+              <main className="p-4 pb-24 pt-0">
           {/* ヘッダー */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">

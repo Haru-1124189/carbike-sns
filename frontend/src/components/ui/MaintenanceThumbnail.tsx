@@ -63,7 +63,7 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
   };
 
   // 投稿者本人かどうかをチェック
-  const isAuthor = user?.uid === post.authorId || user?.email === post.author;
+  const isAuthor = user?.uid === post.authorId;
 
   return (
     <div

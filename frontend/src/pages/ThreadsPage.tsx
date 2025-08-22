@@ -2,9 +2,11 @@ import { Plus, RefreshCw } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { SearchBar } from '../components/ui/SearchBar';
 import { ThreadCard } from '../components/ui/ThreadCard';
 import { currentUser, threadAds } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
+import { useSearch } from '../hooks/useSearch';
 import { useThreads } from '../hooks/useThreads';
 import { deleteThread } from '../lib/threads';
 
@@ -12,7 +14,7 @@ type TabType = 'post' | 'question';
 type CarTabType = 'all' | 'my-cars' | 'interested-cars';
 
 interface ThreadsPageProps {
-  onThreadClick?: (threadId: string) => void;
+  onThreadClick?: (threadId: string, currentTab?: 'post' | 'question') => void;
   onUserClick?: (author: string) => void;
   onDeleteThread?: (threadId: string) => void;
   blockedUsers?: string[];
@@ -39,6 +41,9 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
   // useThreadsフックを使用してFirestoreからデータを取得
   const { threads, loading, error, refresh } = useThreads({ type: activeTab });
 
+  // 検索機能を実装
+  const { searchQuery, setSearchQuery, filteredItems: searchedThreads } = useSearch(threads, ['title', 'content', 'tags']);
+
   // 削除機能を実装
   const handleDeleteThread = async (threadId: string) => {
     if (!user?.uid) {
@@ -61,7 +66,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
 
   // 車種別にフィルタリング
   const filteredThreads = useMemo(() => {
-    let allThreads = threads.filter(t => !blockedUsers.includes(t.author));
+    let allThreads = searchedThreads.filter((t: any) => !blockedUsers.includes(t.author));
     
     if (activeCarTab === 'my-cars') {
       const myCarModels = currentUser.cars;
@@ -73,7 +78,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
         "Skyline R34": ["R34", "Skyline R34"]
       };
       
-      allThreads = allThreads.filter(thread => {
+      allThreads = allThreads.filter((thread: any) => {
         // carModelフィールドがある場合は直接比較
         if ('carModel' in thread && typeof thread.carModel === 'string') {
           return myCarModels.includes(thread.carModel);
@@ -84,7 +89,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
           return shortNames.some(shortName => 
             thread.title.includes(shortName) || 
             thread.content.includes(shortName) ||
-            thread.tags.some((tag: string) => tag.includes(shortName))
+            thread.tags.some((tag: any) => tag.includes(shortName))
           );
         });
       });
@@ -98,7 +103,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
         "Supra A80": ["Supra", "A80"]
       };
       
-      allThreads = allThreads.filter(thread => {
+      allThreads = allThreads.filter((thread: any) => {
         // carModelフィールドがある場合は直接比較
         if ('carModel' in thread && typeof thread.carModel === 'string') {
           return interestedCarModels.includes(thread.carModel);
@@ -109,15 +114,15 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
           return shortNames.some(shortName => 
             thread.title.includes(shortName) || 
             thread.content.includes(shortName) ||
-            thread.tags.some((tag: string) => tag.includes(shortName))
+            thread.tags.some((tag: any) => tag.includes(shortName))
           );
         });
       });
     }
     
     // タイプフィルタリングを再度有効化
-    return allThreads.filter(thread => thread.type === activeTab);
-  }, [threads, activeTab, activeCarTab, blockedUsers]);
+    return allThreads.filter((thread: any) => thread.type === activeTab);
+  }, [searchedThreads, activeTab, activeCarTab, blockedUsers]);
 
   // スレッドと広告を組み合わせて表示
   const displayItems = useMemo(() => {
@@ -143,21 +148,20 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
   }, [filteredThreads]);
 
   const handleThreadClick = (threadId: string) => {
-    onThreadClick?.(threadId);
+    onThreadClick?.(threadId, activeTab);
   };
 
   return (
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader
-        user={{ id: "1", name: "RevLinkユーザー", avatar: "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U", cars: [], interestedCars: [] }}
         onNotificationClick={() => {}}
         onProfileClick={() => {}}
       />
        
-      <main className="px-4 pb-20 pt-0">
+      <main className="px-4 pb-24 pt-0">
           {/* ヘッダー */}
-          <div className="sticky top-0 bg-background z-10 border-b border-surface-light fade-in">
+          <div className="bg-background z-10 border-b border-surface-light fade-in">
             {/* 車種タブ */}
             <div className="px-4 pb-2">
               <div className="flex space-x-1 bg-surface rounded-xl p-0.5">
@@ -192,6 +196,15 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
                   お気に入り
                 </button>
               </div>
+            </div>
+
+            {/* 検索バー */}
+            <div className="px-4 pb-3">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="投稿を検索..."
+              />
             </div>
 
             {/* 投稿タイプタブ */}

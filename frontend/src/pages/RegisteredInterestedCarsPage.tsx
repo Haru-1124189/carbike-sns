@@ -1,10 +1,9 @@
 import { ArrowLeft } from 'lucide-react';
-import { MotoIcon } from '../components/icons/MotoIcon';
 import React from 'react';
+import { MotoIcon } from '../components/icons/MotoIcon';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { InterestedCarCard } from '../components/ui/InterestedCarCard';
-import { currentUser } from '../data/dummy';
 
 interface RegisteredInterestedCarsPageProps {
   onBackClick?: () => void;
@@ -25,17 +24,16 @@ export const RegisteredInterestedCarsPage: React.FC<RegisteredInterestedCarsPage
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader
-        user={currentUser}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
 
-      <main className="p-4 pb-20 pt-0">
+      <main className="p-4 pb-24 pt-0">
         {/* ヘッダー */}
         <div className="flex items-center space-x-3 mb-6">
           <button
             onClick={onBackClick}
-            className="p-2 rounded-xl hover:bg-surface-light transition-colors"
+            className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
           >
             <ArrowLeft size={20} className="text-white" />
           </button>

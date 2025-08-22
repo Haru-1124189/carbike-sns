@@ -1,7 +1,7 @@
+import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/clients';
-import { LikeTarget } from '../lib/likes';
+import { LikeTarget, toggleLike } from '../lib/likes';
 
 export const useLikes = (targetId: string, userId: string, targetType: LikeTarget = 'thread') => {
   const [isLiked, setIsLiked] = useState(false);
@@ -35,25 +35,30 @@ export const useLikes = (targetId: string, userId: string, targetType: LikeTarge
       },
       (err) => {
         console.error('Error fetching user like:', err);
-        setError(err.message);
+        console.log('Permission error for user likes, assuming not liked');
+        // 権限エラーの場合は、いいねしていないものとして処理
+        setIsLiked(false);
+        // エラーは無視してローディング完了
       }
     );
 
-    // いいね総数を監視
-    const allLikesQuery = query(
-      collection(db, 'likes'),
-      where('targetId', '==', targetId),
-      where('targetType', '==', targetType)
-    );
+    // いいね総数を監視（スレッド/メンテナンス投稿のlikesフィールドから取得）
+    const collectionName = targetType === 'thread' ? 'threads' : 'maintenance_posts';
+    const targetRef = doc(db, collectionName, targetId);
 
     const unsubscribeAllLikes = onSnapshot(
-      allLikesQuery,
-      (snapshot) => {
-        setLikeCount(snapshot.size);
+      targetRef,
+      (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          setLikeCount(data.likes || 0);
+        } else {
+          setLikeCount(0);
+        }
         setLoading(false);
       },
       (err) => {
-        console.error('Error fetching all likes:', err);
+        console.error('Error fetching target document for likes count:', err);
         setError(err.message);
         setLoading(false);
       }
@@ -65,7 +70,18 @@ export const useLikes = (targetId: string, userId: string, targetType: LikeTarge
     };
   }, [targetId, userId, targetType]);
 
-  return { isLiked, likeCount, loading, error };
+  const handleToggleLike = async () => {
+    if (!targetId || !userId) return;
+    
+    try {
+      await toggleLike(targetId, userId, targetType);
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      setError(error instanceof Error ? error.message : 'いいねの処理に失敗しました');
+    }
+  };
+
+  return { isLiked, likeCount, loading, error, toggleLike: handleToggleLike };
 };
 
 // スレッド専用のいいねフック（後方互換性のため）

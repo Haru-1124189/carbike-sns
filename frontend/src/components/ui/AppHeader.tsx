@@ -1,87 +1,138 @@
-import { ArrowLeft, Bell, Settings, User } from 'lucide-react';
+import { Bell, Settings } from 'lucide-react';
 import React from 'react';
+import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 import { useAuth } from '../../hooks/useAuth';
-import { User as UserType } from '../../types';
-import { UserDoc } from '../../types/user';
+import { useNotifications } from '../../hooks/useNotifications';
 
 interface AppHeaderProps {
-  user: UserType | UserDoc | null;
+  user?: {
+    id: string;
+    name: string;
+    avatar: string;
+    cars: string[];
+    interestedCars: string[];
+  };
   onNotificationClick?: () => void;
   onProfileClick?: () => void;
-  onBackClick?: () => void;
+  onSettingsClick?: () => void;
+  showProfileButton?: boolean;
+  showTitle?: boolean;
   showLogo?: boolean;
-  showActions?: boolean;
+  showNotification?: boolean;
   showSettings?: boolean;
-  showBackButton?: boolean;
-  unreadNotifications?: number;
+  showUserName?: boolean;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ 
   user, 
   onNotificationClick, 
   onProfileClick,
-  onBackClick,
+  onSettingsClick,
+  showProfileButton = false,
+  showTitle = false,
   showLogo = false,
-  showActions = false,
+  showNotification = false,
   showSettings = false,
-  showBackButton = false,
-  unreadNotifications = 0
+  showUserName = false
 }) => {
-  const { user: authUser, logout } = useAuth();
+  const { userDoc } = useAuth();
+  const { unreadCount } = useNotifications();
+  const { unreadCount: adminUnreadCount } = useAdminNotifications();
+
+  // 管理者の場合は管理者通知の数を、一般ユーザーの場合は通常の通知の数を表示
+  const displayUnreadCount = userDoc?.isAdmin ? adminUnreadCount : unreadCount;
+
   return (
-    <header className="bg-background/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-[420px] mx-auto w-full flex items-center py-4 pl-4 pr-4">
-      <div className="flex items-center space-x-3 flex-1">
-        {showBackButton && (
-          <button
-            onClick={onBackClick}
-            className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
-          >
-            <ArrowLeft size={20} className="text-white" />
-          </button>
-        )}
-        {showLogo && (
-          <>
-            <div className="w-10 h-10 bg-gradient-to-r from-primary to-accent-red rounded-xl flex items-center justify-center shadow-lg bounce-in">
-              <User size={24} className="text-white" />
+    <header className="bg-background px-4 py-3">
+      <div className="flex items-center justify-between">
+        {/* ロゴ・タイトル */}
+        <div className="flex items-center space-x-3">
+          {showLogo && (
+            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-primary">
+              {userDoc?.photoURL || user?.avatar ? (
+                <img
+                  src={userDoc?.photoURL || user?.avatar}
+                  alt={userDoc?.displayName || user?.name || 'ユーザー'}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  onError={(e) => {
+                    // 画像読み込みエラー時はフォールバック
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <span className={`text-white text-sm font-bold ${userDoc?.photoURL || user?.avatar ? 'hidden' : ''}`}>
+                {(userDoc?.displayName || user?.name || 'C').charAt(0)}
+              </span>
             </div>
-            <span className="text-base text-text-primary font-medium slide-in-left pl-0">
-              {user ? ('displayName' in user ? user.displayName : user.name) : 'ユーザー'}
-            </span>
-          </>
-        )}
-      </div>
-      
-      {showActions && (
-        <div className="flex items-center space-x-2 ml-auto">
-          <button
-            onClick={onNotificationClick}
-            className="icon-button bg-surface/80 backdrop-blur-sm border border-surface-light/50 shadow-md hover:shadow-lg relative group"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-10 transition-opacity rounded-xl"></div>
-            <Bell size={20} className="text-text-primary relative z-10" />
-            {unreadNotifications > 0 && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-accent-red rounded-full flex items-center justify-center shadow-lg bounce-in">
-                <span className="text-xs font-bold text-white">
-                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+          )}
+          {showTitle && (
+            <h1 className="text-lg font-bold text-white">RevLink</h1>
+          )}
+          {showUserName && (
+            <h1 className="text-lg font-bold text-white">
+              {userDoc?.displayName || user?.name || 'ユーザー'}
+            </h1>
+          )}
+        </div>
+
+        {/* アクションボタン */}
+        <div className="flex items-center space-x-3">
+          {/* 通知ボタン */}
+          {showNotification && (
+            <button
+              onClick={onNotificationClick}
+              className="relative p-2 rounded-lg hover:bg-surface-light transition-colors"
+            >
+              <Bell size={20} className="text-white" />
+              {displayUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {displayUnreadCount > 99 ? '99+' : displayUnreadCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* 設定ボタン */}
+          {showSettings && (
+            <button
+              onClick={onSettingsClick}
+              className="p-2 rounded-lg hover:bg-surface-light transition-colors"
+            >
+              <Settings size={20} className="text-white" />
+            </button>
+          )}
+
+          {/* プロフィールボタン（showProfileButtonがtrueの場合のみ表示） */}
+          {showProfileButton && (
+            <button
+              onClick={onProfileClick}
+              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-surface-light transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-primary">
+                {userDoc?.photoURL || user?.avatar ? (
+                  <img
+                    src={userDoc?.photoURL || user?.avatar}
+                    alt={userDoc?.displayName || user?.name || 'ユーザー'}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    onError={(e) => {
+                      // 画像読み込みエラー時はフォールバック
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <span className={`text-white text-sm font-bold ${userDoc?.photoURL || user?.avatar ? 'hidden' : ''}`}>
+                  {(userDoc?.displayName || user?.name || 'U').charAt(0)}
                 </span>
               </div>
-            )}
-          </button>
+            </button>
+          )}
         </div>
-      )}
-      
-      {showSettings && (
-        <div className="flex items-center ml-auto">
-          <button
-            onClick={onProfileClick}
-            className="icon-button bg-surface/80 backdrop-blur-sm border border-surface-light/50 shadow-md hover:shadow-lg"
-            data-testid="profile-settings-button"
-          >
-            <Settings size={20} className="text-text-primary" />
-          </button>
-        </div>
-      )}
       </div>
     </header>
   );

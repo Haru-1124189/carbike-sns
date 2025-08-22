@@ -2,15 +2,20 @@ import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, Share2 } from 'lucide-
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { FloatingReplyBar } from '../components/ui/FloatingReplyBar';
+import { ReplySection } from '../components/ui/ReplySection';
+import { ReportButton } from '../components/ui/ReportButton';
 import { useAuth } from '../hooks/useAuth';
+import { useThreadLikes } from '../hooks/useLikes';
 import { useQuestion } from '../hooks/useQuestion';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { useUserName } from '../hooks/useUserName';
 import { deleteQuestion } from '../lib/threads';
 
 interface QuestionDetailPageProps {
   questionId: string;
   onBackClick?: () => void;
-  onUserClick?: (userId: string) => void;
+  onUserClick?: (userId: string, userName?: string) => void;
 }
 
 export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({ 
@@ -22,6 +27,8 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useAuth();
   const { question, loading, error } = useQuestion(questionId);
+  const { isLiked, likeCount, toggleLike, loading: likeLoading } = useThreadLikes(questionId, user?.uid || '');
+  const { displayName: authorDisplayName, loading: authorLoading } = useUserName(question?.authorId || '');
 
   const handleBackClick = () => {
     onBackClick?.();
@@ -33,14 +40,26 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
   });
 
   const handleUserClick = () => {
-    if (question?.authorName) {
-      onUserClick?.(question.authorName);
+    if (question?.authorId) {
+      onUserClick?.(question.authorId, authorDisplayName || question.authorName || '');
     }
   };
 
-  const handleLike = () => {
-    // TODO: いいね機能を実装
-    console.log('Like clicked');
+  const handleReplyUserClick = (authorId: string, authorName: string) => {
+    onUserClick?.(authorId, authorName);
+  };
+
+  const handleReplySubmitted = () => {
+    // 返信が投稿された後の処理（必要に応じて実装）
+    console.log('Reply submitted');
+  };
+
+  const handleLike = async () => {
+    if (!user?.uid) {
+      alert('ログインが必要です');
+      return;
+    }
+    await toggleLike();
   };
 
   const handleComment = () => {
@@ -73,10 +92,7 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
   };
 
   const handleReport = () => {
-    if (window.confirm('この質問を通報しますか？')) {
-      // TODO: 通報機能を実装
-      console.log('Report clicked');
-    }
+    setShowMenu(false);
   };
 
   if (loading) {
@@ -84,9 +100,10 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
       <div className="min-h-screen bg-background">
         <div className="max-w-[420px] mx-auto">
           <AppHeader
-            user={{ id: '', name: '', avatar: '', cars: [], interestedCars: [] }}
+            onNotificationClick={() => {}}
+            onProfileClick={() => {}}
           />
-          <main className="px-4 pb-20 pt-0">
+          <main className="px-4 pb-24 pt-0">
             <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
@@ -113,9 +130,10 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
       <div className="min-h-screen bg-background">
         <div className="max-w-[420px] mx-auto">
           <AppHeader
-            user={{ id: '', name: '', avatar: '', cars: [], interestedCars: [] }}
+            onNotificationClick={() => {}}
+            onProfileClick={() => {}}
           />
-          <main className="px-4 pb-20 pt-0">
+          <main className="px-4 pb-24 pt-0">
             <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
@@ -143,9 +161,10 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
         <AppHeader
-          user={{ id: '', name: '', avatar: '', cars: [], interestedCars: [] }}
+          onNotificationClick={() => {}}
+          onProfileClick={() => {}}
         />
-        <main className="px-4 pb-20 pt-0">
+        <main className="px-4 pb-24 pt-0">
           <BannerAd />
           {/* 戻るボタン */}
           <div className="flex items-center space-x-3 mb-4 mt-4">
@@ -158,17 +177,19 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
             <span className="text-base text-text-primary font-medium">質問詳細</span>
           </div>
 
-          {/* 投稿内容 */}
-          <div className="bg-surface rounded-xl p-4 mb-4">
+                     {/* 投稿内容 */}
+           <div className="p-4 mb-4">
             {/* ユーザー情報 */}
             <div className="flex items-center space-x-3 mb-4">
-              <img
-                src={question.authorAvatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'}
-                alt={question.authorName}
-                className="w-10 h-10 rounded-full"
-              />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-text-primary">{question.authorName}</p>
+                             <img
+                 src={question.authorAvatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face'}
+                 alt={authorDisplayName || question.authorName || 'Unknown User'}
+                 className="w-10 h-10 rounded-full"
+               />
+               <div className="flex-1">
+                 <p className="text-sm font-medium text-text-primary">
+                   {authorLoading ? '読み込み中...' : (authorDisplayName || question.authorName || 'Unknown User')}
+                 </p>
                 <p className="text-xs text-text-secondary">{question.createdAt}</p>
               </div>
               <button
@@ -208,10 +229,15 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
               <div className="flex items-center space-x-6">
                 <button
                   onClick={handleLike}
-                  className="flex items-center space-x-2 text-text-secondary hover:text-primary transition-colors"
+                  disabled={likeLoading}
+                  className={`flex items-center space-x-2 transition-colors ${
+                    isLiked 
+                      ? 'text-red-500' 
+                      : 'text-text-secondary hover:text-red-500'
+                  }`}
                 >
-                  <Heart size={18} />
-                  <span className="text-sm">{question.likes}</span>
+                  <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
+                  <span className="text-sm">{likeCount}</span>
                 </button>
                 <button
                   onClick={handleComment}
@@ -229,46 +255,60 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
                 </button>
               </div>
 
-              {/* メニューボタン */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-2 rounded-full hover:bg-surface-light transition-colors"
-                >
-                  <MoreHorizontal size={18} className="text-text-secondary" />
-                </button>
-                
-                {showMenu && (
-                  <div className="absolute right-0 top-10 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
-                    {isAuthor ? (
-                      <button
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 disabled:opacity-50"
-                      >
-                        {isDeleting ? '削除中...' : '削除'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleReport}
-                        className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50"
-                      >
-                        通報
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+                             {/* メニューボタン */}
+               <div className="flex items-center space-x-2">
+                 {isAuthor && (
+                   <button
+                     onClick={() => setShowMenu(!showMenu)}
+                     className="p-2 rounded-full hover:bg-surface-light transition-colors"
+                   >
+                     <MoreHorizontal size={18} className="text-text-secondary" />
+                   </button>
+                 )}
+                 
+                 {isAuthor && showMenu && (
+                   <div className="absolute right-0 top-10 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+                     <button
+                       onClick={handleDelete}
+                       disabled={isDeleting}
+                       className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 disabled:opacity-50"
+                     >
+                       {isDeleting ? '削除中...' : '削除'}
+                     </button>
+                   </div>
+                 )}
+                 
+                 <ReportButton
+                   targetId={question.id}
+                   targetType="thread"
+                   targetTitle={question.title}
+                   targetAuthorId={question.authorId}
+                   targetAuthorName={authorDisplayName || question.authorName || 'Unknown User'}
+                   className="flex items-center space-x-1 text-xs text-gray-400 hover:text-red-400 transition-colors"
+                 />
+               </div>
             </div>
           </div>
 
-          {/* コメントセクション */}
-          <div className="bg-surface rounded-xl p-4">
-            <h3 className="text-lg font-bold text-text-primary mb-4">コメント</h3>
-            <div className="text-center py-8">
-              <p className="text-text-secondary">コメント機能は準備中です</p>
-            </div>
+                     {/* 返信セクション */}
+           <div className="p-4 pb-52">
+            <h3 className="text-lg font-bold text-text-primary mb-4">
+              返信 ({question.replies})
+            </h3>
+            <ReplySection
+              targetId={questionId}
+              targetType="question"
+              onUserClick={handleReplyUserClick}
+            />
           </div>
+
+          {/* 常駐返信バー */}
+          <FloatingReplyBar
+            targetId={questionId}
+            targetType="question"
+            targetAuthorName={authorDisplayName || question.authorName || 'Unknown User'}
+            onReplySubmitted={handleReplySubmitted}
+          />
         </main>
       </div>
     </div>

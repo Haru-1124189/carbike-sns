@@ -1,11 +1,11 @@
 import { ArrowLeft, Image, Minus, Plus, Send, Upload } from 'lucide-react';
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { BannerAd } from '../components/ui/BannerAd';
 import { useAuth } from '../hooks/useAuth';
+import { useSwipeBack } from '../hooks/useSwipeBack';
 import { createMaintenancePost } from '../lib/threads';
 import { uploadToStorage } from '../lib/upload';
 import { MaintenanceStep } from '../types';
-import { useSwipeBack } from '../hooks/useSwipeBack';
 
 interface NewMaintenancePageProps {
   onBackClick?: () => void;
@@ -57,8 +57,16 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
       return;
     }
 
-    if (!title.trim() || !content.trim() || !carModel.trim()) {
-      setError('タイトル、内容、車種は必須です');
+    // タイトル、内容、車種は必須
+    if (!title.trim()) {
+      setError('タイトルを入力してください');
+      return;
+    }
+
+    // メモは任意項目なので削除
+
+    if (!carModel.trim()) {
+      setError('車種を入力してください');
       return;
     }
 
@@ -100,8 +108,8 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
         steps: steps,
       };
 
-      // userDocがnullでもuserの情報を使用
-      const displayName = userDoc?.displayName || user.displayName || user.email?.split('@')[0] || 'Unknown User';
+      // 最新のユーザー名を使用（userDocが優先）
+      const displayName = userDoc?.displayName || user?.displayName || 'ユーザー';
 
       const maintenanceId = await createMaintenancePost(maintenanceData, user.uid, displayName);
       console.log('Maintenance post created successfully:', maintenanceId);
@@ -196,11 +204,11 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
               >
                 <ArrowLeft size={20} className="text-white" />
               </button>
-              <span className="text-base text-text-primary font-medium">メンテナンス記録</span>
+              <span className="text-base text-text-primary font-medium">整備記録</span>
             </div>
             <button
               onClick={handleSubmit}
-              disabled={loading || !title.trim() || !content.trim() || !carModel.trim()}
+              disabled={loading || !title.trim() || !carModel.trim()}
               className="p-2 rounded-xl bg-primary border border-primary hover:scale-95 active:scale-95 transition-transform shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={20} className="text-white" />
@@ -209,14 +217,14 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
         </header>
 
         {/* メインコンテンツ */}
-        <main className="px-4 py-6">
+        <main className="px-4 pt-6 pb-32">
           {error && (
             <div className="mb-4 p-3 bg-red-500/20 border border-red-400/30 rounded-lg">
               <p className="text-red-200 text-sm">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 mb-8">
             {/* タイトル */}
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
@@ -226,7 +234,7 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="メンテナンスのタイトルを入力..."
+                placeholder="整備のタイトルを入力..."
                 className="w-full p-3 bg-surface border border-surface-light rounded-xl text-text-primary placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
                 required
               />
@@ -697,7 +705,6 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                 placeholder="整備の詳細を記録しましょう..."
                 rows={6}
                 className="w-full p-3 bg-surface border border-surface-light rounded-xl text-text-primary placeholder-gray-400 focus:outline-none focus:border-primary transition-colors resize-none"
-                required
               />
             </div>
           </form>

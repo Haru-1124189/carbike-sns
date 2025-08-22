@@ -29,12 +29,11 @@ export const CarListPage: React.FC<CarListPageProps> = ({
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader
-        user={{ id: "1", name: "RevLinkユーザー", avatar: "/images/avatars/user1.jpg", cars: [], interestedCars: [] }}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
 
-      <main className="p-4 pb-20 pt-0 fade-in">
+              <main className="p-4 pb-24 pt-0 fade-in">
         {/* ヘッダー */}
         <div className="flex items-center space-x-3 mb-6">
           <button

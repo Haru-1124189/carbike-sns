@@ -1,20 +1,59 @@
-import { Play, Trash2, Users } from 'lucide-react';
+import { Play, Plus, Trash2, Users } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { SearchBar } from '../components/ui/SearchBar';
 import { SectionTitle } from '../components/ui/SectionTitle';
-import { channels, currentUser, videos } from '../data/dummy';
+import { useAuth } from '../hooks/useAuth';
+import { useCreatorApplication } from '../hooks/useCreatorApplication';
+import { useSearch } from '../hooks/useSearch';
+import { useVideos } from '../hooks/useVideos';
 
 interface VideosPageProps {
   onVideoClick?: (videoId: string) => void;
   onUserClick?: (author: string) => void;
   onDeleteVideo?: (videoId: string) => void;
+  onUploadVideo?: () => void;
+  onCreatorApplication?: () => void;
+  onShowChannels?: () => void;
 }
 
-export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo }) => {
+export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo, onUploadVideo, onCreatorApplication, onShowChannels }) => {
+  const { user, userDoc } = useAuth();
+  const { videos, userVideos, deleteVideo } = useVideos(user?.uid);
+  const { userApplication } = useCreatorApplication(user?.uid);
+  
   const [showChannels, setShowChannels] = useState(false);
   const [activeTab, setActiveTab] = useState<'subscribed' | 'all'>('subscribed');
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+
+  // 検索機能を実装
+  const { searchQuery, setSearchQuery, filteredItems: searchedVideos } = useSearch(videos, ['title', 'description', 'tags']);
+
+  // ユーザーが動画アップロード権限を持っているかチェック
+  const canUploadVideos = userDoc?.role === 'creator' || userDoc?.role === 'admin' || userDoc?.isAdmin === true || userApplication?.status === 'approved';
+
+  // 権限に応じた色分けのロジック
+  const getPermissionColor = () => {
+    if (userDoc?.isAdmin === true) {
+      return 'text-green-500'; // 管理者のみ：緑色
+    } else if (userDoc?.role === 'creator' || userDoc?.role === 'admin' || userApplication?.status === 'approved') {
+      return 'text-blue-500'; // クリエイターと管理者：青色
+    }
+    return 'text-gray-500'; // その他：グレー
+  };
+
+  const permissionColor = getPermissionColor();
+
+  // デバッグ情報をコンソールに出力
+  console.log('VideosPage Debug:', {
+    userUid: user?.uid,
+    userDoc: userDoc,
+    userRole: userDoc?.role,
+    isAdmin: userDoc?.isAdmin,
+    userApplication: userApplication,
+    canUploadVideos: canUploadVideos
+  });
 
   const handleVideoClick = (videoId: string) => {
     onVideoClick?.(videoId);
@@ -32,14 +71,44 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
     setSelectedChannel(selectedChannel === channelId ? null : channelId);
   };
 
+  const handleUploadClick = () => {
+    onUploadVideo?.();
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (window.confirm('この動画を削除しますか？')) {
+      try {
+        await deleteVideo(videoId);
+        alert('動画を削除しました');
+      } catch (err) {
+        console.error('Delete error:', err);
+        alert('動画の削除に失敗しました');
+      }
+    }
+  };
+
+  // チャンネル情報を動画から生成
+  const channels = Array.from(new Set(videos.map(v => v.channelId))).map(channelId => {
+    const channelVideos = videos.filter(v => v.channelId === channelId);
+    const firstVideo = channelVideos[0];
+    return {
+      id: channelId,
+      name: firstVideo?.author || 'チャンネル',
+      avatar: firstVideo?.thumbnailUrl || '',
+      subscriberCount: Math.floor(Math.random() * 1000) + 100,
+      description: `${channelVideos.length}本の動画`,
+      isSubscribed: Math.random() > 0.5
+    };
+  });
+
   // 登録チャンネルの動画を取得
   const subscribedChannelIds = channels.filter(ch => ch.isSubscribed).map(ch => ch.id);
-  const subscribedVideos = videos.filter(video => subscribedChannelIds.includes(video.channelId));
-  const allVideos = videos;
+  const subscribedVideos = searchedVideos.filter(video => subscribedChannelIds.includes(video.channelId));
+  const allVideos = searchedVideos;
 
   // 選択されたチャンネルの動画を取得（最新順）
   const selectedChannelVideos = selectedChannel 
-    ? videos
+    ? searchedVideos
         .filter(video => video.channelId === selectedChannel)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     : [];
@@ -60,25 +129,62 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
     <div className="min-h-screen bg-background container-mobile">
       <BannerAd />
       <AppHeader
-        user={{ id: "1", name: "RevLinkユーザー", avatar: "https://via.placeholder.com/40x40/3B82F6/FFFFFF?text=U", cars: [], interestedCars: [] }}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
 
-      <main className="p-4 pb-20 pt-0 fade-in">
+      <main className="p-4 pb-24 pt-0 fade-in">
         <div className="flex items-center justify-between mb-4">
           <SectionTitle title="動画一覧" />
-          <button
-            onClick={() => setShowChannels(!showChannels)}
-            className="flex items-center space-x-2 px-3 py-2 bg-surface border border-surface-light rounded-xl text-sm font-medium hover:scale-95 active:scale-95 transition-transform shadow-sm"
-          >
-            <Users size={16} />
-            <span>チャンネル一覧</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            {canUploadVideos && (
+              <button
+                onClick={handleUploadClick}
+                className={`flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors shadow-sm ${permissionColor}`}
+              >
+                <Plus size={16} />
+                <span>アップロード</span>
+              </button>
+            )}
+            <button
+              onClick={() => onShowChannels?.()}
+              className="flex items-center space-x-2 px-3 py-2 bg-surface border border-surface-light rounded-xl text-sm font-medium hover:scale-95 active:scale-95 transition-transform shadow-sm"
+            >
+              <Users size={16} />
+              <span>チャンネル一覧</span>
+            </button>
+          </div>
         </div>
 
+        {/* 検索バー */}
+        <div className="mb-4">
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="動画を検索..."
+          />
+        </div>
+
+        {/* 動画アップロード権限がない場合の案内 */}
+        {!canUploadVideos && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold mb-1">🎬 動画配信者になりませんか？</h3>
+                <p className="text-xs opacity-90">動画配信の申請をして、あなたの動画を共有しましょう</p>
+              </div>
+              <button
+                onClick={() => onCreatorApplication?.()}
+                className="px-3 py-1 bg-white bg-opacity-20 rounded-lg text-xs font-medium hover:bg-opacity-30 transition-colors"
+              >
+                申請する
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 登録チャンネルアイコン一覧（YouTube風） */}
-        {!showChannels && (
+        {!showChannels && channels.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center space-x-4 overflow-x-auto pb-2 scrollbar-hide">
               {channels.filter(ch => ch.isSubscribed).map((channel) => (
@@ -212,81 +318,94 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
         ) : (
           /* 動画グリッド - 横に2つずつ */
           <div key={`${activeTab}-${selectedChannel ?? 'none'}`} className="grid grid-cols-2 gap-3 fade-in">
-            {displayVideos.map((video) => {
-              const channel = channels.find(ch => ch.id === video.channelId);
-              return (
-                <div
-                  key={video.id}
-                  onClick={() => handleVideoClick(video.id)}
-                  className="cursor-pointer hover:scale-95 active:scale-95 transition-transform"
-                >
-                  {/* サムネイル */}
-                  <div className="relative mb-2">
-                    <div className="w-full h-20 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center relative overflow-hidden">
-                      <Play size={20} className="text-white relative z-10" />
-                      {/* 背景装飾 */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black to-transparent opacity-20"></div>
-                    </div>
-                    {/* 再生時間 */}
-                    <div className="absolute bottom-1 right-1 bg-black bg-opacity-80 text-white text-xs px-1 rounded">
-                      {video.duration}
-                    </div>
-                    {/* 登録チャンネルバッジ */}
-                    {channel?.isSubscribed && (
-                      <div className="absolute top-1 left-1 bg-primary text-white text-xs px-1 rounded">
-                        登録済み
+            {displayVideos.length > 0 ? (
+              displayVideos.map((video) => {
+                const channel = channels.find(ch => ch.id === video.channelId);
+                const isOwnVideo = video.authorId === user?.uid;
+                return (
+                  <div
+                    key={video.id}
+                    onClick={() => handleVideoClick(video.id)}
+                    className="cursor-pointer hover:scale-95 active:scale-95 transition-transform"
+                  >
+                    {/* サムネイル */}
+                    <div className="relative mb-2">
+                      <div className="w-full h-20 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center relative overflow-hidden">
+                        {video.thumbnailUrl ? (
+                          <img
+                            src={video.thumbnailUrl}
+                            alt={video.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Play size={20} className="text-white relative z-10" />
+                        )}
+                        {/* 背景装飾 */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black to-transparent opacity-20"></div>
                       </div>
-                    )}
-                    {/* ホバー時の再生ボタン */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
-                      <div className="w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                        <Play size={12} className="text-black ml-0.5" />
+                      {/* 再生時間 */}
+                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-80 text-white text-xs px-1 rounded">
+                        {video.duration}
                       </div>
-                    </div>
-                  </div>
-
-                  {/* 動画情報 */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-bold text-white line-clamp-2 leading-tight flex-1">{video.title}</h3>
-                      {video.author === currentUser.name && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('この動画を削除しますか？')) {
-                              onDeleteVideo?.(video.id);
-                            }
-                          }}
-                          className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors ml-1 flex-shrink-0"
-                          title="削除"
-                        >
-                          <Trash2 size={12} className="text-red-400 hover:text-red-300" />
-                        </button>
+                      {/* 登録チャンネルバッジ */}
+                      {channel?.isSubscribed && (
+                        <div className="absolute top-1 left-1 bg-primary text-white text-xs px-1 rounded">
+                          登録済み
+                        </div>
                       )}
+                      {/* ホバー時の再生ボタン */}
+                      <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+                        <div className="w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
+                          <Play size={12} className="text-black ml-0.5" />
+                        </div>
+                      </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleUserClick(video.author);
-                      }}
-                      className="text-xs text-gray-400 hover:text-primary transition-colors"
-                    >
-                      {video.author}
-                    </button>
-                    <div className="flex items-center space-x-1 text-xs text-gray-500">
-                      <span>{video.views.toLocaleString()}回</span>
-                      <span>•</span>
-                      <span>{video.uploadedAt}</span>
+
+                    {/* 動画情報 */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-white line-clamp-2 leading-tight flex-1">{video.title}</h3>
+                        {isOwnVideo && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteVideo(video.id);
+                            }}
+                            className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors ml-1 flex-shrink-0"
+                            title="削除"
+                          >
+                            <Trash2 size={12} className="text-red-400 hover:text-red-300" />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUserClick(video.author);
+                        }}
+                        className="text-xs text-gray-400 hover:text-primary transition-colors"
+                      >
+                        {video.author}
+                      </button>
+                      <div className="flex items-center space-x-1 text-xs text-gray-500">
+                        <span>{video.views.toLocaleString()}回</span>
+                        <span>•</span>
+                        <span>{video.uploadedAt}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="col-span-2 text-center py-8">
+                <div className="text-sm text-gray-400">動画がありません</div>
+              </div>
+            )}
           </div>
         )}
 
         {/* 無限スクロール用のプレースホルダー */}
-        {!showChannels && (
+        {!showChannels && displayVideos.length > 0 && (
           <div className="text-center py-8">
             <div className="text-sm text-gray-400">さらに読み込み中...</div>
           </div>
