@@ -1,11 +1,14 @@
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../firebase/clients';
-import { Thread, ThreadDoc } from '../types';
+import { canViewUserContent } from '../lib/privacy';
+import { Thread } from '../types';
+import { ThreadDoc } from '../types/thread';
 
 interface UseThreadsOptions {
   type?: 'post' | 'question';
   vehicleKey?: string;
+  currentUserId?: string; // プライバシーフィルタリング用
 }
 
 export const useThreads = (options: UseThreadsOptions = {}) => {
@@ -50,7 +53,7 @@ export const useThreads = (options: UseThreadsOptions = {}) => {
     
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         console.log('useThreads - onSnapshot success callback triggered');
         console.log('useThreads - Snapshot metadata:', {
           empty: snapshot.empty,
@@ -74,7 +77,10 @@ export const useThreads = (options: UseThreadsOptions = {}) => {
              type: data.type,
              adType: data.adType,
              vehicleKey: data.vehicleKey,
+             images: data.images, // 画像フィールドを追加
              isDeleted: data.isDeleted,
+             isPinned: data.isPinned,
+             pinnedAt: data.pinnedAt?.toDate ? data.pinnedAt.toDate() : data.pinnedAt,
            } as Thread;
         });
 
@@ -129,12 +135,38 @@ export const useThreads = (options: UseThreadsOptions = {}) => {
            return true;
          });
 
-         // 新着順にソート
-         const sortedThreadData = filteredThreadData.sort((a, b) => {
-           const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
-           const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
-           return dateB.getTime() - dateA.getTime();
-         });
+         // プライバシーフィルタリング（非同期処理）
+         if (options.currentUserId) {
+           const privacyFilteredThreads = await Promise.all(
+             filteredThreadData.map(async (thread) => {
+               if (!thread.authorId) return thread; // 投稿者IDがない場合は表示
+               
+               const canView = await canViewUserContent(thread.authorId, options.currentUserId!);
+               return canView ? thread : null;
+             })
+           );
+           
+           filteredThreadData = privacyFilteredThreads.filter(thread => thread !== null) as Thread[];
+         }
+
+                   // 固定された投稿を最初に表示し、その後は新着順にソート
+          const sortedThreadData = filteredThreadData.sort((a, b) => {
+            // 固定された投稿を最初に
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            
+            // 両方とも固定されている場合は固定日時順
+            if (a.isPinned && b.isPinned) {
+              const pinnedAtA = a.pinnedAt instanceof Date ? a.pinnedAt.getTime() : new Date(a.pinnedAt || 0).getTime();
+              const pinnedAtB = b.pinnedAt instanceof Date ? b.pinnedAt.getTime() : new Date(b.pinnedAt || 0).getTime();
+              return pinnedAtB - pinnedAtA; // 新しい固定を上に
+            }
+            
+            // 固定されていない場合は作成日時順
+            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime(); // 新着順
+          });
          
          console.log('useThreads - Filtered and sorted data:', {
            originalCount: threadData.length,

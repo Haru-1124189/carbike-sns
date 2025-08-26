@@ -1,9 +1,10 @@
-import { ArrowLeft, Calendar, Clock, DollarSign, Heart, MapPin, MessageCircle, MoreHorizontal, Package, Wrench } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, DollarSign, Heart, MapPin, MessageCircle, MoreHorizontal, Package, Users, Wrench } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
-import { PersistentImage } from '../components/ui/PersistentImage';
 import { FloatingReplyBar } from '../components/ui/FloatingReplyBar';
+import { LikeHistoryModal } from '../components/ui/LikeHistoryModal';
+import { PersistentImage } from '../components/ui/PersistentImage';
 import { ReplySection } from '../components/ui/ReplySection';
 import { ReportButton } from '../components/ui/ReportButton';
 import { useAuth } from '../hooks/useAuth';
@@ -16,14 +17,17 @@ interface MaintenanceDetailPageProps {
   post: MaintenancePostDoc;
   onBackClick: () => void;
   onUserClick?: (authorId: string, authorName?: string) => void;
+  onEditClick?: (postId: string) => void;
 }
 
 export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({ 
   post, 
   onBackClick, 
-  onUserClick 
+  onUserClick,
+  onEditClick
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [showLikeHistory, setShowLikeHistory] = useState(false);
   const { user } = useAuth();
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useMaintenanceLikes(post.id, user?.uid || '');
   const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(post.authorId || '');
@@ -78,6 +82,15 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
 
   const handleReport = () => {
     setShowMenu(false);
+  };
+
+  const handleEdit = () => {
+    setShowMenu(false);
+    onEditClick?.(post.id);
+  };
+
+  const handleLikeHistoryClick = () => {
+    setShowLikeHistory(true);
   };
 
   const getCategoryColor = (category: string) => {
@@ -224,11 +237,30 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
             {/* メイン画像 */}
             {post.carImage && (
               <div className="mb-3">
-                <img
+                <PersistentImage
                   src={post.carImage}
                   alt={post.carModel}
-                  className="w-full h-48 object-cover rounded-lg"
+                  className="w-full max-h-64 object-contain rounded-lg"
+                  clickable={true}
                 />
+              </div>
+            )}
+
+            {/* アップロードされた画像 */}
+            {post.images && post.images.length > 0 && (
+              <div className="mb-3">
+                <div className="flex space-x-2 overflow-x-auto pb-2">
+                  {post.images.slice(0, 5).map((image, index) => (
+                    <div key={index} className="flex-shrink-0">
+                      <PersistentImage
+                        src={image}
+                        alt={`Uploaded image ${index + 1}`}
+                        className="w-80 h-60 object-contain rounded-lg"
+                        clickable={true}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -330,6 +362,53 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
               </div>
             )}
 
+            {/* 作業手順 */}
+            {post.steps && post.steps.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">作業手順</h3>
+                <div className="space-y-4">
+                  {post.steps.map((step, index) => (
+                    <div key={step.id || index} className="bg-surface border border-surface-light rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">
+                          {step.order}
+                        </div>
+                        <h4 className="text-sm font-semibold text-text-primary">{step.title}</h4>
+                      </div>
+                      
+                      {step.description && (
+                        <p className="text-sm text-text-secondary mb-3 leading-relaxed">
+                          {step.description}
+                        </p>
+                      )}
+                      
+                                             {step.image && (
+                         <div className="mb-3">
+                           <PersistentImage
+                             src={step.image}
+                             alt={`手順${step.order}の画像`}
+                             className="w-full max-h-64 object-contain rounded-lg"
+                             clickable={true}
+                           />
+                         </div>
+                       )}
+                      
+                      {step.tips && (
+                        <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-xs font-semibold text-primary">💡 コツ・注意点</span>
+                          </div>
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {step.tips}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 投稿日時 */}
             <div className="text-xs text-text-secondary mb-4">
               {post.createdAt instanceof Date 
@@ -352,46 +431,64 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
               }
             </div>
 
-            {/* アクション */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={handleLike}
-                  disabled={likeLoading}
-                  className={`flex items-center space-x-1 transition-colors ${
-                    isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500'
-                  }`}
-                >
-                  <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
-                  <span className="text-sm">{likeCount}</span>
-                </button>
-                <button
-                  onClick={handleComment}
-                  className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
-                >
-                  <MessageCircle size={16} />
-                  <span className="text-sm">{post.comments}</span>
-                </button>
-              </div>
-              
-                             <div className="flex items-center space-x-2">
-                 {isAuthor && (
+                         {/* アクション */}
+             <div className="flex items-center justify-between">
+               <div className="flex items-center space-x-4">
+                 <button
+                   onClick={handleLike}
+                   disabled={likeLoading}
+                   className={`flex items-center space-x-1 transition-colors ${
+                     isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500'
+                   }`}
+                 >
+                   <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+                   <span className="text-sm">{likeCount}</span>
+                 </button>
+                 {/* 自分の投稿の場合のみいいね履歴ボタンを表示 */}
+                 {isAuthor && likeCount > 0 && (
                    <button
-                     onClick={() => setShowMenu(!showMenu)}
-                     className="p-1 rounded-full hover:bg-surface-light transition-colors"
+                     onClick={handleLikeHistoryClick}
+                     className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
+                     title="いいね履歴を見る"
                    >
-                     <MoreHorizontal size={16} className="text-text-secondary" />
+                     <Users size={16} />
                    </button>
                  )}
-                 
-                 {isAuthor && showMenu && (
-                   <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+                 <button
+                   onClick={handleComment}
+                   className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-colors"
+                 >
+                   <MessageCircle size={16} />
+                   <span className="text-sm">{post.comments}</span>
+                 </button>
+               </div>
+               
+               <div className="flex items-center space-x-2">
+                 {isAuthor && (
+                   <div className="relative">
                      <button
-                       onClick={handleDelete}
-                       className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 flex items-center space-x-2"
+                       onClick={() => setShowMenu(!showMenu)}
+                       className="p-1 rounded-full hover:bg-surface-light transition-colors"
                      >
-                       <span>削除</span>
+                       <MoreHorizontal size={16} className="text-text-secondary" />
                      </button>
+                     
+                                           {showMenu && (
+                        <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+                          <button
+                            onClick={handleEdit}
+                            className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50"
+                          >
+                            編集
+                          </button>
+                          <button
+                            onClick={handleDelete}
+                            className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      )}
                    </div>
                  )}
                  
@@ -404,7 +501,7 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
                    className="flex items-center space-x-1 text-xs text-gray-400 hover:text-red-400 transition-colors"
                  />
                </div>
-            </div>
+             </div>
           </div>
 
                      {/* タグ */}
@@ -442,6 +539,15 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
             targetType="maintenance"
             targetAuthorName={authorDisplayName || post.authorName || 'Unknown User'}
             onReplySubmitted={handleReplySubmitted}
+          />
+
+          {/* いいね履歴モーダル */}
+          <LikeHistoryModal
+            isOpen={showLikeHistory}
+            onClose={() => setShowLikeHistory(false)}
+            targetId={post.id}
+            targetType="maintenance"
+            onUserClick={onUserClick}
           />
         </main>
       </div>

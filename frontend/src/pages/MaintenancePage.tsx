@@ -17,19 +17,23 @@ interface MaintenancePageProps {
   onUserClick?: (author: string) => void;
   onAddMaintenance?: () => void;
   onDeleteMaintenance?: (postId: string) => void;
+  onEditMaintenance?: (postId: string) => void;
 }
 
 export const MaintenancePage: React.FC<MaintenancePageProps> = ({ 
   onMaintenanceClick, 
   onUserClick,
   onAddMaintenance,
-  onDeleteMaintenance
+  onDeleteMaintenance,
+  onEditMaintenance
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const { user } = useAuth();
 
-  // useMaintenancePostsフックを使用してFirestoreからデータを取得
-  const { maintenancePosts, loading, error, refresh } = useMaintenancePosts();
+  // useMaintenancePostsフックを使用してFirestoreからデータを取得（プライバシーフィルタリング付き）
+  const { maintenancePosts, loading, error, refresh } = useMaintenancePosts({ 
+    currentUserId: user?.uid 
+  });
 
   // 検索機能を実装
   const { searchQuery, setSearchQuery, filteredItems: searchedPosts } = useSearch(maintenancePosts, ['title', 'content', 'carModel', 'tags']);
@@ -98,6 +102,10 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
 
   const handleMaintenanceClick = (postId: string) => {
     onMaintenanceClick?.(postId);
+  };
+
+  const handleEditMaintenance = (postId: string) => {
+    onEditMaintenance?.(postId);
   };
 
   const handleDeleteMaintenance = async (postId: string) => {
@@ -217,6 +225,7 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
                     post={mappedPost}
                     onClick={() => handleMaintenanceClick(post.id)}
                     onDelete={handleDeleteMaintenance}
+                    onEdit={handleEditMaintenance}
                   />
                 );
               })}

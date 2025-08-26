@@ -1,67 +1,148 @@
-# CarBike SNS App
+# Vehicle Catalog Collector
 
-車・バイク愛好家のためのSNSアプリケーション
+Wikidataから世界の車種・バイク種データを収集してFirestoreに保存するツールです。
 
-## 環境設定
+## 概要
 
-### Firebase設定
+このツールは以下の機能を提供します：
 
-プロジェクトルートに`.env.local`ファイルを作成し、以下のFirebase設定を追加してください：
+1. **データ収集**: WikidataのSPARQLエンドポイントから車種・バイク種データを取得
+2. **データ整形**: 全角/半角・ハイフンの統一、重複除去、別名統合
+3. **Firestore保存**: 5000件単位でバッチ処理してFirestoreに保存
 
-```env
-NEXT_PUBLIC_FB_API_KEY=your_api_key_here
-NEXT_PUBLIC_FB_AUTH_DOMAIN=your_project_id.firebaseapp.com
-NEXT_PUBLIC_FB_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FB_STORAGE_BUCKET=your_project_id.appspot.com
-NEXT_PUBLIC_FB_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FB_APP_ID=your_app_id
-```
+## セットアップ
 
-これらの値は[Firebase Console](https://console.firebase.google.com/)のプロジェクト設定から取得できます。
-
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. 依存関係のインストール
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Firebase設定
 
-## Learn more
+Firebase Admin SDKのサービスアカウントキーを取得し、`firebase-service-account.json`として保存してください。
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+# Firebase Consoleからサービスアカウントキーをダウンロード
+# プロジェクトのルートディレクトリに firebase-service-account.json として保存
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 3. ビルド
 
-## Join the community
+```bash
+npm run build
+```
 
-Join our community of developers creating universal apps.
+## 使用方法
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### データ収集のみ
+
+```bash
+npm run collect
+```
+
+### Firestoreアップロードのみ
+
+```bash
+npm run upload
+```
+
+### データ収集からアップロードまで一括実行
+
+```bash
+npm run all
+```
+
+## 出力ファイル
+
+- `export/cars.jsonl`: 車種データ（JSONL形式）
+- `export/bikes.jsonl`: バイク種データ（JSONL形式）
+- `export/errors_cars.jsonl`: 車種アップロードエラー
+- `export/errors_bikes.jsonl`: バイク種アップロードエラー
+
+## データ構造
+
+### 車種・バイク種データ
+
+```json
+{
+  "kind": "car" | "bike",
+  "maker": {
+    "name": "メーカー名",
+    "qid": "Qxxxx"
+  },
+  "model": "モデル名",
+  "aka": ["別名1", "別名2"],
+  "years": {
+    "start": 2001,
+    "end": 2006
+  },
+  "country": "Japan",
+  "code": "型式コード",
+  "series": "シリーズ名"
+}
+```
+
+## SPARQLクエリ
+
+### Wikidata SPARQL Query Service
+
+- **URL**: https://query.wikidata.org/sparql
+- **エンドポイント**: https://query.wikidata.org/sparql
+
+### 車種取得クエリ
+
+```sparql
+# 世界の量産乗用車(Q141292)をメーカー付きで取得
+SELECT ?item ?itemLabel ?maker ?makerLabel
+       ?startYear ?endYear ?country ?countryLabel
+       ?code ?series ?seriesLabel ?akaLabel
+WHERE {
+  ?item wdt:P31/wdt:P279* wd:Q141292 ;   # 量産乗用車
+        wdt:P176 ?maker .               # メーカー
+  OPTIONAL { ?item wdt:P577 ?s . BIND(YEAR(?s) AS ?startYear) }  # 生産開始年
+  OPTIONAL { ?item wdt:P576 ?e . BIND(YEAR(?e) AS ?endYear) }    # 生産終了年
+  OPTIONAL { ?item wdt:P495 ?country . }                         # 原産国
+  OPTIONAL { ?item wdt:P528 ?code . }                            # 型式/コード
+  OPTIONAL { ?item wdt:P179 ?series . }                          # シリーズ/世代
+  OPTIONAL { ?item skos:altLabel ?akaLabel
+            FILTER (LANG(?akaLabel) IN ("ja","en")) }            # 別名
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "ja,en". }
+}
+```
+
+### バイク種取得クエリ
+
+```sparql
+# 世界のオートバイ(Q34493)をメーカー付きで取得
+SELECT ?item ?itemLabel ?maker ?makerLabel
+       ?startYear ?endYear
+       ?code ?series ?seriesLabel ?akaLabel
+WHERE {
+  ?item wdt:P31/wdt:P279* wd:Q34493 ;   # オートバイ
+        wdt:P176 ?maker .
+  OPTIONAL { ?item wdt:P577 ?s . BIND(YEAR(?s) AS ?startYear) }
+  OPTIONAL { ?item wdt:P576 ?e . BIND(YEAR(?e) AS ?endYear) }
+  OPTIONAL { ?item wdt:P528 ?code . }
+  OPTIONAL { ?item wdt:P179 ?series . }
+  OPTIONAL { ?item skos:altLabel ?akaLabel
+            FILTER (LANG(?akaLabel) IN ("ja","en")) }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "ja,en". }
+}
+```
+
+## Firestoreコレクション
+
+- `catalog_cars`: 車種データ
+- `catalog_bikes`: バイク種データ
+
+## 注意事項
+
+- WikidataのSPARQLエンドポイントにはレート制限があります
+- 大量のデータを取得する場合は時間がかかる場合があります
+- エラーが発生した場合は`export/errors_*.jsonl`ファイルを確認してください
+- 日本語ラベルが無い場合は英語ラベルが使用されます
+
+## ライセンス
+
+MIT License

@@ -4,17 +4,20 @@ import { useAuth } from '../../hooks/useAuth';
 import { useMaintenanceLikes } from '../../hooks/useLikes';
 import { toggleMaintenanceLike } from '../../lib/likes';
 import { MaintenancePost } from '../../types';
+import { PersistentImage } from './PersistentImage';
 
 interface MaintenanceThumbnailProps {
   post: MaintenancePost;
   onClick?: () => void;
   onDelete?: (postId: string) => void;
+  onEdit?: (postId: string) => void;
 }
 
 export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({ 
   post, 
   onClick,
-  onDelete
+  onDelete,
+  onEdit
 }) => {
   const { user } = useAuth();
   const { isLiked, likeCount, loading } = useMaintenanceLikes(post.id, user?.uid || '');
@@ -43,8 +46,15 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
     setShowMenu(!showMenu);
   };
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onDelete?.(post.id);
+    setShowMenu(false);
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(post.id);
     setShowMenu(false);
   };
 
@@ -59,13 +69,35 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
       {/* サムネイル画像 - アスペクト比固定 */}
       <div className="relative mb-2">
         <div className="aspect-[4/3] w-full rounded-lg overflow-hidden">
-          <img
-            src={post.carImage || 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=300&fit=crop'}
-            alt={post.title}
-            className="w-full h-full object-cover transition-all duration-300"
-          />
+          {post.carImage ? (
+            <PersistentImage
+              src={post.carImage}
+              alt={post.title}
+              className="w-full h-full object-contain transition-all duration-300"
+              clickable={true}
+            />
+          ) : post.images && post.images.length > 0 ? (
+            <PersistentImage
+              src={post.images[0]}
+              alt={post.title}
+              className="w-full h-full object-contain transition-all duration-300"
+              clickable={true}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-600 to-gray-800">
+              <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
+                <span className="text-sm text-gray-600 font-bold">車</span>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* 複数画像インジケーター */}
+        {post.images && post.images.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+            +{post.images.length - 1}
+          </div>
+        )}
       </div>
 
       {/* タイトル */}
@@ -95,14 +127,25 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
               </button>
               
               {showMenu && (
-                <div className="absolute right-0 top-6 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[80px]">
+                <div 
+                  className="absolute right-0 top-6 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[80px]"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {isAuthor && (
-                    <button
-                      onClick={handleDelete}
-                      className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50"
-                    >
-                      削除
-                    </button>
+                    <>
+                      <button
+                        onClick={handleEdit}
+                        className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50"
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50"
+                      >
+                        削除
+                      </button>
+                    </>
                   )}
                 </div>
               )}

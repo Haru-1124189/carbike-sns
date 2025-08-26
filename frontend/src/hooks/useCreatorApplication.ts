@@ -34,6 +34,33 @@ export const useCreatorApplication = (userId?: string) => {
     return () => unsubscribe();
   }, [userId]);
 
+  // 管理者通知を作成する関数
+  const createAdminNotification = async (applicationData: any, userName: string) => {
+    try {
+      const notificationData = {
+        userId: 'admin', // 管理者用の通知
+        type: 'creator_application',
+        title: '新しい動画配信申請',
+        content: `${userName}さんが動画配信申請を提出しました。チャンネル名: ${applicationData.channelName}`,
+        isRead: false,
+        createdAt: serverTimestamp(),
+        applicationData: {
+          channelName: applicationData.channelName,
+          channelDescription: applicationData.channelDescription,
+          contentCategory: applicationData.contentCategory,
+          userName: userName,
+          userId: userId
+        }
+      };
+
+      await addDoc(collection(db, 'notifications'), notificationData);
+      console.log('Admin notification created successfully');
+    } catch (error) {
+      console.error('Error creating admin notification:', error);
+      // 通知の作成に失敗しても申請は続行
+    }
+  };
+
   // 新しい申請を作成
   const createApplication = async (applicationData: Omit<CreatorApplication, 'id' | 'userId' | 'userName' | 'userEmail' | 'userAvatar' | 'status' | 'createdAt' | 'updatedAt'>) => {
     if (!userId) {
@@ -70,6 +97,10 @@ export const useCreatorApplication = (userId?: string) => {
       console.log('Creating application with data:', newApplication);
       const docRef = await addDoc(collection(db, 'creatorApplications'), newApplication);
       console.log('Application created successfully:', docRef.id);
+
+      // 管理者通知を作成
+      await createAdminNotification(applicationData, userData?.displayName || 'ユーザー');
+
       return docRef.id;
     } catch (err: any) {
       console.error('Error creating creator application:', err);

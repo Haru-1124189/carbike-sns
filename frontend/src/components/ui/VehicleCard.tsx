@@ -12,7 +12,7 @@ interface VehicleCardProps {
 }
 
 // 車名に応じた画像URLのマッピング - より多様で魅力的な写真
-const getCarImageUrl = (carName: string): string => {
+const getCarImageUrl = (carName: string): string | null => {
   const carImages: { [key: string]: string } = {
     // 日産
     'Nissan S13': 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=300&fit=crop',
@@ -141,7 +141,7 @@ const getCarImageUrl = (carName: string): string => {
     'Harley-Davidson Fat Boy': 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=400&h=300&fit=crop',
   };
   
-  return carImages[carName] || 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=300&fit=crop';
+  return carImages[carName] || null;
 };
 
 export const VehicleCard: React.FC<VehicleCardProps> = ({ car, onClick }) => {
@@ -155,15 +155,17 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ car, onClick }) => {
       className="flex-shrink-0 w-32 bg-surface rounded-xl border border-surface-light overflow-hidden cursor-pointer hover:shadow-md transition-all duration-300 group"
     >
       <div className="w-full h-20 bg-surface-light relative overflow-hidden">
-        <img 
-          src={carImage}
-          alt={carName}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-          onError={(e) => {
-            // 画像の読み込みに失敗した場合はデフォルト画像を使用
-            (e.target as HTMLImageElement).src = getCarImageUrl(carName);
-          }}
-        />
+        {carImage ? (
+          <img 
+            src={carImage}
+            alt={carName}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-600 to-gray-800">
+            <Car size={24} className="text-gray-400" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-0 transition-all duration-300" />
       </div>
       <div className="p-2">

@@ -38,8 +38,11 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
   const [activeCarTab, setActiveCarTab] = useState<CarTabType>('all');
   const { user } = useAuth();
 
-  // useThreadsフックを使用してFirestoreからデータを取得
-  const { threads, loading, error, refresh } = useThreads({ type: activeTab });
+  // useThreadsフックを使用してFirestoreからデータを取得（プライバシーフィルタリング付き）
+  const { threads, loading, error, refresh } = useThreads({ 
+    type: activeTab,
+    currentUserId: user?.uid 
+  });
 
   // 検索機能を実装
   const { searchQuery, setSearchQuery, filteredItems: searchedThreads } = useSearch(threads, ['title', 'content', 'tags']);
@@ -159,7 +162,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
         onProfileClick={() => {}}
       />
        
-      <main className="px-4 pb-24 pt-0">
+      <main className="px-4 pb-32 pt-0">
           {/* ヘッダー */}
           <div className="bg-background z-10 border-b border-surface-light fade-in">
             {/* 車種タブ */}

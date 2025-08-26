@@ -1,4 +1,4 @@
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../firebase/clients';
 
@@ -8,18 +8,20 @@ export const useUserName = (authorId: string) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!authorId) {
-        setDisplayName('');
-        setPhotoURL('');
-        setLoading(false);
-        return;
-      }
+    if (!authorId) {
+      setDisplayName('');
+      setPhotoURL('');
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const userDocRef = doc(db, 'users', authorId);
-        const userDocSnap = await getDoc(userDocRef);
-        
+    setLoading(true);
+
+    const userDocRef = doc(db, 'users', authorId);
+    
+    const unsubscribe = onSnapshot(
+      userDocRef,
+      (userDocSnap) => {
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
           console.log(`useUserName: User found for ${authorId}:`, userData);
@@ -31,7 +33,9 @@ export const useUserName = (authorId: string) => {
           setDisplayName(`ユーザー${authorId.slice(-4)}`); // IDの最後4文字を使用
           setPhotoURL('');
         }
-      } catch (error) {
+        setLoading(false);
+      },
+      (error) => {
         console.error('Error fetching user data:', error);
         // 権限エラーの場合は、デフォルト名を使用
         if (error instanceof Error && error.message.includes('permission')) {
@@ -43,12 +47,12 @@ export const useUserName = (authorId: string) => {
           setDisplayName(`ユーザー${authorId.slice(-4)}`);
           setPhotoURL('');
         }
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchUserData();
+    // クリーンアップ関数
+    return () => unsubscribe();
   }, [authorId]);
 
   return { displayName, photoURL, loading };

@@ -160,3 +160,59 @@ export const toggleThreadLike = async (threadId: string, userId: string) => {
 export const toggleMaintenanceLike = async (maintenanceId: string, userId: string) => {
   return toggleLike(maintenanceId, userId, 'maintenance');
 };
+
+// いいね履歴を取得する関数
+export const getLikeHistory = async (targetId: string, targetType: LikeTarget = 'thread') => {
+  try {
+    const likeQuery = query(
+      collection(db, 'likes'),
+      where('targetId', '==', targetId),
+      where('targetType', '==', targetType)
+    );
+
+    const likeSnapshot = await getDocs(likeQuery);
+    type LikeDocData = { userId: string; createdAt: any };
+    const likes = likeSnapshot.docs.map(d => ({
+      id: d.id,
+      ...(d.data() as LikeDocData)
+    }));
+
+    // いいねしたユーザーの詳細情報を取得
+    const userDetails = await Promise.all(
+      likes.map(async (like) => {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', like.userId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            return {
+              ...like,
+              userDisplayName: userData.displayName || 'ユーザー',
+              userPhotoURL: userData.photoURL || '',
+              userEmail: userData.email || ''
+            };
+          } else {
+            return {
+              ...like,
+              userDisplayName: '削除されたユーザー',
+              userPhotoURL: '',
+              userEmail: ''
+            };
+          }
+        } catch (error) {
+          console.error('Error fetching user details:', error);
+          return {
+            ...like,
+            userDisplayName: 'エラー',
+            userPhotoURL: '',
+            userEmail: ''
+          };
+        }
+      })
+    );
+
+    return userDetails;
+  } catch (error) {
+    console.error('Error fetching like history:', error);
+    throw error;
+  }
+};

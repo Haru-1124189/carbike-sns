@@ -89,6 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               uid: user.uid,
               email: user.email || '',
               displayName: user.displayName || '',
+              username: undefined, // 新規ユーザーはusername未設定
               photoURL: user.photoURL || null,
               bio: '', // 空の自己紹介文
               role: 'user',
@@ -142,6 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         uid: user.uid,
         email: user.email || '',
         displayName,
+        username: undefined, // 新規ユーザーはusername未設定
         photoURL: user.photoURL || null,
         role: 'user',
         isAdmin: false, // デフォルトはfalse

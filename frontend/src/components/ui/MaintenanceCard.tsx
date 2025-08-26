@@ -1,13 +1,15 @@
-import { Calendar, Car, Clock, DollarSign, Heart, MapPin, MessageCircle, MoreHorizontal, Package, Wrench } from 'lucide-react';
+import { Calendar, Car, Clock, DollarSign, Heart, MapPin, MessageCircle, MoreHorizontal, Package, Pin, Wrench } from 'lucide-react';
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useMaintenanceLikes } from '../../hooks/useLikes';
 import { useUserName } from '../../hooks/useUserName';
+import { toggleMaintenancePin } from '../../lib/pins';
 import { MaintenancePost } from '../../types';
-import { PersistentImage } from './PersistentImage';
-import { ReportButton } from './ReportButton';
 import { ClickableUserName } from './ClickableUserName';
 import { FollowButton } from './FollowButton';
+import { PersistentImage } from './PersistentImage';
+import { ReportButton } from './ReportButton';
+
 
 interface MaintenanceCardProps {
   post: MaintenancePost;
@@ -21,6 +23,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useMaintenanceLikes(post.id, user?.uid || '');
   const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(post.authorId || '');
   const [showMenu, setShowMenu] = React.useState(false);
+  
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -53,6 +56,24 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
     e.stopPropagation();
     setShowMenu(!showMenu);
   };
+
+  const handleTogglePin = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user?.uid) {
+      alert('ログインが必要です');
+      return;
+    }
+
+    try {
+      await toggleMaintenancePin(post.id, user.uid, !post.isPinned);
+    } catch (error: any) {
+      console.error('Error toggling pin:', error);
+      alert(error.message || '固定の操作に失敗しました');
+    }
+    setShowMenu(false);
+  };
+
+  
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
@@ -141,28 +162,37 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
               <MoreHorizontal size={16} className="text-text-secondary" />
             </button>
             
-            {showMenu && (
-              <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
-                {user?.uid === post.authorId && (
-                  <button
-                    onClick={handleDelete}
-                    className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 flex items-center space-x-2"
-                  >
-                    <span>削除</span>
-                  </button>
-                )}
-                <div className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50">
-                  <ReportButton
-                    targetId={post.id}
-                    targetType="maintenance"
-                    targetTitle={post.title}
-                    targetAuthorId={post.authorId}
-                    targetAuthorName={authorDisplayName || post.author}
-                    className="flex items-center space-x-2 w-full"
-                  />
-                </div>
-              </div>
-            )}
+                         {showMenu && (
+               <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+                 {user?.uid === post.authorId && (
+                   <>
+                     <button
+                       onClick={handleTogglePin}
+                       className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50 flex items-center space-x-2"
+                     >
+                       <Pin size={14} />
+                       <span>{post.isPinned ? '固定解除' : '固定'}</span>
+                     </button>
+                     <button
+                       onClick={handleDelete}
+                       className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-surface/50 flex items-center space-x-2"
+                     >
+                       <span>削除</span>
+                     </button>
+                   </>
+                 )}
+                 <div className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50">
+                   <ReportButton
+                     targetId={post.id}
+                     targetType="maintenance"
+                     targetTitle={post.title}
+                     targetAuthorId={post.authorId}
+                     targetAuthorName={authorDisplayName || post.author}
+                     className="flex items-center space-x-2 w-full"
+                   />
+                 </div>
+               </div>
+             )}
           </div>
         </div>
       </div>
@@ -176,11 +206,30 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
       {/* メイン画像 */}
       {post.carImage && (
         <div className="mb-2">
-          <img
+          <PersistentImage
             src={post.carImage}
             alt={post.carModel}
-            className="w-full h-32 object-cover rounded-lg transition-all duration-300 hover:scale-105"
+            className="w-full h-28 object-contain rounded-lg transition-all duration-300 hover:scale-105"
+            clickable={true}
           />
+        </div>
+      )}
+
+      {/* アップロードされた画像 */}
+      {post.images && post.images.length > 0 && (
+        <div className="mb-2">
+          <div className="flex space-x-2 overflow-x-auto pb-2">
+            {post.images.slice(0, 5).map((image, index) => (
+              <div key={index} className="flex-shrink-0">
+                <PersistentImage
+                  src={image}
+                  alt={`Uploaded image ${index + 1}`}
+                  className="w-64 h-48 object-contain rounded-lg transition-all duration-300 hover:scale-110"
+                  clickable={true}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -188,31 +237,32 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
       {post.steps.length > 0 && (
         <div className="mb-2">
           <div className="flex space-x-2 overflow-x-auto pb-2">
-            {post.steps.slice(0, 3).map((step, index) => (
+            {post.steps.slice(0, 5).map((step, index) => (
               step.image && (
                 <div key={step.id} className="flex-shrink-0">
-                  <img
+                  <PersistentImage
                     src={step.image}
                     alt={`Step ${step.order}`}
-                    className="w-16 h-12 object-cover rounded-lg transition-all duration-300 hover:scale-110"
+                    className="w-64 h-48 object-contain rounded-lg transition-all duration-300 hover:scale-110"
+                    clickable={true}
                   />
                 </div>
               )
             ))}
           </div>
-          {post.steps.filter(step => step.image).length > 3 && (
-            <div className="text-xs text-gray-400 mt-1">
-              +{post.steps.filter(step => step.image).length - 3}枚の写真
-            </div>
-          )}
         </div>
       )}
 
-      {/* タイトルとコンテンツ */}
-      <div className="mb-2">
-        <h3 className="text-sm font-semibold text-text-primary mb-1 transition-all duration-300 line-clamp-1">{post.title}</h3>
-        <p className="text-xs text-text-secondary leading-relaxed line-clamp-2 transition-all duration-300">{post.content}</p>
-      </div>
+             {/* タイトルとコンテンツ */}
+       <div className="mb-2">
+         <div className="flex items-center space-x-2 mb-1">
+           <h3 className="text-sm font-semibold text-text-primary transition-all duration-300 line-clamp-1">{post.title}</h3>
+           {post.isPinned && (
+             <Pin size={12} className="text-primary flex-shrink-0" />
+           )}
+         </div>
+         <p className="text-xs text-text-secondary leading-relaxed line-clamp-2 transition-all duration-300">{post.content}</p>
+       </div>
 
       {/* 作業情報 */}
       <div className="flex items-center justify-between mb-3 text-xs text-text-secondary">
@@ -290,16 +340,16 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
       {/* アクションボタン */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <button
-            onClick={handleLike}
-            disabled={likeLoading}
-            className={`flex items-center space-x-1 transition-all duration-300 ${
-              isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500'
-            }`}
-          >
-            <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} className="transition-all duration-300" />
-            <span className="text-xs transition-all duration-300">{likeCount}</span>
-          </button>
+                     <button
+             onClick={handleLike}
+             disabled={likeLoading}
+             className={`flex items-center space-x-1 transition-all duration-300 ${
+               isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500'
+             }`}
+           >
+             <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} className="transition-all duration-300" />
+             <span className="text-xs transition-all duration-300">{likeCount}</span>
+           </button>
           <button
             onClick={handleComment}
             className="flex items-center space-x-1 text-text-secondary hover:text-primary transition-all duration-300"
@@ -309,6 +359,8 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
           </button>
         </div>
       </div>
+
+      
     </div>
   );
 };

@@ -8,9 +8,12 @@ export interface Reply {
   targetId: string;
   targetType: 'thread' | 'question' | 'maintenance';
   author: string;
+  authorId?: string; // 投稿者のUID
   authorAvatar?: string;
   content: string;
   createdAt: string;
+  isPinned?: boolean;
+  pinnedAt?: string;
 }
 
 export const useReplies = (targetId: string, targetType: 'thread' | 'question' | 'maintenance') => {
@@ -53,13 +56,37 @@ export const useReplies = (targetId: string, targetType: 'thread' | 'question' |
             targetId: data.targetId,
             targetType: data.targetType,
             author: data.authorName,
+            authorId: data.authorId, // 投稿者のUIDを追加
             authorAvatar: data.authorAvatar,
             content: data.content,
             createdAt: createdAt,
+            isPinned: data.isPinned,
+            pinnedAt: data.pinnedAt instanceof Timestamp 
+              ? data.pinnedAt.toDate().toISOString()
+              : data.pinnedAt,
           };
         });
 
-        setReplies(replyData);
+        // 固定された返信を最初に表示し、その後は作成日時順
+        const sortedReplies = replyData.sort((a, b) => {
+          // 固定された返信を最初に
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          
+          // 両方とも固定されている場合は固定日時順
+          if (a.isPinned && b.isPinned) {
+            const pinnedAtA = a.pinnedAt ? new Date(a.pinnedAt).getTime() : 0;
+            const pinnedAtB = b.pinnedAt ? new Date(b.pinnedAt).getTime() : 0;
+            return pinnedAtB - pinnedAtA; // 新しい固定を上に
+          }
+          
+          // 固定されていない場合は作成日時順
+          const createdAtA = new Date(a.createdAt).getTime();
+          const createdAtB = new Date(b.createdAt).getTime();
+          return createdAtA - createdAtB; // 古い順
+        });
+
+        setReplies(sortedReplies);
         setLoading(false);
       },
       (err) => {

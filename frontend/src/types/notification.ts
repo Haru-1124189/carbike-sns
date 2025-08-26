@@ -13,6 +13,12 @@ export interface NotificationDoc {
   targetType?: 'thread' | 'question' | 'maintenance'; // 投稿の種類
   fromUserId?: string; // 通知を送ったユーザーのUID
   fromUserName?: string; // 通知を送ったユーザーの名前
+  
+  // フォロー通知用のデータ
+  followData?: {
+    followerId: string;
+    followerName: string;
+  };
 }
 
 export interface CreateNotificationData {

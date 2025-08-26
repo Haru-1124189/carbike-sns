@@ -94,6 +94,16 @@ export const clearImageCache = () => {
   }
 };
 
+// 特定の画像URLのキャッシュをクリア
+export const clearImageCacheForUrl = (url: string) => {
+  try {
+    const key = IMAGE_CACHE_PREFIX + btoa(url);
+    localStorage.removeItem(key);
+  } catch (error) {
+    console.error('Error clearing image cache for URL:', error);
+  }
+};
+
 // 古いキャッシュを削除
 export const cleanupExpiredCache = () => {
   try {

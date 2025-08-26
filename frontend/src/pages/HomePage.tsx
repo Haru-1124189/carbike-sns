@@ -21,7 +21,7 @@ interface HomePageProps {
   onViewAllThreads?: () => void;
   onQuickAction?: (actionId: string) => void;
   onVehicleClick?: (vehicleId: string) => void;
-  onShowCarList?: () => void;
+
   onShowRegisteredCars?: () => void;
   onDeleteThread?: (threadId: string) => void;
   onVideoClick?: (videoId: string) => void;
@@ -39,7 +39,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onViewAllThreads,
   onQuickAction,
   onVehicleClick,
-  onShowCarList,
+
   onShowRegisteredCars,
   onDeleteThread,
   onVideoClick,
@@ -55,13 +55,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { unreadCount } = useNotifications();
   const { vehicles, loading: vehiclesLoading, error: vehiclesError } = useVehicles();
   
-  // 車両データのデバッグログ
-  console.log('HomePage - Vehicles data:', {
-    vehicles,
-    vehiclesLoading,
-    vehiclesError,
-    vehiclesLength: vehicles.length
-  });
+
   
   // 検索機能を実装
   const { searchQuery, setSearchQuery, filteredItems: searchedThreads } = useSearch(threads, ['title', 'content', 'tags']);
@@ -114,7 +108,7 @@ export const HomePage: React.FC<HomePageProps> = ({
            </div>
          </div>
 
-                   <main className="px-4 pb-32 pt-0 fade-in">
+                   <main className="p-4 pb-32 pt-0 fade-in">
                      {/* ユーザー情報 */}
           <AppHeader
             user={{
@@ -173,50 +167,43 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           </Section>
 
-                                           {/* クイックアクション */}
-           <Section spacing="md" className="mb-4">
-             <SectionTitle title="クイックアクション" />
-                           <div className="flex justify-center space-x-6 mb-6">
-                                                               <button
-                   onClick={() => handleQuickAction('post')}
-                   className="p-4 rounded-full bg-surface border border-surface-light text-text-primary hover:scale-105 transition-all duration-300"
-                 >
-                   <MessageSquare size={20} />
-                 </button>
-               <button
-                 onClick={() => handleQuickAction('question')}
-                 className="p-4 rounded-full bg-surface border border-surface-light text-text-primary hover:scale-105 transition-all duration-300"
-               >
-                 <HelpCircle size={20} />
-               </button>
-               <button
-                 onClick={() => handleQuickAction('maintenance')}
-                 className="p-4 rounded-full bg-surface border border-surface-light text-text-primary hover:scale-105 transition-all duration-300"
-               >
-                 <Wrench size={20} />
-               </button>
-             </div>
-           </Section>
+                                                     {/* クイックアクション */}
+            <Section spacing="md" className="mb-4">
+              <SectionTitle title="クイックアクション" />
+                            <div className="flex justify-center space-x-6 mb-6">
+                                                                <button
+                    onClick={() => handleQuickAction('post')}
+                    className="p-4 rounded-full bg-surface border border-surface-light text-text-primary hover:scale-105 transition-all duration-300"
+                  >
+                    <MessageSquare size={20} />
+                  </button>
+                <button
+                  onClick={() => handleQuickAction('question')}
+                  className="p-4 rounded-full bg-surface border border-surface-light text-text-primary hover:scale-105 transition-all duration-300"
+                >
+                  <HelpCircle size={20} />
+                </button>
+                <button
+                  onClick={() => handleQuickAction('maintenance')}
+                  className="p-4 rounded-full bg-surface border border-surface-light text-text-primary hover:scale-105 transition-all duration-300"
+                >
+                  <Wrench size={20} />
+                </button>
+              </div>
+            </Section>
 
-          {/* 車種関連ボタン */}
+          {/* お気に入り車種ボタン */}
           <Section spacing="md" className="mb-6">
-            <div className="grid grid-cols-2 gap-3">
-              <Card onClick={() => onShowCarList?.()}>
-                <div className="flex items-center justify-center space-x-2">
-                  <Car size={20} className="text-primary" />
-                  <span className="text-sm font-medium text-text-primary">車種一覧</span>
-                </div>
-                <p className="text-xs text-text-secondary mt-1 text-center">すべての車種を確認</p>
-              </Card>
-              <Card onClick={() => onShowRegisteredCars?.()}>
-                <div className="flex items-center justify-center space-x-2">
-                  <MotoIcon className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium text-text-primary">お気に入り車種</span>
-                </div>
-                <p className="text-xs text-text-secondary mt-1 text-center">登録済み車種を管理</p>
-              </Card>
-            </div>
+            <Card onClick={() => onShowRegisteredCars?.()}>
+              <div className="flex items-center justify-center space-x-2">
+                <MotoIcon className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium text-text-primary">お気に入り車種</span>
+              </div>
+              <p className="text-xs text-text-secondary mt-1 text-center">車種を検索・登録・管理</p>
+            </Card>
           </Section>
+
+
 
 
 

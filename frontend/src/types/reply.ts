@@ -9,4 +9,6 @@ export interface ReplyDoc {
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
   isDeleted?: boolean;
+  isPinned?: boolean; // 固定フラグ
+  pinnedAt?: any; // 固定日時
 }

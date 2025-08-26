@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { cacheImage, getCachedImage } from '../../utils/imageCache';
+import React, { useEffect, useState } from 'react';
+import { cacheImage, clearImageCacheForUrl, getCachedImage } from '../../utils/imageCache';
+import { ImageModal } from './ImageModal';
 
 interface PersistentImageProps {
   src: string;
@@ -9,6 +10,7 @@ interface PersistentImageProps {
   onLoad?: () => void;
   onError?: () => void;
   loading?: 'lazy' | 'eager';
+  clickable?: boolean;
 }
 
 export const PersistentImage: React.FC<PersistentImageProps> = ({
@@ -18,12 +20,14 @@ export const PersistentImage: React.FC<PersistentImageProps> = ({
   fallback,
   onLoad,
   onError,
-  loading = 'lazy'
+  loading = 'lazy',
+  clickable = true
 }) => {
   const [imageSrc, setImageSrc] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,6 +43,11 @@ export const PersistentImage: React.FC<PersistentImageProps> = ({
         setIsLoading(true);
         setHasError(false);
         setShowFallback(false);
+
+        // 新しい画像URLが設定された時にキャッシュをクリア
+        if (imageSrc && imageSrc !== src) {
+          clearImageCacheForUrl(imageSrc);
+        }
 
         // まずキャッシュから取得を試行
         const cached = getCachedImage(src);
@@ -85,6 +94,13 @@ export const PersistentImage: React.FC<PersistentImageProps> = ({
     onLoad?.();
   };
 
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 親要素へのイベント伝播を防ぐ
+    if (clickable && !hasError) {
+      setIsModalOpen(true);
+    }
+  };
+
   // エラー時はフォールバックを表示
   if (hasError && fallback) {
     return <>{fallback}</>;
@@ -104,10 +120,11 @@ export const PersistentImage: React.FC<PersistentImageProps> = ({
       <img
         src={imageSrc || src}
         alt={alt}
-        className={className}
+        className={`${className} ${clickable ? 'cursor-pointer' : ''}`}
         loading={loading}
         onLoad={handleImageLoad}
         onError={handleImageError}
+        onClick={handleImageClick}
         style={{ display: showFallback ? 'none' : 'block' }}
       />
       {showFallback && fallback && (
@@ -115,6 +132,12 @@ export const PersistentImage: React.FC<PersistentImageProps> = ({
           {fallback}
         </div>
       )}
+      <ImageModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        src={imageSrc || src}
+        alt={alt}
+      />
     </>
   );
 };

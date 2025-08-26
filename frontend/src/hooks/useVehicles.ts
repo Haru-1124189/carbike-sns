@@ -32,43 +32,28 @@ export const useVehicles = () => {
       setLoading(true);
       setError(null);
       
-      console.log('車両データ取得開始:', { userId: user.uid });
-      
       const vehiclesRef = collection(db, 'vehicles');
       
-      // まずはorderByなしでクエリを試す
       const q = query(
         vehiclesRef,
         where('ownerId', '==', user.uid)
       );
       
-      console.log('Firestoreクエリ実行中...');
       const querySnapshot = await getDocs(q);
-      console.log('クエリ結果:', { 
-        size: querySnapshot.size, 
-        empty: querySnapshot.empty 
-      });
       
       const vehicleList: Vehicle[] = [];
       
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        console.log('車両データ:', { id: doc.id, data });
         vehicleList.push({
           id: doc.id,
           ...data
         } as Vehicle);
       });
       
-      console.log('取得した車両リスト:', vehicleList);
       setVehicles(vehicleList);
     } catch (err) {
       console.error('車両データの取得に失敗しました:', err);
-      console.error('エラーの詳細:', {
-        message: err instanceof Error ? err.message : String(err),
-        code: (err as any)?.code,
-        stack: err instanceof Error ? err.stack : undefined
-      });
       setError('車両データの取得に失敗しました');
     } finally {
       setLoading(false);
@@ -90,8 +75,6 @@ export const useVehicles = () => {
     }
 
     try {
-      console.log('車両追加開始:', { vehicleData, userId: user.uid });
-      
       const vehiclesRef = collection(db, 'vehicles');
       
       // undefinedの値を除外
@@ -106,11 +89,7 @@ export const useVehicles = () => {
         updatedAt: serverTimestamp()
       };
       
-      console.log('Firestoreに保存するデータ:', vehicleDoc);
-      
       const docRef = await addDoc(vehiclesRef, vehicleDoc);
-      
-      console.log('車両追加成功:', docRef.id);
 
       // 新しい車両をローカル状態に追加（即座に反映）
       const newVehicle: Vehicle = {

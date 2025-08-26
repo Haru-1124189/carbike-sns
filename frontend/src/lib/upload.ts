@@ -1,5 +1,4 @@
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { storage } from '../firebase/clients';
+// Firebase Storageは使用しないため、importを削除
 
 // 画像をプリロードする関数
 const preloadImage = (url: string): Promise<void> => {
@@ -56,7 +55,20 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
   });
 };
 
-// ローカルストレージに画像を保存する関数（高速版）
+// ファイルをBase64に変換する関数
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+};
+
+// ローカルストレージに画像を保存する関数（Base64形式）
 const saveToLocalStorage = async (file: File, userId: string, isProfileImage: boolean = false): Promise<string> => {
   try {
     // プロフィール画像の場合は小さくリサイズ
@@ -72,13 +84,15 @@ const saveToLocalStorage = async (file: File, userId: string, isProfileImage: bo
       processedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
     }
     
+    // Base64に変換
+    const base64Data = await fileToBase64(processedFile);
+    
     const timestamp = Date.now();
     const key = `local_image_${userId}_${timestamp}`;
-    const url = URL.createObjectURL(processedFile);
     
-    // ローカルストレージにメタデータを保存
+    // ローカルストレージにBase64データを保存
     localStorage.setItem(key, JSON.stringify({
-      url: url,
+      base64: base64Data,
       name: processedFile.name,
       size: processedFile.size,
       type: processedFile.type,
@@ -86,65 +100,29 @@ const saveToLocalStorage = async (file: File, userId: string, isProfileImage: bo
       isProfileImage: isProfileImage
     }));
     
-    // 画像をプリロードして表示速度を向上
-    try {
-      await preloadImage(url);
-    } catch (error) {
-      console.warn('Failed to preload image:', error);
-    }
+    console.log('Image saved as Base64 to localStorage:', key);
     
-    return url;
+    return base64Data;
   } catch (error) {
     console.error('Error saving to local storage:', error);
-    // エラーの場合は元のファイルをそのまま使用
-    return URL.createObjectURL(file);
+    // エラーの場合はBase64変換を試す
+    try {
+      return await fileToBase64(file);
+    } catch (fallbackError) {
+      console.error('Fallback Base64 conversion failed:', fallbackError);
+      return URL.createObjectURL(file);
+    }
   }
 };
 
 export const uploadToStorage = async (userId: string, file: File, isProfileImage: boolean = false): Promise<string> => {
   try {
-    // プロフィール画像の場合はローカルストレージを優先使用
-    if (isProfileImage) {
-      console.log('Using local storage for profile image (fast mode)');
-      return await saveToLocalStorage(file, userId, true);
-    }
-    
-    // 通常の画像の場合も、まずローカルストレージに保存してからFirebaseにアップロード
-    const localUrl = await saveToLocalStorage(file, userId, false);
-    
-    // Firebaseへのアップロードは非同期で実行（バックグラウンド）
-    uploadToFirebase(userId, file).catch(error => {
-      console.warn('Firebase upload failed, but local storage is available:', error);
-    });
-    
-    return localUrl;
+    console.log('Using Base64 storage only (no Firebase Storage)');
+    return await saveToLocalStorage(file, userId, isProfileImage);
   } catch (error) {
     console.error('Error in uploadToStorage:', error);
-    // エラーの場合はローカルストレージに保存
-    return await saveToLocalStorage(file, userId, isProfileImage);
-  }
-};
-
-// Firebaseへのアップロード（バックグラウンド処理）
-const uploadToFirebase = async (userId: string, file: File): Promise<string> => {
-  try {
-    // ファイル名をユニークにするためのタイムスタンプを追加
-    const timestamp = Date.now();
-    const fileName = `${userId}_${timestamp}_${file.name}`;
-    
-    // Storageの参照を作成
-    const storageRef = ref(storage, `uploads/${userId}/${fileName}`);
-    
-    // ファイルをアップロード
-    const snapshot = await uploadBytes(storageRef, file);
-    
-    // ダウンロードURLを取得
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    
-    console.log('Firebase upload successful:', downloadURL);
-    return downloadURL;
-  } catch (error) {
-    console.error('Firebase upload error:', error);
     throw error;
   }
 };
+
+// Firebase Storageは使用しないため、この関数は削除

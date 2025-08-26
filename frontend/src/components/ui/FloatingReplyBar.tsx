@@ -2,6 +2,7 @@ import { Send } from 'lucide-react';
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { createReply } from '../../lib/replies';
+import { MentionTextarea } from './MentionTextarea';
 
 interface FloatingReplyBarProps {
   targetId: string;
@@ -118,9 +119,9 @@ export const FloatingReplyBar: React.FC<FloatingReplyBarProps> = ({
           {/* 返信入力エリア */}
           <div className="flex-1">
             <div className="bg-surface/80 border border-surface-light rounded-full px-3 py-2">
-              <textarea
+              <MentionTextarea
                 value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
+                onChange={setReplyContent}
                 placeholder={`${targetAuthorName}に返信...`}
                 className="w-full bg-transparent border-none outline-none text-white placeholder-gray-400 resize-none text-sm"
                 rows={1}

@@ -1,6 +1,6 @@
 import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/clients';
-import { ThreadDoc, MaintenancePostDoc } from '../types';
+import { MaintenancePostDoc, ThreadDoc } from '../types';
 
 export interface CreateThreadData {
   title: string;
@@ -147,6 +147,67 @@ export const createMaintenancePost = async (data: CreateMaintenanceData, authorI
 
   const docRef = await addDoc(collection(db, 'maintenance_posts'), maintenanceData);
   return docRef.id;
+};
+
+export const updateMaintenancePost = async (postId: string, data: CreateMaintenanceData, authorId: string, authorName: string) => {
+  console.log('updateMaintenancePost - Debug:', { postId, data, authorId, authorName });
+
+  try {
+    // 投稿の存在確認と権限チェック
+    const docRef = doc(db, 'maintenance_posts', postId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      throw new Error('投稿が見つかりません');
+    }
+
+    const postData = docSnap.data() as MaintenancePostDoc;
+    if (postData.authorId !== authorId) {
+      throw new Error('投稿を編集する権限がありません');
+    }
+
+    const updateData: Partial<MaintenancePostDoc> = {
+      title: data.title,
+      content: data.content,
+      carModel: data.carModel,
+      mileage: data.mileage,
+      cost: data.cost,
+      workDate: data.workDate,
+      category: data.category,
+      tags: data.tags || [],
+      authorName,
+      updatedAt: new Date(),
+    };
+
+    // オプショナルフィールドを追加
+    if (data.totalTime) {
+      updateData.totalTime = data.totalTime;
+    }
+    if (data.difficulty) {
+      updateData.difficulty = data.difficulty;
+    }
+    if (data.tools) {
+      updateData.tools = data.tools;
+    }
+    if (data.parts) {
+      updateData.parts = data.parts;
+    }
+    if (data.images) {
+      updateData.images = data.images;
+    }
+    if (data.steps) {
+      updateData.steps = data.steps;
+    }
+
+    console.log('updateData to be saved:', updateData);
+
+    await updateDoc(docRef, updateData);
+    console.log('Maintenance post updated successfully:', postId);
+    return true;
+  } catch (error) {
+    console.error('Error updating maintenance post:', error);
+    throw error;
+  }
 };
 
 export const deleteMaintenancePost = async (postId: string, authorId: string) => {

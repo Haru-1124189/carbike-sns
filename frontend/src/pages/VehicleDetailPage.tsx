@@ -2,9 +2,9 @@ import { ArrowLeft, Calendar, Car, Edit, MoreVertical, Settings } from 'lucide-r
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
-import { PersistentImage } from '../components/ui/PersistentImage';
-import { Vehicle } from '../types';
+import { Base64Image } from '../components/ui/Base64Image';
 import { useAuth } from '../hooks/useAuth';
+import { Vehicle } from '../types';
 
 interface VehicleDetailPageProps {
   vehicle: Vehicle;
@@ -47,9 +47,7 @@ export const VehicleDetailPage: React.FC<VehicleDetailPageProps> = ({
   };
 
   const getDefaultImage = () => {
-    return vehicle.type === 'car' 
-      ? 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=300&fit=crop'
-      : 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=300&fit=crop';
+    return null; // デフォルト画像を返さない
   };
 
   return (
@@ -107,17 +105,23 @@ export const VehicleDetailPage: React.FC<VehicleDetailPageProps> = ({
         {/* 車両画像 */}
         <div className="mb-6">
           <div className="w-full h-64 bg-surface-light rounded-xl overflow-hidden">
-            <PersistentImage
-              src={vehicle.image || getDefaultImage()}
-              alt={vehicle.name}
-              className="w-full h-full object-cover"
-              loading="eager"
-              fallback={
-                <div className="w-full h-full bg-surface-light flex items-center justify-center">
-                  <Car size={48} className="text-gray-400" />
-                </div>
-              }
-            />
+            {vehicle.image ? (
+              <Base64Image
+                src={vehicle.image}
+                alt={vehicle.name}
+                className="w-full h-full object-cover"
+                loading="eager"
+                fallback={
+                  <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
+                    <Car size={48} className="text-gray-400" />
+                  </div>
+                }
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
+                <Car size={48} className="text-gray-400" />
+              </div>
+            )}
           </div>
         </div>
 

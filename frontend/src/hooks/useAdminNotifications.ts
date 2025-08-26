@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import { db } from '../firebase/init';
 import { useAuth } from './useAuth';
 
 export interface AdminNotification {
   id: string;
-  type: 'report' | 'system' | 'user';
+  type: 'report' | 'system' | 'user' | 'creator_application';
   title: string;
   content: string;
   isRead: boolean;
@@ -18,6 +18,13 @@ export interface AdminNotification {
     targetTitle?: string;
     reporterName: string;
     content: string;
+  };
+  applicationData?: {
+    channelName: string;
+    channelDescription: string;
+    contentCategory: string;
+    userName: string;
+    userId: string;
   };
 }
 

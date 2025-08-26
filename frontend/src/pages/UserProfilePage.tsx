@@ -5,10 +5,12 @@ import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { FollowButton } from '../components/ui/FollowButton';
 import { ThreadCard } from '../components/ui/ThreadCard';
-import { VehicleCard } from '../components/ui/VehicleCard';
 import { db } from '../firebase/init';
+import { useAuth } from '../hooks/useAuth';
 import { useFollow } from '../hooks/useFollow';
-import { Thread, User as UserType } from '../types';
+import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
+import { useThreads } from '../hooks/useThreads';
+import { User as UserType } from '../types';
 
 type ProfileTab = 'posts' | 'questions' | 'maintenance';
 
@@ -30,11 +32,23 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { user: currentUser } = useAuth();
   const { followersCount, followingCount, error: followError } = useFollow(user.id);
+
+  // 実際のスレッドデータを取得（プライバシーフィルタリング付き）
+  const { threads: allThreads, loading: threadsLoading } = useThreads({ 
+    currentUserId: currentUser?.uid 
+  });
+
+  // 実際のメンテナンスデータを取得（プライバシーフィルタリング付き）
+  const { maintenancePosts, loading: maintenanceLoading } = useMaintenancePosts({ 
+    currentUserId: currentUser?.uid 
+  });
 
   console.log('UserProfilePage - User data:', {
     userId: user.id,
     userName: user.name,
+    currentUserId: currentUser?.uid,
     followError
   });
 
@@ -62,34 +76,19 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     fetchUserData();
   }, [user.id]);
 
-  // ダミーデータとして、このユーザーの投稿を生成
-  const userPosts: Thread[] = [
-    {
-      id: "user1",
-      title: `${user.name}の投稿`,
-      content: "これは他のユーザーの投稿です。",
-      author: user.name,
-      replies: 5,
-      likes: 12,
-      tags: ["カスタム", "メンテナンス"],
-      createdAt: "2日前",
-      type: "post"
-    },
-    {
-      id: "user2",
-      title: `${user.name}の質問`,
-      content: "これは他のユーザーの質問です。",
-      author: user.name,
-      replies: 8,
-      likes: 3,
-      tags: ["質問", "初心者"],
-      createdAt: "1日前",
-      type: "question"
-    }
-  ];
+  // このユーザーの投稿と質問をフィルタリング
+  const userPosts = allThreads.filter(thread => 
+    thread.authorId === user.id && thread.type === 'post'
+  );
+  
+  const userQuestions = allThreads.filter(thread => 
+    thread.authorId === user.id && thread.type === 'question'
+  );
 
-  const userQuestions = userPosts.filter(thread => thread.type === 'question');
-  const userPostThreads = userPosts.filter(thread => thread.type === 'post');
+  // このユーザーのメンテナンス記録をフィルタリング
+  const userMaintenanceRecords = maintenancePosts.filter(post => 
+    post.authorId === user.id
+  );
 
   const handleThreadClick = (threadId: string) => {
     onThreadClick?.(threadId);
@@ -104,35 +103,99 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       case 'posts':
         return (
           <div className="space-y-4">
-            {userPostThreads.map((thread) => (
-              <ThreadCard
-                key={thread.id}
-                thread={thread}
-                onClick={() => handleThreadClick(thread.id)}
-                onUserClick={onUserClick}
-              />
-            ))}
+            {threadsLoading ? (
+              <div className="text-center py-8">
+                <div className="text-sm text-gray-400">読み込み中...</div>
+              </div>
+            ) : userPosts.length > 0 ? (
+              userPosts.map((thread) => (
+                <ThreadCard
+                  key={thread.id}
+                  thread={thread}
+                  onClick={() => handleThreadClick(thread.id)}
+                  onUserClick={onUserClick}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-sm text-gray-400">投稿がありません</div>
+              </div>
+            )}
           </div>
         );
       case 'questions':
         return (
           <div className="space-y-4">
-            {userQuestions.map((thread) => (
-              <ThreadCard
-                key={thread.id}
-                thread={thread}
-                onClick={() => handleThreadClick(thread.id)}
-                onUserClick={onUserClick}
-              />
-            ))}
+            {threadsLoading ? (
+              <div className="text-center py-8">
+                <div className="text-sm text-gray-400">読み込み中...</div>
+              </div>
+            ) : userQuestions.length > 0 ? (
+              userQuestions.map((thread) => (
+                <ThreadCard
+                  key={thread.id}
+                  thread={thread}
+                  onClick={() => handleThreadClick(thread.id)}
+                  onUserClick={onUserClick}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-sm text-gray-400">質問がありません</div>
+              </div>
+            )}
           </div>
         );
       case 'maintenance':
         return (
           <div className="space-y-4">
-            <div className="text-center py-8">
-              <div className="text-sm text-gray-400">メンテナンス記録は非公開です</div>
-            </div>
+            {maintenanceLoading ? (
+              <div className="text-center py-8">
+                <div className="text-sm text-gray-400">読み込み中...</div>
+              </div>
+            ) : userMaintenanceRecords.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {userMaintenanceRecords.map((post) => (
+                  <div
+                    key={post.id}
+                    className="bg-surface rounded-lg p-3 cursor-pointer hover:bg-surface-light transition-colors"
+                    onClick={() => onThreadClick?.(post.id)}
+                  >
+                    <div className="aspect-[4/3] w-full rounded-lg overflow-hidden mb-2">
+                      {post.carImage ? (
+                        <img
+                          src={post.carImage}
+                          alt={post.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : post.images && post.images.length > 0 ? (
+                        <img
+                          src={post.images[0]}
+                          alt={post.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-600 to-gray-800">
+                          <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                            <span className="text-xs text-gray-600 font-bold">車</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-bold text-white truncate mb-1">{post.title}</h3>
+                    <p className="text-xs text-gray-300 line-clamp-2">{post.content}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-gray-400">{post.carModel}</span>
+                      <span className="text-xs text-gray-400">¥{post.cost.toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-sm text-gray-400">メンテナンス記録がありません</div>
+              </div>
+            )}
           </div>
         );
       default:
@@ -198,28 +261,32 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             onClick={onBackClick}
             className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
           >
-            <ArrowLeft size={20} className="text-white" />
+            <ArrowLeft size={20} className="text-text-primary" />
           </button>
-          <h1 className="text-xl font-bold text-white">{user.name}のプロフィール</h1>
+          <h1 className="text-lg font-bold text-text-primary">{user.name}のプロフィール</h1>
         </div>
 
-        {/* プロフィール情報 */}
-        <div className="bg-surface rounded-xl border border-surface-light p-4 mb-6">
-          {/* ユーザー基本情報 */}
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-xl flex items-center justify-center">
-              <User size={32} className="text-white" />
+        {/* ユーザー情報 */}
+        <div className="bg-surface rounded-xl p-4 mb-6 border border-surface-light">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-primary">
+              {user.avatar ? (
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <User size={24} className="text-white" />
+              )}
             </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-white truncate">{user.name}</h2>
-              <p className="text-sm text-gray-400">
-                {userData?.bio || '車・バイク愛好家'}
-              </p>
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-white">{user.name}</h2>
+              {userData?.bio && (
+                <p className="text-sm text-gray-300">{userData.bio}</p>
+              )}
             </div>
+            <FollowButton targetUserId={user.id} />
           </div>
           
           {/* フォロー統計 */}
-          <div className="flex items-center justify-center space-x-8 mb-4">
+          <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1">
               <UserCheck size={14} className="text-text-secondary" />
               <span className="text-sm text-text-secondary">
@@ -233,76 +300,46 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               </span>
             </div>
           </div>
-          
-          {/* フォローボタン */}
-          <div className="flex flex-col items-center space-y-2">
-            <FollowButton 
-              targetUserId={user.id} 
-              variant="primary"
-              size="md"
-              className="w-full max-w-[200px]"
-            />
-            {followError && (
-              <p className="text-xs text-red-400 text-center">
-                {followError}
-              </p>
-            )}
-          </div>
         </div>
 
-        {/* 愛車 */}
-        {user.cars && user.cars.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-sm font-bold text-white mb-3">愛車</h3>
-            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-              {user.cars.map((car) => (
-                <VehicleCard
-                  key={car}
-                  car={car}
-                  onClick={() => handleVehicleClick(car)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* タブ切り替え */}
-        <div className="flex space-x-1 mb-6 bg-surface rounded-xl p-1 shadow-sm">
+        <div className="flex space-x-1 mb-6 bg-surface rounded-xl p-0.5 shadow-sm">
           <button
             onClick={() => setActiveTab('posts')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
               activeTab === 'posts'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <MessageSquare size={16} />
+            <MessageSquare size={14} />
             <span>投稿</span>
           </button>
           <button
             onClick={() => setActiveTab('questions')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
               activeTab === 'questions'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <MessageSquare size={16} />
+            <MessageSquare size={14} />
             <span>質問</span>
           </button>
           <button
             onClick={() => setActiveTab('maintenance')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
               activeTab === 'maintenance'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Wrench size={16} />
+            <Wrench size={14} />
             <span>整備記録</span>
           </button>
         </div>
 
+        {/* タブコンテンツ */}
         <div key={activeTab} className="fade-in">
           {renderTabContent()}
         </div>

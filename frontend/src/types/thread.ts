@@ -13,5 +13,8 @@ export interface ThreadDoc {
   type: 'post' | 'question' | 'ad';
   adType?: 'parts' | 'video' | 'service' | 'contest' | 'event';
   vehicleKey?: string; // 車種キー
+  images?: string[]; // 画像URLの配列
   isDeleted?: boolean;
+  isPinned?: boolean; // 固定フラグ
+  pinnedAt?: any; // 固定日時
 }

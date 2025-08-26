@@ -1,6 +1,7 @@
 import { ArrowLeft, Image, Minus, Plus, Send, Upload } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { BannerAd } from '../components/ui/BannerAd';
+import { MentionTextarea } from '../components/ui/MentionTextarea';
 import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { createMaintenancePost } from '../lib/threads';
@@ -40,6 +41,7 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
   ]);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingStepImages, setUploadingStepImages] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -504,7 +506,7 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
             {/* 画像アップロード */}
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">
-                画像
+                画像 (サムネ)
               </label>
               <input
                 type="file"
@@ -595,11 +597,11 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                       <label className="block text-sm font-medium text-text-primary mb-1">
                         手順の詳細説明
                       </label>
-                      <textarea
+                      <MentionTextarea
                         value={step.description}
-                        onChange={(e) => {
+                        onChange={(value) => {
                           const newSteps = [...steps];
-                          newSteps[index] = { ...newSteps[index], description: e.target.value };
+                          newSteps[index] = { ...newSteps[index], description: value };
                           setSteps(newSteps);
                         }}
                         placeholder="手順の詳細を入力"
@@ -612,16 +614,16 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                       <label className="block text-sm font-medium text-text-primary mb-1">
                         コツ・注意点
                       </label>
-                      <textarea
+                      <MentionTextarea
                         value={step.tips || ''}
-                        onChange={(e) => {
+                        onChange={(value) => {
                           const newSteps = [...steps];
-                          newSteps[index] = { ...newSteps[index], tips: e.target.value };
+                          newSteps[index] = { ...newSteps[index], tips: value };
                           setSteps(newSteps);
                         }}
                         placeholder="コツや注意点があれば入力"
                         rows={2}
-                        className="w-full p-3 bg-surface border border-surface-light rounded-lg text-text-primary placeholder-gray-400 focus:outline-none focus:border-primary transition-colors resize-none"
+                        className="w-full p-3 bg-surface border border-surface-light rounded-lg text-text-primary placeholder-gray-400 focus:border-primary transition-colors resize-none"
                       />
                     </div>
                     
@@ -630,12 +632,12 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                         画像
                       </label>
                       {step.image ? (
-                        <div className="relative">
-                          <img 
-                            src={step.image} 
-                            alt={`Step ${step.order}`} 
-                            className="w-full h-32 object-cover rounded-lg"
-                          />
+                                                 <div className="relative">
+                           <img 
+                             src={step.image} 
+                             alt={`Step ${step.order}`} 
+                             className="w-full max-h-48 object-contain rounded-lg"
+                           />
                           <button
                             type="button"
                             onClick={() => {
@@ -651,19 +653,27 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                       ) : (
                         <label className="block w-full p-4 border-2 border-dashed border-surface-light rounded-lg text-center cursor-pointer hover:border-primary transition-colors">
                           <Image size={24} className="mx-auto mb-2 text-text-secondary" />
-                          <span className="text-text-secondary">画像追加</span>
+                          <span className="text-text-secondary">
+                            {uploadingStepImages[step.id] ? 'アップロード中...' : '画像追加'}
+                          </span>
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files[0]) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
+                            disabled={uploadingStepImages[step.id]}
+                            onChange={async (e) => {
+                              if (e.target.files && e.target.files[0] && user?.uid) {
+                                try {
+                                  setUploadingStepImages(prev => ({ ...prev, [step.id]: true }));
+                                  const imageUrl = await uploadToStorage(user.uid, e.target.files[0]);
                                   const newSteps = [...steps];
-                                  newSteps[index] = { ...newSteps[index], image: reader.result as string };
+                                  newSteps[index] = { ...newSteps[index], image: imageUrl };
                                   setSteps(newSteps);
-                                };
-                                reader.readAsDataURL(e.target.files[0]);
+                                } catch (error) {
+                                  console.error('手順画像のアップロードに失敗しました:', error);
+                                  alert('手順画像のアップロードに失敗しました');
+                                } finally {
+                                  setUploadingStepImages(prev => ({ ...prev, [step.id]: false }));
+                                }
                               }
                             }}
                             className="hidden"
@@ -699,9 +709,9 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
               <label className="block text-sm font-medium text-text-primary mb-2">
                 メモ
               </label>
-              <textarea
+              <MentionTextarea
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={setContent}
                 placeholder="整備の詳細を記録しましょう..."
                 rows={6}
                 className="w-full p-3 bg-surface border border-surface-light rounded-xl text-text-primary placeholder-gray-400 focus:outline-none focus:border-primary transition-colors resize-none"

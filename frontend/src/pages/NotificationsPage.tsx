@@ -1,8 +1,8 @@
-import { ArrowLeft, Bell, Heart, MessageCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bell, Heart, MessageCircle, Trash2, UserPlus, Video } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
-import { useAdminNotifications } from '../hooks/useAdminNotifications';
+import { AdminNotification, useAdminNotifications } from '../hooks/useAdminNotifications';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { NotificationDoc } from '../types/notification';
@@ -78,8 +78,11 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
       case 'reply':
         return <MessageCircle size={16} className="text-blue-500" />;
       case 'follow':
+        return <UserPlus size={16} className="text-green-500" />;
       case 'maintenance':
         return <Bell size={16} className="text-green-500" />;
+      case 'creator_application':
+        return <Video size={16} className="text-purple-500" />;
       default:
         return <Bell size={16} className="text-gray-400" />;
     }
@@ -90,9 +93,32 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
       if (!notification.isRead) {
         await markAsRead(notification.id);
       }
-      // TODO: 通知に関連する投稿に遷移する処理を追加
+      
+      // フォロー通知の場合はフォロワーのプロフィールページに遷移
+      if (notification.type === 'follow' && notification.followData) {
+        // TODO: フォロワーのプロフィールページに遷移する処理を追加
+        console.log('Navigate to follower profile:', notification.followData.followerId);
+      }
+      // TODO: 他の通知タイプに関連する投稿に遷移する処理を追加
     } catch (error) {
       console.error('Error handling notification click:', error);
+      alert('通知の処理中にエラーが発生しました。');
+    }
+  };
+
+  const handleAdminNotificationClick = async (notification: AdminNotification) => {
+    try {
+      if (!notification.isRead) {
+        await markAsRead(notification.id);
+      }
+      
+      // 配信者申請の通知の場合は申請管理ページに遷移
+      if (notification.type === 'creator_application') {
+        // TODO: 申請管理ページに遷移する処理を追加
+        console.log('Navigate to admin applications page');
+      }
+    } catch (error) {
+      console.error('Error handling admin notification click:', error);
       alert('通知の処理中にエラーが発生しました。');
     }
   };
@@ -151,7 +177,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
             )}
           </div>
 
-          {/* 通知一覧 */}
+          {/* 管理者通知と一般通知を統合して表示 */}
           {loading ? (
             <div className="text-center py-8">
               <div className="text-sm text-gray-400">読み込み中...</div>
@@ -166,12 +192,48 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
                 再試行
               </button>
             </div>
-          ) : notifications.length === 0 ? (
+          ) : (notifications.length === 0 && adminNotifications.length === 0) ? (
             <div className="text-center py-8">
               <div className="text-sm text-gray-400">通知はありません</div>
             </div>
           ) : (
             <div className="space-y-3">
+              {/* 管理者通知 */}
+              {userDoc?.isAdmin && adminNotifications.map((notification) => (
+                <div
+                  key={`admin-${notification.id}`}
+                  onClick={() => handleAdminNotificationClick(notification)}
+                  className={`bg-surface rounded-xl border border-surface-light p-4 cursor-pointer hover:scale-95 active:scale-95 transition-transform ${
+                    !notification.isRead ? 'bg-surface-light border-primary border-opacity-30' : ''
+                  }`}
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 mt-1">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-white mb-1">
+                        {notification.title || '管理者通知'}
+                      </h3>
+                      <p className="text-xs text-gray-400 mb-2">
+                        {notification.content || '通知内容がありません'}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">
+                          {notification.createdAt ? formatTime(notification.createdAt.toDate()) : '不明'}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          {!notification.isRead && (
+                            <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* 一般通知 */}
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
@@ -191,6 +253,13 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
                       <p className="text-xs text-gray-400 mb-2">
                         {notification.content || '通知内容がありません'}
                       </p>
+                      {notification.type === 'follow' && notification.followData && (
+                        <div className="mb-2">
+                          <span className="text-xs text-primary">
+                            @{notification.followData.followerName}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-gray-500">
                           {notification.createdAt ? formatTime(notification.createdAt) : '不明'}

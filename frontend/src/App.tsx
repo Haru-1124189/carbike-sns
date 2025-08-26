@@ -14,12 +14,13 @@ import { AdminApplicationsPage } from './pages/AdminApplicationsPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AuthPage } from './pages/AuthPage';
 import { BlockListPage } from './pages/BlockListPage';
-import { CarListPage } from './pages/CarListPage';
+
 import { ChannelsPage } from './pages/ChannelsPage';
 import { ContactPage } from './pages/ContactPage';
 import { CreatePostPage } from './pages/CreatePostPage';
 import { CreatorApplicationPage } from './pages/CreatorApplicationPage';
 import { CreatorUploadPage } from './pages/CreatorUploadPage';
+import { EditMaintenancePage } from './pages/EditMaintenancePage';
 import { EditVehiclePage } from './pages/EditVehiclePage';
 import { HelpPage } from './pages/HelpPage';
 import { HomePage } from './pages/HomePage';
@@ -40,7 +41,7 @@ import { ThemeSettingsPage } from './pages/ThemeSettingsPage';
 import { ThreadDetailPage } from './pages/ThreadDetailPage';
 import { ThreadsPage } from './pages/ThreadsPage';
 import { UploadVideoPage } from './pages/UploadVideoPage';
-import { UserNameSetupPage } from './pages/UserNameSetupPage';
+import { UsernameSetupPage } from './pages/UserNameSetupPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { VehicleDetailPage } from './pages/VehicleDetailPage';
 import { VideoDetailPage } from './pages/VideoDetailPage';
@@ -53,7 +54,9 @@ function AppContent() {
   const { threads: allThreads } = useThreads();
   const { maintenancePosts: allMaintenancePosts } = useMaintenancePosts();
   const { unreadCount, fetchUnreadCount } = useNotifications();
-  const { vehicles, deleteVehicle } = useVehicles();
+  const { vehicles, deleteVehicle, loading: vehiclesLoading } = useVehicles();
+  
+
   const [activeTab, setActiveTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSubPage, setSettingsSubPage] = useState<string | null>(null);
@@ -66,7 +69,7 @@ function AppContent() {
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [showMaintenanceDetail, setShowMaintenanceDetail] = useState(false);
-  const [showCarList, setShowCarList] = useState(false);
+
   const [showRegisteredCars, setShowRegisteredCars] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [selectedPostType, setSelectedPostType] = useState<string>('general');
@@ -82,6 +85,7 @@ function AppContent() {
   const [showAuth, setShowAuth] = useState(false);
   const [showNewThread, setShowNewThread] = useState(false);
   const [showNewMaintenance, setShowNewMaintenance] = useState(false);
+  const [showEditMaintenance, setShowEditMaintenance] = useState(false);
   const [initialThreadTab, setInitialThreadTab] = useState<'post' | 'question'>('post');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showUserNameSetup, setShowUserNameSetup] = useState(false);
@@ -120,10 +124,23 @@ function AppContent() {
   // ユーザー名が設定されていない場合はユーザー名設定画面を表示
   if (user && userDoc && !userDoc.displayName && !showUserNameSetup) {
     return (
-      <UserNameSetupPage
-        onBackClick={() => {
+      <UsernameSetupPage
+        onBack={() => {
           // ログアウトして認証画面に戻る
           // 実際のアプリでは、ここでログアウト処理を行う
+          window.location.reload();
+        }}
+        onComplete={() => setShowUserNameSetup(true)}
+      />
+    );
+  }
+
+  // ユーザー名（@username）が設定されていない場合はユーザー名設定画面を表示
+  if (user && userDoc && !userDoc.username && !showUserNameSetup) {
+    return (
+      <UsernameSetupPage
+        onBack={() => {
+          // ログアウトして認証画面に戻る
           window.location.reload();
         }}
         onComplete={() => setShowUserNameSetup(true)}
@@ -157,11 +174,36 @@ function AppContent() {
     }
   };
 
-  const handleVehicleClick = (vehicleId: string) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
+  const handleVehicleClick = async (vehicleId: string) => {
+    // まずローカルのvehicles配列から検索
+    let vehicle = vehicles.find(v => v.id === vehicleId);
+    
     if (vehicle) {
       setSelectedVehicle(vehicle);
       setShowVehicleDetail(true);
+    } else {
+      // ローカルにない場合はFirestoreから直接取得
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('./firebase/init');
+        
+        const vehicleDoc = await getDoc(doc(db, 'vehicles', vehicleId));
+        
+        if (vehicleDoc.exists()) {
+          const vehicleData = vehicleDoc.data();
+          vehicle = {
+            id: vehicleDoc.id,
+            ...vehicleData
+          } as any;
+          
+          setSelectedVehicle(vehicle);
+          setShowVehicleDetail(true);
+        } else {
+          alert('車両が見つかりませんでした');
+        }
+      } catch (error) {
+        alert('車両データの取得に失敗しました');
+      }
     }
   };
 
@@ -177,11 +219,8 @@ function AppContent() {
   };
 
   const handleEditVehicle = () => {
-    console.log('App.tsx: handleEditVehicle が呼ばれました');
-    console.log('selectedVehicle:', selectedVehicle);
     setShowVehicleDetail(false);
     setShowEditVehicle(true);
-    console.log('showEditVehicle を true に設定しました');
   };
 
   const handleUserClick = async (userId: string, displayName?: string) => {
@@ -262,6 +301,14 @@ function AppContent() {
     setShowCreatePost(true);
   };
 
+  const handleEditMaintenance = (postId: string) => {
+    const maintenance = allMaintenancePosts.find(post => post.id === postId);
+    if (maintenance) {
+      setSelectedMaintenance(maintenance);
+      setShowEditMaintenance(true);
+    }
+  };
+
   const handleQuickAction = (actionId: string) => {
     switch (actionId) {
       case 'post':
@@ -297,11 +344,12 @@ function AppContent() {
     setShowThemeSettings(false);
     setShowUserProfile(false);
     setShowMaintenanceDetail(false);
-    setShowCarList(false);
+    
     setShowRegisteredCars(false);
     setShowCreatePost(false);
     setShowNewThread(false);
     setShowNewMaintenance(false);
+    setShowEditMaintenance(false);
     setShowChannels(false); // チャンネルページを閉じる
     setShowUploadVideo(false); // 動画アップロードページも閉じる
     setPreviousPage(tabId);
@@ -357,12 +405,6 @@ function AppContent() {
   };
 
   const renderPage = () => {
-    console.log('renderPage 状態:', { 
-      showEditVehicle, 
-      showVehicleDetail, 
-      selectedVehicle: selectedVehicle?.id,
-      settingsSubPage 
-    });
     
     if (settingsSubPage) {
       switch (settingsSubPage) {
@@ -480,25 +522,32 @@ function AppContent() {
           post={selectedMaintenance}
           onBackClick={() => setShowMaintenanceDetail(false)}
           onUserClick={handleUserClick}
+          onEditClick={handleEditMaintenance}
         />
       );
     }
 
-    if (showCarList) {
+    if (showEditMaintenance) {
       return (
-        <CarListPage
-          onBackClick={() => setShowCarList(false)}
-          onAddCar={handleAddInterestedCar}
-          interestedCars={interestedCars}
+        <EditMaintenancePage
+          post={selectedMaintenance}
+          onBackClick={() => setShowEditMaintenance(false)}
+          onSuccess={() => {
+            setShowEditMaintenance(false);
+            setShowMaintenanceDetail(true);
+          }}
         />
       );
     }
+
+
 
     if (showRegisteredCars) {
       return (
         <RegisteredInterestedCarsPage
           onBackClick={() => setShowRegisteredCars(false)}
           onRemoveCar={handleRemoveInterestedCar}
+          onAddCar={handleAddInterestedCar}
           interestedCars={interestedCars}
         />
       );
@@ -571,7 +620,7 @@ function AppContent() {
             onViewAllThreads={handleViewAllThreads}
             onQuickAction={handleQuickAction}
             onVehicleClick={handleVehicleClick}
-            onShowCarList={() => setShowCarList(true)}
+
             onShowRegisteredCars={() => setShowRegisteredCars(true)}
             onDeleteThread={handleDeleteThread}
             onVideoClick={handleVideoClick}
@@ -605,6 +654,7 @@ function AppContent() {
             onUserClick={handleUserClick}
             onAddMaintenance={() => setShowNewMaintenance(true)}
             onDeleteMaintenance={handleDeleteMaintenance}
+            onEditMaintenance={handleEditMaintenance}
           />
         );
       case 'post':
@@ -650,7 +700,7 @@ function AppContent() {
           onViewAllThreads={handleViewAllThreads}
           onQuickAction={handleQuickAction}
           onVehicleClick={handleVehicleClick}
-          onShowCarList={() => setShowCarList(true)}
+
           onShowRegisteredCars={() => setShowRegisteredCars(true)}
           onDeleteThread={handleDeleteThread}
           onVideoClick={handleVideoClick}
@@ -662,16 +712,12 @@ function AppContent() {
     }
   };
 
-  return (
+    return (
     <div className="App">
-             {/* 認証状態のデバッグ表示 */}
-       <div style={{ position: 'fixed', top: 0, right: 0, background: 'rgba(0,0,0,0.8)', color: 'white', padding: '4px 8px', fontSize: '12px', zIndex: 9999 }}>
-         Auth: {user ? `Logged In (${user.uid?.substring(0, 8)}...)` : 'Not Logged In'} | Active Tab: {activeTab} | PostType: {selectedPostType} | ShowNewThread: {showNewThread.toString()} | ShowCreatePost: {showCreatePost.toString()}
-       </div>
-      {renderPage()}
-      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
-    </div>
-  );
+       {renderPage()}
+       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+     </div>
+   );
 }
 
 function App() {

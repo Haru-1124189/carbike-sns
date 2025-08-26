@@ -1,7 +1,7 @@
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../firebase/clients';
-import { LikeTarget, toggleLike } from '../lib/likes';
+import { LikeTarget, toggleLike, getLikeHistory } from '../lib/likes';
 
 export const useLikes = (targetId: string, userId: string, targetType: LikeTarget = 'thread') => {
   const [isLiked, setIsLiked] = useState(false);
@@ -92,4 +92,37 @@ export const useThreadLikes = (threadId: string, userId: string) => {
 // メンテナンス投稿専用のいいねフック
 export const useMaintenanceLikes = (maintenanceId: string, userId: string) => {
   return useLikes(maintenanceId, userId, 'maintenance');
+};
+
+// いいね履歴を取得するフック
+export const useLikeHistory = (targetId: string, targetType: LikeTarget = 'thread') => {
+  const [likeHistory, setLikeHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!targetId) {
+      setLikeHistory([]);
+      setLoading(false);
+      return;
+    }
+
+    const fetchLikeHistory = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const history = await getLikeHistory(targetId, targetType);
+        setLikeHistory(history);
+      } catch (err) {
+        console.error('Error fetching like history:', err);
+        setError(err instanceof Error ? err.message : 'いいね履歴の取得に失敗しました');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLikeHistory();
+  }, [targetId, targetType]);
+
+  return { likeHistory, loading, error };
 };

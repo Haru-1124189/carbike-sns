@@ -26,7 +26,10 @@ export interface Thread {
   type: 'post' | 'question' | 'ad';
   adType?: 'parts' | 'video' | 'service' | 'contest' | 'event';
   vehicleKey?: string; // 車種キー
+  images?: string[]; // 画像URLの配列
   isDeleted?: boolean; // 削除フラグ
+  isPinned?: boolean; // 固定フラグ
+  pinnedAt?: Date | string; // 固定日時
 }
 
 export interface ThreadDoc {
@@ -113,6 +116,7 @@ export interface UserProfile {
   followersCount: number;
   followingCount: number;
   postsCount: number;
+  isPrivate: boolean; // 鍵アカウント設定
   createdAt: any; // Firestore Timestamp
   updatedAt: any; // Firestore Timestamp
 }
@@ -184,6 +188,8 @@ export interface MaintenancePost {
   difficulty?: 'easy' | 'medium' | 'hard';
   tools?: string[];
   parts?: string[];
+  isPinned?: boolean; // 固定フラグ
+  pinnedAt?: string; // 固定日時
 }
 
 export interface MaintenancePostDoc {
@@ -211,6 +217,8 @@ export interface MaintenancePostDoc {
   tools?: string[];
   parts?: string[];
   isDeleted?: boolean;
+  isPinned?: boolean; // 固定フラグ
+  pinnedAt?: any; // 固定日時
 }
 
 // 動画配信申請の型定義

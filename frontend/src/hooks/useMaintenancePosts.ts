@@ -2,8 +2,13 @@ import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestor
 import { useEffect, useState } from 'react';
 import { db } from '../firebase/clients';
 import { MaintenancePostDoc } from '../types';
+import { canViewUserContent } from '../lib/privacy';
 
-export const useMaintenancePosts = () => {
+interface UseMaintenancePostsOptions {
+  currentUserId?: string; // プライバシーフィルタリング用
+}
+
+export const useMaintenancePosts = (options: UseMaintenancePostsOptions = {}) => {
   const [maintenancePosts, setMaintenancePosts] = useState<MaintenancePostDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +22,7 @@ export const useMaintenancePosts = () => {
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const posts = snapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -27,8 +32,63 @@ export const useMaintenancePosts = () => {
             updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt,
           } as MaintenancePostDoc;
         });
+
+        // プライバシーフィルタリング
+        if (options.currentUserId) {
+          const privacyFilteredPosts = await Promise.all(
+            posts.map(async (post) => {
+              if (!post.authorId) return post; // 投稿者IDがない場合は表示
+              
+              const canView = await canViewUserContent(post.authorId, options.currentUserId!);
+              return canView ? post : null;
+            })
+          );
+          
+          const filteredPosts = privacyFilteredPosts.filter(post => post !== null) as MaintenancePostDoc[];
+          
+          // 固定された投稿を最初に表示し、その後は新着順にソート
+          const sortedPosts = filteredPosts.sort((a, b) => {
+            // 固定された投稿を最初に
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            
+            // 両方とも固定されている場合は固定日時順
+            if (a.isPinned && b.isPinned) {
+              const pinnedAtA = a.pinnedAt instanceof Date ? a.pinnedAt.getTime() : new Date(a.pinnedAt || 0).getTime();
+              const pinnedAtB = b.pinnedAt instanceof Date ? b.pinnedAt.getTime() : new Date(b.pinnedAt || 0).getTime();
+              return pinnedAtB - pinnedAtA; // 新しい固定を上に
+            }
+            
+            // 固定されていない場合は作成日時順
+            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime(); // 新着順
+          });
+          
+          setMaintenancePosts(sortedPosts);
+        } else {
+          // 固定された投稿を最初に表示し、その後は新着順にソート
+          const sortedPosts = posts.sort((a, b) => {
+            // 固定された投稿を最初に
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            
+            // 両方とも固定されている場合は固定日時順
+            if (a.isPinned && b.isPinned) {
+              const pinnedAtA = a.pinnedAt instanceof Date ? a.pinnedAt.getTime() : new Date(a.pinnedAt || 0).getTime();
+              const pinnedAtB = b.pinnedAt instanceof Date ? b.pinnedAt.getTime() : new Date(b.pinnedAt || 0).getTime();
+              return pinnedAtB - pinnedAtA; // 新しい固定を上に
+            }
+            
+            // 固定されていない場合は作成日時順
+            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+            return dateB.getTime() - dateA.getTime(); // 新着順
+          });
+          
+          setMaintenancePosts(sortedPosts);
+        }
         
-        setMaintenancePosts(posts);
         setLoading(false);
       },
       (err) => {
@@ -39,7 +99,7 @@ export const useMaintenancePosts = () => {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [options.currentUserId]);
 
   const refresh = () => {
     setLoading(true);

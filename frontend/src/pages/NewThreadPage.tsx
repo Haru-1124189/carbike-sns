@@ -1,6 +1,7 @@
 import { ArrowLeft, Hash, Image, Send, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { BannerAd } from '../components/ui/BannerAd';
+import { MentionTextarea } from '../components/ui/MentionTextarea';
 import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { createThread } from '../lib/threads';
@@ -202,9 +203,9 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 内容 *
               </label>
-              <textarea
+              <MentionTextarea
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={setContent}
                 className="w-full bg-transparent border border-surface-light rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:border-primary resize-none pr-12"
                 placeholder="内容を入力"
                 rows={8}

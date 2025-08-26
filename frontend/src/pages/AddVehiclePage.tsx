@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
 import { SingleImageUpload } from '../components/ui/SingleImageUpload';
+import { VehicleSelector } from '../components/ui/VehicleSelector';
 import { useVehicles } from '../hooks/useVehicles';
+import { VehicleModel } from '../types/vehicleData';
 
 interface AddVehiclePageProps {
   onBackClick?: () => void;
@@ -13,6 +15,7 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
   const [vehicleName, setVehicleName] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<'car' | 'bike' | null>(null);
+  const [selectedVehicleModel, setSelectedVehicleModel] = useState<VehicleModel | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [customContent, setCustomContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -23,6 +26,14 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
     setSelectedImage(image);
   };
 
+  const handleVehicleModelSelect = (vehicleModel: VehicleModel | null) => {
+    setSelectedVehicleModel(vehicleModel);
+    if (vehicleModel) {
+      setVehicleName(vehicleModel.displayName);
+      setSelectedType(vehicleModel.type === 'motorcycle' ? 'bike' : 'car');
+    }
+  };
+
   const handleSave = async () => {
     if (!vehicleName.trim() || !selectedType) {
       alert('車両名と車種を入力してください。');
@@ -31,14 +42,6 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
 
     try {
       setIsSaving(true);
-      
-      console.log('車両保存開始:', {
-        name: vehicleName.trim(),
-        type: selectedType,
-        image: selectedImage,
-        year: selectedYear,
-        customContent: customContent.trim()
-      });
       
       const vehicleData: any = {
         name: vehicleName.trim(),
@@ -57,12 +60,14 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
       }
 
       const vehicleId = await addVehicle(vehicleData);
-
-      console.log('車両保存成功:', vehicleId);
       
       // 成功時にフィードバック
       alert('車両を登録しました！');
-      onBackClick?.();
+      
+      // 少し待ってからページを戻る（データの同期を待つ）
+      setTimeout(() => {
+        onBackClick?.();
+      }, 500);
     } catch (error) {
       console.error('車両の保存に失敗しました:', error);
       
@@ -118,6 +123,20 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
             />
           </div>
 
+          {/* 車種選択 */}
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-white mb-3">車種を検索</label>
+            <VehicleSelector
+              selectedVehicle={selectedVehicleModel}
+              onVehicleSelect={handleVehicleModelSelect}
+              vehicleType="all"
+              placeholder="車種名で検索..."
+            />
+            <p className="text-xs text-gray-400 mt-2">
+              車種を選択すると、車両名と種類が自動で入力されます
+            </p>
+          </div>
+
           {/* 車両名 */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-white mb-3">車両名</label>
@@ -128,11 +147,14 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick }) =
               placeholder="例: Nissan S13"
               className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20"
             />
+            <p className="text-xs text-gray-400 mt-2">
+              必要に応じて車両名を編集できます
+            </p>
           </div>
 
-          {/* 車種選択 */}
+          {/* 車種タイプ選択 */}
           <div className="mb-6">
-            <label className="block text-sm font-bold text-white mb-3">車種</label>
+            <label className="block text-sm font-bold text-white mb-3">車種タイプ</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setSelectedType('car')}

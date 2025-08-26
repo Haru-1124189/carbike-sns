@@ -1,19 +1,42 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  getDocs, 
-  updateDoc, 
-  increment,
-  serverTimestamp,
-  getDoc,
-  writeBatch
+import {
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    increment,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where,
+    writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase/init';
 import { Follow } from '../types';
+
+// フォロー通知を作成する関数
+const createFollowNotification = async (followerId: string, followingId: string, followerName: string) => {
+  try {
+    const notificationData = {
+      userId: followingId, // フォローされたユーザーに通知
+      type: 'follow',
+      title: '新しいフォロワー',
+      content: `${followerName}さんがあなたをフォローしました`,
+      isRead: false,
+      createdAt: serverTimestamp(),
+      followData: {
+        followerId: followerId,
+        followerName: followerName
+      }
+    };
+
+    await addDoc(collection(db, 'notifications'), notificationData);
+    console.log('Follow notification created successfully');
+  } catch (error) {
+    console.error('Error creating follow notification:', error);
+    // 通知の作成に失敗してもフォローは続行
+  }
+};
 
 // フォローする
 export const followUser = async (followerId: string, followingId: string): Promise<void> => {
@@ -77,6 +100,11 @@ export const followUser = async (followerId: string, followingId: string): Promi
 
     await batch.commit();
     console.log('バッチ処理完了');
+
+    // フォロー通知を作成
+    const followerData = await getDoc(doc(db, 'users', followerId));
+    const followerName = followerData.data()?.displayName || 'ユーザー';
+    await createFollowNotification(followerId, followingId, followerName);
   } catch (error) {
     console.error('Error following user:', error);
     throw new Error(`フォローに失敗しました: ${error}`);
