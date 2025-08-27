@@ -1,6 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase/clients';
-import { createLikeNotification } from './notifications';
+import { createNotificationWithCheck } from './notifications';
 
 export type LikeTarget = 'thread' | 'maintenance';
 
@@ -104,13 +104,19 @@ export const toggleLike = async (targetId: string, userId: string, targetType: L
             const userDoc = await getDoc(doc(db, 'users', userId));
             const fromUserName = userDoc.exists() ? userDoc.data().displayName || 'ユーザー' : 'ユーザー';
             
-            await createLikeNotification(
-              targetUserId,
-              userId,
-              fromUserName,
-              targetId,
-              targetType,
-              targetTitle
+            // 通知設定をチェックして通知を作成
+            await createNotificationWithCheck(
+              {
+                userId: targetUserId,
+                type: 'like',
+                title: 'いいね通知',
+                content: `${fromUserName}があなたの投稿にいいねしました`,
+                targetId: targetId,
+                targetType: targetType,
+                fromUserId: userId,
+                fromUserName: fromUserName
+              },
+              'likeNotifications'
             );
           }
         }

@@ -1,5 +1,4 @@
 import {
-    addDoc,
     collection,
     doc,
     getDoc,
@@ -13,24 +12,23 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/init';
 import { Follow } from '../types';
+import { createNotificationWithCheck } from './notifications';
 
 // フォロー通知を作成する関数
 const createFollowNotification = async (followerId: string, followingId: string, followerName: string) => {
   try {
-    const notificationData = {
-      userId: followingId, // フォローされたユーザーに通知
-      type: 'follow',
-      title: '新しいフォロワー',
-      content: `${followerName}さんがあなたをフォローしました`,
-      isRead: false,
-      createdAt: serverTimestamp(),
-      followData: {
-        followerId: followerId,
-        followerName: followerName
-      }
-    };
-
-    await addDoc(collection(db, 'notifications'), notificationData);
+    // 通知設定をチェックして通知を作成
+    await createNotificationWithCheck(
+      {
+        userId: followingId,
+        type: 'follow',
+        title: '新しいフォロワー',
+        content: `${followerName}さんがあなたをフォローしました`,
+        fromUserId: followerId,
+        fromUserName: followerName
+      },
+      'followNotifications'
+    );
     console.log('Follow notification created successfully');
   } catch (error) {
     console.error('Error creating follow notification:', error);

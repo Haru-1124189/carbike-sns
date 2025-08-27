@@ -1,8 +1,10 @@
 import { ArrowLeft, Bell, Car, FileText, HelpCircle, Palette, Shield, Upload, User } from 'lucide-react';
-import React, { useState } from 'react';
+import React from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { BannerAd } from '../components/ui/BannerAd';
+import { NotificationToggle } from '../components/ui/NotificationToggle';
 import { useAuth } from '../hooks/useAuth';
+import { useNotificationSettings } from '../hooks/useNotificationSettings';
 
 interface SettingsPageProps {
   onBackClick?: () => void;
@@ -12,23 +14,8 @@ interface SettingsPageProps {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavigate, onLoginClick }) => {
   const { userDoc } = useAuth();
+  const { settings, loading, updateSetting } = useNotificationSettings();
   
-  const [notifications, setNotifications] = useState({
-    likes: true,
-    replies: true,
-    maintenance: false,
-    follows: true
-  });
-
-
-
-  const toggleNotification = (key: keyof typeof notifications) => {
-    setNotifications(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
-
   const creatorSection = {
     title: "クリエイター",
     icon: Upload,
@@ -102,28 +89,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
           title: 'いいね通知',
           description: '投稿へのいいねを通知',
           type: 'toggle',
-          value: notifications.likes
+          value: settings.likeNotifications
         },
         {
           id: 'replies',
           title: '返信通知',
           description: '質問への返信を通知',
           type: 'toggle',
-          value: notifications.replies
+          value: settings.replyNotifications
         },
         {
           id: 'maintenance',
           title: '整備リマインダー',
           description: '車両の整備時期を通知',
           type: 'toggle',
-          value: notifications.maintenance
+          value: settings.maintenanceReminders
         },
         {
           id: 'follows',
           title: 'フォロー通知',
           description: '新しいフォロワーを通知',
           type: 'toggle',
-          value: notifications.follows
+          value: settings.followNotifications
         }
       ]
     },
@@ -234,7 +221,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
 
   const handleSettingClick = (sectionTitle: string, itemId: string) => {
     if (itemId === 'likes' || itemId === 'replies' || itemId === 'maintenance' || itemId === 'follows') {
-      toggleNotification(itemId as keyof typeof notifications);
+      updateSetting(itemId as keyof typeof settings, !settings[itemId as keyof typeof settings]);
     } else {
       if (itemId === 'logout') {
         if (window.confirm('ログアウトしますか？')) {
@@ -294,8 +281,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
                   {section.items.map((item) => (
                     <div
                       key={item.id}
-                      onClick={() => handleSettingClick(section.title, item.id)}
-                      className="bg-surface rounded-xl border border-surface-light p-4 cursor-pointer hover:scale-95 active:scale-95 transition-transform shadow-sm"
+                      onClick={() => {
+                        if (item.type !== 'toggle') {
+                          handleSettingClick(section.title, item.id);
+                        }
+                      }}
+                      className={`bg-surface rounded-xl border border-surface-light p-4 ${
+                        item.type === 'toggle' ? '' : 'cursor-pointer hover:scale-95 active:scale-95 transition-transform'
+                      } shadow-sm`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -308,13 +301,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
                         </div>
                         
                         {item.type === 'toggle' && 'value' in item && (
-                          <div className={`w-12 h-6 rounded-full relative transition-colors ${
-                            item.value ? 'bg-primary' : 'bg-gray-600'
-                          }`}>
-                            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                              item.value ? 'right-0.5' : 'left-0.5'
-                            }`}></div>
-                          </div>
+                          <NotificationToggle
+                            checked={item.value}
+                            onChange={(checked) => {
+                              if (item.id === 'likes') {
+                                updateSetting('likeNotifications', checked);
+                              } else if (item.id === 'replies') {
+                                updateSetting('replyNotifications', checked);
+                              } else if (item.id === 'maintenance') {
+                                updateSetting('maintenanceReminders', checked);
+                              } else if (item.id === 'follows') {
+                                updateSetting('followNotifications', checked);
+                              }
+                            }}
+                            loading={loading}
+                          />
                         )}
                         
                         {item.type === 'select' && (

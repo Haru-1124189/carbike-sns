@@ -44,6 +44,26 @@ export const PersistentImage: React.FC<PersistentImageProps> = ({
         setHasError(false);
         setShowFallback(false);
 
+        // Base64形式のURLの場合は直接使用
+        if (src.startsWith('data:image/')) {
+          if (isMounted) {
+            setImageSrc(src);
+            setIsLoading(false);
+            onLoad?.();
+          }
+          return;
+        }
+
+        // Firebase Storage URLの場合は直接使用
+        if (src.includes('firebasestorage.googleapis.com')) {
+          if (isMounted) {
+            setImageSrc(src);
+            setIsLoading(false);
+            onLoad?.();
+          }
+          return;
+        }
+
         // 新しい画像URLが設定された時にキャッシュをクリア
         if (imageSrc && imageSrc !== src) {
           clearImageCacheForUrl(imageSrc);

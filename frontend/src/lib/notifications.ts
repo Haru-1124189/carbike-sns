@@ -1,6 +1,25 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase/clients';
 import { CreateNotificationData, NotificationDoc } from '../types/notification';
+
+// 通知設定をチェック
+export const checkNotificationSetting = async (userId: string, settingKey: string): Promise<boolean> => {
+  try {
+    const settingsDoc = await getDoc(doc(db, 'notificationSettings', userId));
+    
+    if (settingsDoc.exists()) {
+      const settings = settingsDoc.data();
+      return settings[settingKey] !== false; // デフォルトはtrue
+    }
+    
+    // 設定が存在しない場合はデフォルトで有効
+    return true;
+  } catch (error) {
+    console.error('Error checking notification setting:', error);
+    // エラーの場合はデフォルトで有効
+    return true;
+  }
+};
 
 // 通知を作成
 export const createNotification = async (data: CreateNotificationData): Promise<string> => {
@@ -16,6 +35,25 @@ export const createNotification = async (data: CreateNotificationData): Promise<
     return docRef.id;
   } catch (error) {
     console.error('Error creating notification:', error);
+    throw error;
+  }
+};
+
+// 通知を作成（設定をチェック）
+export const createNotificationWithCheck = async (data: CreateNotificationData, settingKey: string): Promise<string | null> => {
+  try {
+    // 通知設定をチェック
+    const isEnabled = await checkNotificationSetting(data.userId, settingKey);
+    
+    if (!isEnabled) {
+      console.log(`Notification disabled for user ${data.userId}, setting: ${settingKey}`);
+      return null;
+    }
+    
+    // 設定が有効な場合のみ通知を作成
+    return await createNotification(data);
+  } catch (error) {
+    console.error('Error creating notification with check:', error);
     throw error;
   }
 };

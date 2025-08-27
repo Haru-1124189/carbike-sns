@@ -152,7 +152,7 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
         if (file.type.startsWith('image/')) {
-          return await uploadToStorage(user.uid, file);
+          return await uploadToStorage(user.uid, file, false, true);
         }
         throw new Error('画像ファイルのみアップロード可能です');
       });
@@ -664,7 +664,7 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                               if (e.target.files && e.target.files[0] && user?.uid) {
                                 try {
                                   setUploadingStepImages(prev => ({ ...prev, [step.id]: true }));
-                                  const imageUrl = await uploadToStorage(user.uid, e.target.files[0]);
+                                  const imageUrl = await uploadToStorage(user.uid, e.target.files[0], false, true);
                                   const newSteps = [...steps];
                                   newSteps[index] = { ...newSteps[index], image: imageUrl };
                                   setSteps(newSteps);

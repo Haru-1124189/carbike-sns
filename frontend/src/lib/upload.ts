@@ -1,4 +1,5 @@
-// Firebase Storageは使用しないため、importを削除
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { storage } from '../firebase/clients';
 
 // 画像をプリロードする関数
 const preloadImage = (url: string): Promise<void> => {
@@ -55,31 +56,62 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
   });
 };
 
-// ファイルをBase64に変換する関数
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result);
-    };
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-};
-
-// ローカルストレージに画像を保存する関数（Base64形式）
-const saveToLocalStorage = async (file: File, userId: string, isProfileImage: boolean = false): Promise<string> => {
+// Firebase Storageに画像をアップロードする関数
+const uploadToFirebaseStorage = async (file: File, userId: string, isProfileImage: boolean = false, isMaintenanceImage: boolean = false): Promise<string> => {
   try {
     // プロフィール画像の場合は小さくリサイズ
     let processedFile = file;
     
     if (isProfileImage && file.size > 100 * 1024) {
-      // プロフィール画像は150x150にリサイズ（さらに小さく）
+      // プロフィール画像は150x150にリサイズ
       const resizedBlob = await resizeImage(file, 150, 150, 0.6);
       processedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
     } else if (file.size > 512 * 1024) {
       // 512KB以上の画像は600x400にリサイズ
+      const resizedBlob = await resizeImage(file, 600, 400, 0.7);
+      processedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
+    }
+    
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${file.name}`;
+    
+    // Firebase Storageのパスを決定
+    let storagePath: string;
+    if (isProfileImage) {
+      storagePath = `profile-images/${userId}/${fileName}`;
+    } else if (isMaintenanceImage) {
+      storagePath = `maintenance-images/${userId}/${fileName}`;
+    } else {
+      storagePath = `post-images/${userId}/${fileName}`;
+    }
+    
+    const storageRef = ref(storage, storagePath);
+    
+    // ファイルをアップロード
+    const snapshot = await uploadBytes(storageRef, processedFile);
+    
+    // ダウンロードURLを取得
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    
+    console.log('Image uploaded to Firebase Storage:', downloadURL);
+    
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading to Firebase Storage:', error);
+    throw error;
+  }
+};
+
+// フォールバック用のローカルストレージ関数
+const saveToLocalStorage = async (file: File, userId: string, isProfileImage: boolean = false, isMaintenanceImage: boolean = false): Promise<string> => {
+  try {
+    // プロフィール画像の場合は小さくリサイズ
+    let processedFile = file;
+    
+    if (isProfileImage && file.size > 100 * 1024) {
+      const resizedBlob = await resizeImage(file, 150, 150, 0.6);
+      processedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
+    } else if (file.size > 512 * 1024) {
       const resizedBlob = await resizeImage(file, 600, 400, 0.7);
       processedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
     }
@@ -105,24 +137,30 @@ const saveToLocalStorage = async (file: File, userId: string, isProfileImage: bo
     return base64Data;
   } catch (error) {
     console.error('Error saving to local storage:', error);
-    // エラーの場合はBase64変換を試す
-    try {
-      return await fileToBase64(file);
-    } catch (fallbackError) {
-      console.error('Fallback Base64 conversion failed:', fallbackError);
-      return URL.createObjectURL(file);
-    }
-  }
-};
-
-export const uploadToStorage = async (userId: string, file: File, isProfileImage: boolean = false): Promise<string> => {
-  try {
-    console.log('Using Base64 storage only (no Firebase Storage)');
-    return await saveToLocalStorage(file, userId, isProfileImage);
-  } catch (error) {
-    console.error('Error in uploadToStorage:', error);
     throw error;
   }
 };
 
-// Firebase Storageは使用しないため、この関数は削除
+// ファイルをBase64に変換する関数
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+};
+
+export const uploadToStorage = async (userId: string, file: File, isProfileImage: boolean = false, isMaintenanceImage: boolean = false): Promise<string> => {
+  try {
+    console.log('Attempting to upload to Firebase Storage...');
+    return await uploadToFirebaseStorage(file, userId, isProfileImage, isMaintenanceImage);
+  } catch (error) {
+    console.error('Firebase Storage upload failed, falling back to local storage:', error);
+    // Firebase Storageが利用できない場合はローカルストレージにフォールバック
+    return await saveToLocalStorage(file, userId, isProfileImage, isMaintenanceImage);
+  }
+};
