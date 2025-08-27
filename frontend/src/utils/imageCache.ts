@@ -3,13 +3,61 @@
 // ローカルストレージのキー
 const IMAGE_CACHE_PREFIX = 'image_cache_';
 const CACHE_EXPIRY_DAYS = 7; // 7日間キャッシュ
+const MAX_CACHE_SIZE = 50; // 最大キャッシュ数
 
 interface CachedImage {
   url: string;
   dataUrl: string;
   timestamp: number;
   expiresAt: number;
+  size: number; // データサイズ（バイト）
 }
+
+// キャッシュサイズを管理
+const getCacheSize = (): number => {
+  try {
+    const keys = Object.keys(localStorage);
+    return keys.filter(key => key.startsWith(IMAGE_CACHE_PREFIX)).length;
+  } catch (error) {
+    console.error('Error getting cache size:', error);
+    return 0;
+  }
+};
+
+// 古いキャッシュを削除
+const cleanupOldCache = (): void => {
+  try {
+    const keys = Object.keys(localStorage);
+    const cacheKeys = keys.filter(key => key.startsWith(IMAGE_CACHE_PREFIX));
+    
+    if (cacheKeys.length <= MAX_CACHE_SIZE) return;
+    
+    // タイムスタンプでソートして古いものを削除
+    const cacheEntries = cacheKeys
+      .map(key => {
+        try {
+          const data = localStorage.getItem(key);
+          if (!data) return null;
+          const parsed = JSON.parse(data) as CachedImage;
+          return { key, timestamp: parsed.timestamp };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => a!.timestamp - b!.timestamp);
+    
+    // 古いものから削除
+    const toDelete = cacheEntries.slice(0, cacheKeys.length - MAX_CACHE_SIZE);
+    toDelete.forEach(entry => {
+      if (entry) {
+        localStorage.removeItem(entry.key);
+      }
+    });
+  } catch (error) {
+    console.error('Error cleaning up old cache:', error);
+  }
+};
 
 // 画像をBase64に変換してキャッシュに保存
 export const cacheImage = async (url: string): Promise<string> => {
@@ -20,20 +68,42 @@ export const cacheImage = async (url: string): Promise<string> => {
       return cached;
     }
 
+    // キャッシュサイズをチェック
+    cleanupOldCache();
+
     // 画像をフェッチしてBase64に変換
-    const response = await fetch(url);
-    const blob = await response.blob();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒タイムアウト
     
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        saveImageToCache(url, dataUrl);
-        resolve(dataUrl);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    try {
+      const response = await fetch(url, { 
+        signal: controller.signal,
+        mode: 'cors',
+        cache: 'no-cache'
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          saveImageToCache(url, dataUrl, blob.size);
+          resolve(dataUrl);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('Error fetching image:', fetchError);
+      return url; // エラーの場合は元のURLを返す
+    }
   } catch (error) {
     console.error('Error caching image:', error);
     return url; // エラーの場合は元のURLを返す
@@ -64,14 +134,15 @@ export const getCachedImage = (url: string): string | null => {
 };
 
 // 画像をキャッシュに保存
-const saveImageToCache = (url: string, dataUrl: string) => {
+const saveImageToCache = (url: string, dataUrl: string, size: number) => {
   try {
     const key = IMAGE_CACHE_PREFIX + btoa(url);
     const imageData: CachedImage = {
       url,
       dataUrl,
       timestamp: Date.now(),
-      expiresAt: Date.now() + (CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+      expiresAt: Date.now() + (CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
+      size: size
     };
     
     localStorage.setItem(key, JSON.stringify(imageData));

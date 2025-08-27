@@ -1,5 +1,5 @@
 import { Heart, MessageSquare, MoreHorizontal, Pin, UserX } from 'lucide-react';
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useThreadLikes } from '../../hooks/useLikes';
 import { useReplies } from '../../hooks/useReplies';
@@ -21,7 +21,7 @@ interface ThreadCardProps {
   onUserClick?: (userId: string, displayName: string) => void;
 }
 
-export const ThreadCard: React.FC<ThreadCardProps> = ({
+export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
   thread,
   onClick,
   onDelete,
@@ -36,28 +36,40 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
   const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(thread.authorId || '');
   const { replies: replyList } = useReplies(thread.id, thread.type === 'question' ? 'question' : 'thread');
 
+  // メモ化された値
+  const displayAuthorName = useMemo(() => {
+    return authorLoading ? '読み込み中...' : (authorDisplayName || 'ユーザー');
+  }, [authorLoading, authorDisplayName]);
 
+  const isAuthor = useMemo(() => {
+    return user?.uid === thread.authorId;
+  }, [user?.uid, thread.authorId]);
 
-  const handleMenuClick = (e: React.MouseEvent) => {
+  const isBlocked = useMemo(() => {
+    return false; // ブロック機能は後で実装
+  }, []);
+
+  // コールバック関数の最適化
+  const handleMenuClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowMenu(!showMenu);
-  };
+    setShowMenu(prev => !prev);
+  }, []);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     onDelete?.(thread.id);
     setShowMenu(false);
-  };
+  }, [onDelete, thread.id]);
 
-  const handleBlockUser = () => {
+  const handleBlockUser = useCallback(() => {
     onBlockUser?.(displayAuthorName);
     setShowMenu(false);
-  };
+  }, [onBlockUser, displayAuthorName]);
 
-  const handleReportThread = () => {
+  const handleReportThread = useCallback(() => {
     setShowMenu(false);
-  };
+  }, []);
 
-  const handleTogglePin = async (e: React.MouseEvent) => {
+  const handleTogglePin = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user?.uid) {
       alert('ログインが必要です');
@@ -71,9 +83,9 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
       alert(error.message || '固定の操作に失敗しました');
     }
     setShowMenu(false);
-  };
+  }, [user?.uid, thread.id, thread.isPinned]);
 
-  const handleLikeClick = async (e: React.MouseEvent) => {
+  const handleLikeClick = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user?.uid) {
       alert('ログインが必要です');
@@ -98,22 +110,20 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
         alert(`いいねの操作に失敗しました: ${error.message}`);
       }
     }
-  };
+  }, [user?.uid, thread.id]);
 
-  
+  const handleCardClick = useCallback(() => {
+    onClick?.();
+  }, [onClick]);
 
-  // 投稿者本人かどうかをチェック
-  const isAuthor = user?.uid === thread.authorId;
-  
-  // 表示するユーザー名（最新のユーザー名を優先）
-  const displayAuthorName = authorDisplayName || thread.author;
+  const handleUserClick = useCallback((userId: string, displayName: string) => {
+    onUserClick?.(userId, displayName);
+  }, [onUserClick]);
 
   return (
     <div
       className="p-3 cursor-pointer border-b border-surface-light transition-all duration-300 hover:bg-surface/30"
-      onClick={() => {
-        onClick?.();
-      }}
+      onClick={handleCardClick}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-2 flex-1">
@@ -121,7 +131,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
             userId={thread.authorId || ''}
             fallbackName={thread.author}
             size="sm"
-            onClick={onUserClick}
+            onClick={handleUserClick}
           />
           <div className="flex items-center space-x-2">
             <div className="text-xs text-text-secondary">
@@ -280,4 +290,4 @@ export const ThreadCard: React.FC<ThreadCardProps> = ({
       
     </div>
   );
-};
+});

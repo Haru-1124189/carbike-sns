@@ -47,6 +47,7 @@ import { VehicleDetailPage } from './pages/VehicleDetailPage';
 import { VideoDetailPage } from './pages/VideoDetailPage';
 import { VideosPage } from './pages/VideosPage';
 import { AuthProvider } from './providers/AuthProvider';
+import { ErrorBoundary } from './utils/errorBoundary';
 import { cleanupExpiredCache } from './utils/imageCache';
 
 function AppContent() {
@@ -724,7 +725,9 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </ThemeProvider>
     </AuthProvider>
   );

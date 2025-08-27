@@ -89,17 +89,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               uid: user.uid,
               email: user.email || '',
               displayName: user.displayName || '',
-              username: undefined, // 新規ユーザーはusername未設定
+              username: undefined,
               photoURL: user.photoURL || null,
-              bio: '', // 空の自己紹介文
+              bio: '',
               role: 'user',
-              isAdmin: false, // デフォルトはfalse
+              isAdmin: false,
               createdAt: new Date(),
               updatedAt: new Date(),
               cars: [],
               interestedCars: [],
               blockedUsers: [],
-              mutedWords: [],
+              mutedWords: []
             };
             console.log('AuthProvider: Creating new user doc', { 
               displayName: defaultUserDoc.displayName 
