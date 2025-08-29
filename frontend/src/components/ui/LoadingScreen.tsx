@@ -9,11 +9,11 @@ export const LoadingScreen: React.FC = () => {
         
         {/* メインのローディングコンテンツ */}
         <div className="relative z-10 flex flex-col items-center space-y-6">
-          {/* 車とバイクの画像 */}
+          {/* 新しい車とバイクのスプラッシュ画像 */}
           <div className="relative w-80 h-40 animate-fadeInUp">
             <img
-              src="/carbike-logo.svg"
-              alt="CarBike Logo"
+              src="/carbike-splash.svg"
+              alt="CarBike Splash"
               className="w-full h-full object-contain"
             />
           </div>
@@ -36,8 +36,6 @@ export const LoadingScreen: React.FC = () => {
           </div>
         </div>
       </div>
-      
-      
     </div>
   );
 };
