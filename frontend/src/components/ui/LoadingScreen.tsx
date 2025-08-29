@@ -12,7 +12,7 @@ export const LoadingScreen: React.FC = () => {
           {/* 新しい車とバイクのスプラッシュ画像 */}
           <div className="relative w-80 h-40 animate-fadeInUp">
             <img
-              src="/carbike-splash.svg"
+              src="/carbike_loding.jpg"
               alt="CarBike Splash"
               className="w-full h-full object-contain"
             />
