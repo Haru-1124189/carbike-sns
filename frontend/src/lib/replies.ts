@@ -4,7 +4,7 @@ import { createReplyNotification } from './notifications';
 
 export interface CreateReplyData {
   targetId: string;
-  targetType: 'thread' | 'question' | 'maintenance';
+  targetType: 'thread' | 'question' | 'maintenance' | 'touring';
   content: string;
 }
 
@@ -31,7 +31,8 @@ export const createReply = async (data: CreateReplyData, userId: string, userNam
 
     // 対象の投稿の返信数を更新
     try {
-      const targetCollection = data.targetType === 'maintenance' ? 'maintenance_posts' : 'threads';
+      const targetCollection = data.targetType === 'maintenance' ? 'maintenance_posts' : 
+                             data.targetType === 'touring' ? 'touringThreads' : 'threads';
       const targetRef = doc(db, targetCollection, data.targetId);
       console.log('Updating target document:', { targetCollection, targetId: data.targetId });
       

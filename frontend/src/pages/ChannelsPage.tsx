@@ -1,7 +1,6 @@
 import { ArrowLeft, Users } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { TabBar } from '../components/ui/TabBar';
 import { useAuth } from '../hooks/useAuth';
 import { useVideos } from '../hooks/useVideos';
@@ -78,7 +77,6 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelCli
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}

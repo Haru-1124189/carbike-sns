@@ -1,26 +1,22 @@
+import { Heart, User, X } from 'lucide-react';
 import React from 'react';
-import { X, Heart, User } from 'lucide-react';
 import { useLikeHistory } from '../../hooks/useLikes';
 import { PersistentImage } from './PersistentImage';
 
 interface LikeHistoryModalProps {
-  isOpen: boolean;
-  onClose: () => void;
   targetId: string;
-  targetType: 'thread' | 'maintenance';
+  targetType: 'thread' | 'maintenance' | 'touring';
+  onClose: () => void;
   onUserClick?: (userId: string, displayName: string) => void;
 }
 
 export const LikeHistoryModal: React.FC<LikeHistoryModalProps> = ({
-  isOpen,
-  onClose,
   targetId,
   targetType,
+  onClose,
   onUserClick
 }) => {
   const { likeHistory, loading, error } = useLikeHistory(targetId, targetType);
-
-  if (!isOpen) return null;
 
   const handleUserClick = (userId: string, displayName: string) => {
     onUserClick?.(userId, displayName);

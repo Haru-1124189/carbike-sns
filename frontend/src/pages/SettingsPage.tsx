@@ -1,10 +1,6 @@
-import { ArrowLeft, Bell, Car, FileText, HelpCircle, Palette, Shield, Upload, User } from 'lucide-react';
+import { ArrowLeft, FileText, HelpCircle, Palette, Shield, Upload, User } from 'lucide-react';
 import React from 'react';
-import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
-import { NotificationToggle } from '../components/ui/NotificationToggle';
 import { useAuth } from '../hooks/useAuth';
-import { useNotificationSettings } from '../hooks/useNotificationSettings';
 
 interface SettingsPageProps {
   onBackClick?: () => void;
@@ -14,7 +10,6 @@ interface SettingsPageProps {
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavigate, onLoginClick }) => {
   const { userDoc } = useAuth();
-  const { settings, loading, updateSetting } = useNotificationSettings();
   
   const creatorSection = {
     title: "クリエイター",
@@ -76,58 +71,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
           id: 'deleteAccount',
           title: 'アカウント削除',
           description: 'アカウントとデータを完全に削除',
-          type: 'action'
-        }
-      ]
-    },
-    {
-      title: "通知設定",
-      icon: Bell,
-      items: [
-        {
-          id: 'likes',
-          title: 'いいね通知',
-          description: '投稿へのいいねを通知',
-          type: 'toggle',
-          value: settings.likeNotifications
-        },
-        {
-          id: 'replies',
-          title: '返信通知',
-          description: '質問への返信を通知',
-          type: 'toggle',
-          value: settings.replyNotifications
-        },
-        {
-          id: 'maintenance',
-          title: '整備リマインダー',
-          description: '車両の整備時期を通知',
-          type: 'toggle',
-          value: settings.maintenanceReminders
-        },
-        {
-          id: 'follows',
-          title: 'フォロー通知',
-          description: '新しいフォロワーを通知',
-          type: 'toggle',
-          value: settings.followNotifications
-        }
-      ]
-    },
-    {
-      title: "車両設定",
-      icon: Car,
-      items: [
-        {
-          id: 'addVehicle',
-          title: '車両を追加',
-          description: '新しい車両を登録',
-          type: 'action'
-        },
-        {
-          id: 'maintenance',
-          title: '整備スケジュール',
-          description: '整備予定を管理',
           type: 'action'
         }
       ]
@@ -220,64 +163,51 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
   ];
 
   const handleSettingClick = (sectionTitle: string, itemId: string) => {
-    if (itemId === 'likes' || itemId === 'replies' || itemId === 'maintenance' || itemId === 'follows') {
-      updateSetting(itemId as keyof typeof settings, !settings[itemId as keyof typeof settings]);
-    } else {
-      if (itemId === 'logout') {
-        if (window.confirm('ログアウトしますか？')) {
-          onLoginClick?.();
-        }
-        return;
+    if (itemId === 'logout') {
+      if (window.confirm('ログアウトしますか？')) {
+        onLoginClick?.();
       }
-      if (itemId === 'deleteAccount') {
-        if (window.confirm('アカウントを削除しますか？この操作は元に戻せません。')) {
-          alert('アカウントを削除しました（ダミー）');
-        }
-        return;
-      }
-      if (itemId === 'theme') {
-        onNavigate?.('theme');
-        return;
-      }
-      onNavigate?.(itemId);
+      return;
     }
+    if (itemId === 'deleteAccount') {
+      if (window.confirm('アカウントを削除しますか？この操作は元に戻せません。')) {
+        alert('アカウントを削除しました（ダミー）');
+      }
+      return;
+    }
+    if (itemId === 'theme') {
+      onNavigate?.('theme');
+      return;
+    }
+    if (itemId === 'privacy') {
+      onNavigate?.('privacySettings');
+      return;
+    }
+    onNavigate?.(itemId);
   };
 
   return (
-    <div className="min-h-screen bg-background container-mobile">
-      <AppHeader 
-        onNotificationClick={() => console.log('Notifications clicked')}
-        onProfileClick={() => console.log('Profile clicked')}
-      />
-      
-      <BannerAd />
-      
-      <main className="p-4 pb-24">
-        <div className="flex items-center space-x-3 mb-6">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-6 py-8 pb-24">
+        {/* ヘッダー */}
+        <div className="flex items-center space-x-4 mb-8">
           <button
             onClick={onBackClick}
-            className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
+            className="p-2 hover:bg-surface-light rounded-full transition-colors"
           >
-            <ArrowLeft size={20} className="text-white" />
+            <ArrowLeft size={20} className="text-text-primary" />
           </button>
-          <h1 className="text-xl font-bold text-white">設定</h1>
+          <h1 className="text-2xl font-bold text-text-primary">設定</h1>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-12">
           {settingsSections.map((section) => {
             const IconComponent = section.icon;
             return (
               <div key={section.title}>
-                <div className="flex items-center space-x-2 mb-4">
-                  <IconComponent size={20} className="text-primary" />
-                  <h2 className={`text-sm font-bold ${
-                    section.title === "管理者" ? 'text-green-500' : 
-                    (userDoc?.role === 'creator' || userDoc?.role === 'admin' || userDoc?.isAdmin === true) ? 'text-blue-500' : 
-                    'text-white'
-                  }`}>{section.title}</h2>
-                </div>
+                <h2 className="text-lg font-semibold text-text-primary mb-6">{section.title}</h2>
                 
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {section.items.map((item) => (
                     <div
                       key={item.id}
@@ -286,47 +216,25 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
                           handleSettingClick(section.title, item.id);
                         }
                       }}
-                      className={`bg-surface rounded-xl border border-surface-light p-4 ${
-                        item.type === 'toggle' ? '' : 'cursor-pointer hover:scale-95 active:scale-95 transition-transform'
-                      } shadow-sm`}
+                      className={`${
+                        item.type === 'toggle' ? '' : 'cursor-pointer hover:bg-surface-light rounded-lg p-4 transition-colors'
+                      }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className={`text-sm font-bold mb-1 ${
-                            item.title === '管理者ダッシュボード' || item.title === '動画配信申請管理' ? 'text-green-500' : 
-                            (userDoc?.role === 'creator' || userDoc?.role === 'admin' || userDoc?.isAdmin === true) ? 'text-blue-500' : 
-                            'text-white'
-                          }`}>{item.title}</h3>
-                          <p className="text-xs text-gray-400">{item.description}</p>
+                          <h3 className="text-base font-medium text-text-primary mb-1">{item.title}</h3>
+                          <p className="text-sm text-text-secondary">{item.description}</p>
                         </div>
-                        
-                        {item.type === 'toggle' && 'value' in item && (
-                          <NotificationToggle
-                            checked={item.value}
-                            onChange={(checked) => {
-                              if (item.id === 'likes') {
-                                updateSetting('likeNotifications', checked);
-                              } else if (item.id === 'replies') {
-                                updateSetting('replyNotifications', checked);
-                              } else if (item.id === 'maintenance') {
-                                updateSetting('maintenanceReminders', checked);
-                              } else if (item.id === 'follows') {
-                                updateSetting('followNotifications', checked);
-                              }
-                            }}
-                            loading={loading}
-                          />
-                        )}
                         
                         {item.type === 'select' && (
                           <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-400">{item.description}</span>
-                            <ArrowLeft size={16} className="text-gray-400 rotate-180" />
+                            <span className="text-sm text-text-secondary">{item.description}</span>
+                            <ArrowLeft size={16} className="text-text-secondary rotate-180" />
                           </div>
                         )}
                         
                         {item.type === 'action' && (
-                          <ArrowLeft size={16} className="text-gray-400 rotate-180" />
+                          <ArrowLeft size={16} className="text-text-secondary rotate-180" />
                         )}
                       </div>
                     </div>
@@ -338,14 +246,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
         </div>
 
         {/* アプリ情報 */}
-        <div className="mt-8 pt-6 border-t border-surface-light mb-8">
+        <div className="mt-12 pt-8 border-t border-border">
           <div className="text-center">
-            <h3 className="text-sm font-bold text-white mb-2">RevLink</h3>
-            <p className="text-xs text-gray-400">Version 1.0.0</p>
-            <p className="text-xs text-gray-400 mt-1">車・バイク愛好家のためのSNS</p>
+            <h3 className="text-base font-semibold text-text-primary mb-2">RevLink</h3>
+            <p className="text-sm text-text-secondary">Version 1.0.0</p>
+            <p className="text-sm text-text-secondary mt-1">車・バイク愛好家のためのSNS</p>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 };

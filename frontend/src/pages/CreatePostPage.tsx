@@ -1,7 +1,6 @@
 import { ArrowLeft, Camera, Car, HelpCircle, Minus, Plus, Send, Video, Wrench, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { ImageUpload } from '../components/ui/ImageUpload';
 import { StepImageUpload } from '../components/ui/StepImageUpload';
 import { carModels } from '../data/dummy';
@@ -162,7 +161,6 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader 
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
@@ -180,7 +178,7 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
             </button>
             <div className="flex items-center space-x-2">
               <IconComponent size={20} className="text-primary transition-all duration-300" />
-              <h1 className="text-lg font-bold text-white transition-all duration-300">{postTypeInfo.title}</h1>
+              <h1 className="text-lg font-bold text-text-primary">{postTypeInfo.title}</h1>
             </div>
           </div>
           <button
@@ -203,13 +201,13 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
         <div className="space-y-4">
           {/* タイトル入力 */}
           <div>
-            <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">タイトル</label>
+            <label className="block text-sm font-medium text-text-primary mb-2">タイトル</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={isMaintenanceForm ? "整備作業のタイトルを入力..." : "投稿のタイトルを入力..."}
-              className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+              className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-3 focus:outline-none focus:border-primary transition-colors"
             />
           </div>
 
@@ -218,11 +216,11 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
             <>
               {/* 車種選択 */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">対象車種</label>
+                <label className="block text-sm font-medium text-text-primary mb-2">対象車種</label>
                 <select
                   value={selectedCar}
                   onChange={(e) => setSelectedCar(e.target.value)}
-                  className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white focus:outline-none focus:border-primary transition-all duration-300"
+                  className="w-full bg-transparent text-text-primary border-b border-border rounded-none px-4 py-3 focus:outline-none focus:border-primary transition-colors"
                 >
                   <option value="">車種を選択</option>
                   {carModels.map((car) => (
@@ -233,35 +231,35 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
 
               {/* 作業時間 */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">作業時間</label>
+                <label className="block text-sm font-medium text-text-primary mb-2">作業時間</label>
                 <input
                   type="text"
                   value={workTime}
                   onChange={(e) => setWorkTime(e.target.value)}
                   placeholder="例: 2時間30分"
-                  className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+                  className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-3 focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
               {/* 費用 */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">費用</label>
+                <label className="block text-sm font-medium text-text-primary mb-2">費用</label>
                 <input
                   type="text"
                   value={cost}
                   onChange={(e) => setCost(e.target.value)}
                   placeholder="例: 15,000円"
-                  className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+                  className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-3 focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
               {/* 難易度 */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">難易度</label>
+                <label className="block text-sm font-medium text-text-primary mb-2">難易度</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white focus:outline-none focus:border-primary transition-all duration-300"
+                  className="w-full bg-transparent text-text-primary border-b border-border rounded-none px-4 py-3 focus:outline-none focus:border-primary transition-colors"
                 >
                   <option value="easy">初級</option>
                   <option value="medium">中級</option>
@@ -271,14 +269,14 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
 
               {/* 工具 */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">使用工具</label>
+                <label className="block text-sm font-medium text-text-primary mb-2">使用工具</label>
                 <div className="flex space-x-2 mb-2">
                   <input
                     type="text"
                     value={newTool}
                     onChange={(e) => setNewTool(e.target.value)}
                     placeholder="工具名を入力"
-                    className="flex-1 px-4 py-2 bg-surface border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+                    className="flex-1 bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-2 focus:outline-none focus:border-primary transition-colors"
                   />
                   <button
                     onClick={handleAddTool}
@@ -307,14 +305,14 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
 
               {/* パーツ */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">使用パーツ</label>
+                <label className="block text-sm font-medium text-text-primary mb-2">使用パーツ</label>
                 <div className="flex space-x-2 mb-2">
                   <input
                     type="text"
                     value={newPart}
                     onChange={(e) => setNewPart(e.target.value)}
                     placeholder="パーツ名を入力"
-                    className="flex-1 px-4 py-2 bg-surface border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+                    className="flex-1 bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-2 focus:outline-none focus:border-primary transition-colors"
                   />
                   <button
                     onClick={handleAddPart}
@@ -343,15 +341,15 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
 
               {/* 手順 */}
               <div>
-                <label className="block text-sm font-medium text-white mb-2 transition-all duration-300">作業手順</label>
+                <label className="block text-sm font-medium text-text-primary mb-2">作業手順</label>
                 <div className="space-y-4">
                   {steps.map((step) => (
                     <div
                       key={step.id}
-                      className="bg-surface border border-surface-light rounded-xl p-4 transition-all duration-300 hover:shadow-lg"
+                      className="bg-surface-light rounded-lg p-6 transition-colors hover:bg-surface"
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-medium text-white transition-all duration-300">手順 {step.order}</h4>
+                        <h4 className="text-sm font-medium text-text-primary">手順 {step.order}</h4>
                         <button
                           onClick={() => handleRemoveStep(step.id)}
                           className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-all duration-300 hover:scale-110"
@@ -365,21 +363,21 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
                           value={step.title}
                           onChange={(e) => handleUpdateStep(step.id, 'title', e.target.value)}
                           placeholder="手順のタイトル"
-                          className="w-full px-3 py-2 bg-surface-light border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+                          className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-3 py-2 focus:outline-none focus:border-primary transition-colors"
                         />
                         <textarea
                           value={step.description}
                           onChange={(e) => handleUpdateStep(step.id, 'description', e.target.value)}
                           placeholder="手順の詳細説明"
                           rows={3}
-                          className="w-full px-3 py-2 bg-surface-light border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+                          className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-3 py-2 focus:outline-none focus:border-primary transition-colors"
                         />
                         <textarea
                           value={step.tips}
                           onChange={(e) => handleUpdateStep(step.id, 'tips', e.target.value)}
                           placeholder="コツ・注意点"
                           rows={2}
-                          className="w-full px-3 py-2 bg-surface-light border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+                          className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-3 py-2 focus:outline-none focus:border-primary transition-colors"
                         />
                         <StepImageUpload
                           image={step.image}
@@ -457,7 +455,7 @@ export const CreatePostPage: React.FC<CreatePostPageProps> = ({
               onChange={(e) => setContent(e.target.value)}
               placeholder={postTypeInfo.placeholder}
               rows={6}
-              className="w-full px-4 py-3 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-all duration-300"
+              className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-3 focus:outline-none focus:border-primary transition-colors"
             />
           </div>
         </div>

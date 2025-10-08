@@ -209,7 +209,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
           <PersistentImage
             src={post.carImage}
             alt={post.carModel}
-            className="w-full h-28 object-contain rounded-lg transition-all duration-300 hover:scale-105"
+            className="w-full h-20 object-contain rounded-lg transition-all duration-300 hover:scale-105"
             clickable={true}
           />
         </div>
@@ -224,7 +224,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
                 <PersistentImage
                   src={image}
                   alt={`Uploaded image ${index + 1}`}
-                  className="w-64 h-48 object-contain rounded-lg transition-all duration-300 hover:scale-110"
+                  className="w-48 h-36 object-contain rounded-lg transition-all duration-300 hover:scale-110"
                   clickable={true}
                 />
               </div>
@@ -243,7 +243,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
                   <PersistentImage
                     src={step.image}
                     alt={`Step ${step.order}`}
-                    className="w-64 h-48 object-contain rounded-lg transition-all duration-300 hover:scale-110"
+                    className="w-48 h-36 object-contain rounded-lg transition-all duration-300 hover:scale-110"
                     clickable={true}
                   />
                 </div>

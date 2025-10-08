@@ -1,7 +1,7 @@
 import { Plus, RefreshCw } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
+import { NativeAd, insertNativeAds } from '../components/ui/NativeAd';
 import { SearchBar } from '../components/ui/SearchBar';
 import { ThreadCard } from '../components/ui/ThreadCard';
 import { currentUser, threadAds } from '../data/dummy';
@@ -156,7 +156,6 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => {}}
         onProfileClick={() => {}}
@@ -165,6 +164,15 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
       <main className="px-4 pb-32 pt-0">
           {/* ヘッダー */}
           <div className="bg-background z-10 border-b border-surface-light fade-in">
+            {/* 検索バー */}
+            <div className="px-4 pb-3 pt-2">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="投稿を検索..."
+              />
+            </div>
+
             {/* 車種タブ */}
             <div className="px-4 pb-2">
               <div className="flex space-x-1 bg-surface rounded-xl p-0.5">
@@ -199,15 +207,6 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
                   お気に入り
                 </button>
               </div>
-            </div>
-
-            {/* 検索バー */}
-            <div className="px-4 pb-3">
-              <SearchBar
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="投稿を検索..."
-              />
             </div>
 
             {/* 投稿タイプタブ */}
@@ -247,19 +246,24 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
             </div>
           </div>
 
-          {/* スレッド一覧（広告含む） */}
+          {/* スレッド一覧（ネイティブ広告含む） */}
           <div key={`${activeTab}-${activeCarTab}`} className="fade-in">
-            {displayItems.map((item) => (
-              <ThreadCard
-                key={item.id}
-                thread={item}
-                onClick={() => handleThreadClick(item.id)}
-                onDelete={handleDeleteThread}
-                onBlockUser={onBlockUser}
-                onReportThread={onReportThread}
-                onUserClick={onUserClick}
-              />
-            ))}
+            {insertNativeAds(displayItems, 4).map((item) => {
+              if ('type' in item && item.type === 'ad') {
+                return <NativeAd key={item.id} ad={item.ad} />;
+              }
+              return (
+                <ThreadCard
+                  key={item.id}
+                  thread={item}
+                  onClick={() => handleThreadClick(item.id)}
+                  onDelete={handleDeleteThread}
+                  onBlockUser={onBlockUser}
+                  onReportThread={onReportThread}
+                  onUserClick={onUserClick}
+                />
+              );
+            })}
           </div>
         </main>
     </div>

@@ -5,11 +5,12 @@ import { useAuth } from './useAuth';
 
 export interface AdminNotification {
   id: string;
-  type: 'report' | 'system' | 'user' | 'creator_application';
+  type: 'report' | 'system' | 'user' | 'creator_application' | 'vehicle_request' | 'contact_inquiry';
   title: string;
   content: string;
   isRead: boolean;
   createdAt: Timestamp;
+  updatedAt?: Timestamp;
   reportId?: string;
   reportData?: {
     type: string;
@@ -26,6 +27,21 @@ export interface AdminNotification {
     userName: string;
     userId: string;
   };
+  requestData?: {
+    maker: string;
+    model: string;
+    year: string;
+    notes: string;
+  };
+  contactData?: {
+    subject: string;
+    message: string;
+    userName: string;
+    userEmail: string;
+    userId: string;
+  };
+  fromUserId?: string;
+  fromUserName?: string;
 }
 
 export const useAdminNotifications = () => {
@@ -45,10 +61,10 @@ export const useAdminNotifications = () => {
     setError(null);
 
     try {
-      // 管理者用の通知を取得（userId: 'admin'のもの）
+      // 管理者用の通知を取得（adminNotificationsコレクションから）
       const q = query(
-        collection(db, 'notifications'),
-        where('userId', '==', 'admin'),
+        collection(db, 'adminNotifications'),
+        where('adminId', '==', userDoc.uid),
         orderBy('createdAt', 'desc')
       );
 
@@ -63,10 +79,17 @@ export const useAdminNotifications = () => {
             content: data.content,
             isRead: data.isRead,
             createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
             reportId: data.reportId,
-            reportData: data.reportData
+            reportData: data.reportData,
+            applicationData: data.applicationData,
+            requestData: data.requestData,
+            contactData: data.contactData,
+            fromUserId: data.fromUserId,
+            fromUserName: data.fromUserName
           });
         });
+        console.log('Admin notifications fetched:', notificationList.length);
         setNotifications(notificationList);
         setLoading(false);
       }, (error) => {
@@ -89,7 +112,7 @@ export const useAdminNotifications = () => {
   // 管理者通知を既読にする
   const markAsRead = async (notificationId: string) => {
     try {
-      const notificationRef = doc(db, 'notifications', notificationId);
+      const notificationRef = doc(db, 'adminNotifications', notificationId);
       await updateDoc(notificationRef, {
         isRead: true,
         updatedAt: serverTimestamp(),
@@ -104,7 +127,7 @@ export const useAdminNotifications = () => {
     try {
       const unreadNotifications = notifications.filter(n => !n.isRead);
       const updatePromises = unreadNotifications.map(notification => {
-        const notificationRef = doc(db, 'notifications', notification.id);
+        const notificationRef = doc(db, 'adminNotifications', notification.id);
         return updateDoc(notificationRef, {
           isRead: true,
           updatedAt: serverTimestamp(),

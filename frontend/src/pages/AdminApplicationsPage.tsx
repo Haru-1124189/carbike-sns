@@ -1,7 +1,6 @@
 import { ArrowLeft, Check, CheckCircle, Clock, Eye, X, XCircle } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { useAuth } from '../hooks/useAuth';
 import { useCreatorApplication } from '../hooks/useCreatorApplication';
 import { CreatorApplication } from '../types';
@@ -97,7 +96,6 @@ export const AdminApplicationsPage: React.FC<AdminApplicationsPageProps> = ({
           onProfileClick={() => console.log('Profile clicked')}
         />
         
-        <BannerAd />
         
         <main className="p-4 pb-24">
           <div className="flex items-center space-x-3 mb-6">
@@ -283,7 +281,6 @@ export const AdminApplicationsPage: React.FC<AdminApplicationsPageProps> = ({
         onProfileClick={() => console.log('Profile clicked')}
       />
       
-      <BannerAd />
       
               <main className="p-4 pb-24">
         <div className="flex items-center space-x-3 mb-6">

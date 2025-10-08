@@ -1,11 +1,11 @@
+import { AlertTriangle, Flag, MessageSquare, User, X } from 'lucide-react';
 import React, { useState } from 'react';
-import { Flag, AlertTriangle, MessageSquare, User, X } from 'lucide-react';
-import { createReport } from '../../lib/reports';
 import { useAuth } from '../../hooks/useAuth';
+import { createReport } from '../../lib/reports';
 
 interface ReportButtonProps {
   targetId: string;
-  targetType: 'thread' | 'maintenance' | 'user';
+  targetType: 'thread' | 'maintenance' | 'user' | 'touring';
   targetTitle?: string;
   targetAuthorId?: string;
   targetAuthorName?: string;

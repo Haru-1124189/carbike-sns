@@ -1,7 +1,6 @@
 import { ArrowLeft, MoreVertical, Play, Share, ThumbsDown, ThumbsUp } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { Video } from '../types';
 
 interface VideoDetailPageProps {
@@ -52,7 +51,6 @@ export const VideoDetailPage: React.FC<VideoDetailPageProps> = ({ video, onBackC
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}

@@ -2,14 +2,16 @@ import { MoreHorizontal, Pin } from 'lucide-react';
 import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReplies } from '../../hooks/useReplies';
+import { useTouringReplies } from '../../hooks/useTouringReplies';
 import { useUserName } from '../../hooks/useUserName';
 import { toggleReplyPin } from '../../lib/pins';
 import { PersistentImage } from './PersistentImage';
 
 interface ReplySectionProps {
   targetId: string;
-  targetType: 'thread' | 'question' | 'maintenance';
+  targetType: 'thread' | 'question' | 'maintenance' | 'touring';
   onUserClick?: (authorId: string, authorName: string) => void;
+  onReplySubmitted?: () => void;
 }
 
 // 個別の返信コンポーネント
@@ -23,8 +25,12 @@ const ReplyItem: React.FC<{
 }> = ({ reply, onUserClick, onTogglePin, showMenuFor, setShowMenuFor, isAuthor }) => {
   const { displayName, photoURL } = useUserName(reply.authorId || reply.author);
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatTime = (dateString: string | Date) => {
+    if (!dateString) return '不明';
+    
+    const date = dateString instanceof Date ? dateString : new Date(dateString);
+    if (isNaN(date.getTime())) return '不明';
+    
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
     
@@ -51,7 +57,7 @@ const ReplyItem: React.FC<{
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (
-            (displayName || reply.author).charAt(0).toUpperCase()
+            (displayName || reply.authorName || reply.author || 'U').charAt(0).toUpperCase()
           )}
         </div>
       </div>
@@ -59,10 +65,10 @@ const ReplyItem: React.FC<{
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => onUserClick?.(reply.authorId || reply.author, displayName || reply.author)}
+              onClick={() => onUserClick?.(reply.authorId || reply.author, displayName || reply.authorName || reply.author)}
               className="text-sm font-medium text-white hover:text-primary transition-colors"
             >
-              {displayName || reply.author}
+              {displayName || reply.authorName || reply.author || 'ユーザー'}
             </button>
             <span className="text-xs text-gray-400">
               {formatTime(reply.createdAt)}
@@ -134,11 +140,34 @@ const ReplyItem: React.FC<{
 export const ReplySection: React.FC<ReplySectionProps> = ({
   targetId,
   targetType,
-  onUserClick
+  onUserClick,
+  onReplySubmitted
 }) => {
-  const { replies, loading, error } = useReplies(targetId, targetType);
+  console.log('ReplySection rendered with:', { targetId, targetType });
+  
+  // ツーリングスレッドの場合は専用のフックを使用
+  const isTouring = targetType === 'touring';
+  const touringThreadId = isTouring ? targetId : '';
+  const regularThreadId = !isTouring ? targetId : '';
+  
+  console.log('ReplySection hook selection:', { isTouring, touringThreadId, regularThreadId });
+  
+  const touringReplies = useTouringReplies(touringThreadId);
+  const regularReplies = useReplies(regularThreadId, targetType as any);
+  
+  const { replies, loading, error } = isTouring ? touringReplies : regularReplies;
   const { user } = useAuth();
   const [showMenuFor, setShowMenuFor] = React.useState<string | null>(null);
+
+  console.log('ReplySection state:', { 
+    replies: replies.length, 
+    loading, 
+    error, 
+    targetType,
+    isTouring,
+    touringRepliesState: isTouring ? touringReplies : null,
+    regularRepliesState: !isTouring ? regularReplies : null
+  });
 
   const handleTogglePin = async (replyId: string, isPinned: boolean) => {
     if (!user?.uid) {

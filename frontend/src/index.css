@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* スクロールバーを非表示にする */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none;  /* Safari and Chrome */
+}
+
 :root {
   /* デフォルトテーマ（紺色）のCSS変数 */
   --background: #0f172a;

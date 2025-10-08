@@ -2,7 +2,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, query, 
 import { db } from '../firebase/clients';
 import { createNotificationWithCheck } from './notifications';
 
-export type LikeTarget = 'thread' | 'maintenance';
+export type LikeTarget = 'thread' | 'maintenance' | 'touring';
 
 export const toggleLike = async (targetId: string, userId: string, targetType: LikeTarget = 'thread') => {
   console.log('toggleLike called:', { targetId, userId, targetType });
@@ -57,7 +57,9 @@ export const toggleLike = async (targetId: string, userId: string, targetType: L
       }
 
       // 対象のいいね数を更新
-      const collectionName = targetType === 'thread' ? 'threads' : 'maintenance_posts';
+      const collectionName = targetType === 'thread' ? 'threads' : 
+                           targetType === 'maintenance' ? 'maintenance_posts' : 
+                           targetType === 'touring' ? 'touringThreads' : 'threads';
       const targetRef = doc(db, collectionName, targetId);
       console.log('Updating likes count for:', collectionName, targetId);
       console.log('Target document path:', `${collectionName}/${targetId}`);
@@ -134,7 +136,9 @@ export const toggleLike = async (targetId: string, userId: string, targetType: L
       await deleteDoc(doc(db, 'likes', likeDoc.id));
 
       // 対象のいいね数を更新
-      const collectionName = targetType === 'thread' ? 'threads' : 'maintenance_posts';
+      const collectionName = targetType === 'thread' ? 'threads' : 
+                           targetType === 'maintenance' ? 'maintenance_posts' : 
+                           targetType === 'touring' ? 'touringThreads' : 'threads';
       const targetRef = doc(db, collectionName, targetId);
       console.log('Updating likes count for:', collectionName, targetId);
       await updateDoc(targetRef, {
@@ -165,6 +169,11 @@ export const toggleThreadLike = async (threadId: string, userId: string) => {
 // メンテナンス投稿専用のいいね機能
 export const toggleMaintenanceLike = async (maintenanceId: string, userId: string) => {
   return toggleLike(maintenanceId, userId, 'maintenance');
+};
+
+// ツーリングスレッド専用のいいね機能
+export const toggleTouringLike = async (touringId: string, userId: string) => {
+  return toggleLike(touringId, userId, 'touring');
 };
 
 // いいね履歴を取得する関数

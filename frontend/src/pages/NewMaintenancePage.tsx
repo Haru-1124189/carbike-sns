@@ -1,9 +1,9 @@
-import { ArrowLeft, Image, Minus, Plus, Send, Upload } from 'lucide-react';
+import { ArrowLeft, Car, Image, Minus, Plus, Send, Upload } from 'lucide-react';
 import React, { useRef, useState } from 'react';
-import { BannerAd } from '../components/ui/BannerAd';
 import { MentionTextarea } from '../components/ui/MentionTextarea';
 import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { useVehicles } from '../hooks/useVehicles';
 import { createMaintenancePost } from '../lib/threads';
 import { uploadToStorage } from '../lib/upload';
 import { MaintenanceStep } from '../types';
@@ -15,6 +15,7 @@ interface NewMaintenancePageProps {
 
 export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackClick }) => {
   const { user, userDoc } = useAuth();
+  const { vehicles } = useVehicles();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [carModel, setCarModel] = useState('');
@@ -131,6 +132,12 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
     }
   };
 
+  const addVehicleTag = (vehicleName: string) => {
+    if (!tags.includes(vehicleName) && tags.length < 5) {
+      setTags([...tags, vehicleName]);
+    }
+  };
+
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
@@ -191,13 +198,9 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
-        {/* バナー広告 - 最上部に固定 */}
-        <div className="sticky top-0 z-50 bg-background">
-          <BannerAd />
-        </div>
 
-        {/* ヘッダー - バナー広告の下 */}
-        <header className="bg-background/80 backdrop-blur-md sticky top-[50px] z-40">
+        {/* ヘッダー */}
+        <header className="bg-background/80 backdrop-blur-md sticky top-0 z-40">
           <div className="max-w-[420px] mx-auto w-full flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <button
@@ -499,6 +502,35 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
                       </button>
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* 愛車タグ */}
+              {vehicles && vehicles.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Car size={14} className="text-gray-400" />
+                    <span className="text-xs text-gray-400">愛車から選択</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {vehicles.map((vehicle) => (
+                      <button
+                        key={vehicle.id}
+                        type="button"
+                        onClick={() => addVehicleTag(vehicle.name)}
+                        disabled={tags.includes(vehicle.name) || tags.length >= 5}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          tags.includes(vehicle.name)
+                            ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                            : tags.length >= 5
+                            ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                            : 'bg-surface-light border border-surface-light text-gray-300 hover:bg-primary/20 hover:border-primary/30 hover:text-primary'
+                        }`}
+                      >
+                        {vehicle.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

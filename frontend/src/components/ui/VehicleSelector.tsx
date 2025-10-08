@@ -107,19 +107,19 @@ export const VehicleSelector: React.FC<VehicleSelectorProps> = ({
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           placeholder={placeholder}
-          className="w-full px-4 py-3 pl-12 bg-surface border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20"
+          className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-3 pl-10 focus:outline-none focus:border-primary transition-colors"
         />
         
         {/* 検索アイコン */}
         <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-          <Search size={20} className="text-gray-400" />
+          <Search size={20} className="text-text-secondary" />
         </div>
 
         {/* クリアボタン */}
         {selectedVehicle && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
           >
             ×
           </button>

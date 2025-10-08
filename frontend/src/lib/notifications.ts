@@ -206,7 +206,7 @@ export const createReplyNotification = async (
   fromUserId: string,
   fromUserName: string,
   targetId: string,
-  targetType: 'thread' | 'question' | 'maintenance',
+  targetType: 'thread' | 'question' | 'maintenance' | 'touring',
   targetTitle: string
 ): Promise<string> => {
   const title = '返信がつきました';
@@ -221,5 +221,35 @@ export const createReplyNotification = async (
     targetType,
     fromUserId,
     fromUserName,
+  });
+};
+
+// 車種申請通知を管理者に送信
+export const createVehicleRequestNotification = async (
+  fromUserId: string,
+  fromUserName: string,
+  requestData: {
+    maker: string;
+    model: string;
+    year?: string;
+    notes?: string;
+  }
+): Promise<string> => {
+  const title = '車種申請が届きました';
+  const content = `${fromUserName}さんから車種申請が届きました`;
+  
+  return createNotification({
+    userId: 'admin', // 管理者用の固定ID
+    type: 'vehicle_request',
+    title,
+    content,
+    fromUserId,
+    fromUserName,
+    requestData: {
+      maker: requestData.maker,
+      model: requestData.model,
+      year: requestData.year || '',
+      notes: requestData.notes || '',
+    },
   });
 };

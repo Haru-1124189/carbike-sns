@@ -2,12 +2,13 @@ import { Send } from 'lucide-react';
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { createReply } from '../../lib/replies';
+import { createTouringReply } from '../../lib/touring';
 import { MentionTextarea } from './MentionTextarea';
 
 interface FloatingReplyBarProps {
   targetId: string;
-  targetType: 'thread' | 'question' | 'maintenance';
-  targetAuthorName: string;
+  targetType: 'thread' | 'question' | 'maintenance' | 'touring';
+  targetAuthorName?: string;
   onReplySubmitted?: () => void;
 }
 
@@ -24,7 +25,15 @@ export const FloatingReplyBar: React.FC<FloatingReplyBarProps> = ({
   const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user?.uid || !replyContent.trim()) return;
+    if (!user?.uid) {
+      alert('ログインが必要です');
+      return;
+    }
+    
+    if (!replyContent.trim()) {
+      alert('返信内容を入力してください');
+      return;
+    }
 
     console.log('Submitting reply with data:', {
       targetId,
@@ -43,16 +52,30 @@ export const FloatingReplyBar: React.FC<FloatingReplyBarProps> = ({
       console.log('User data for reply:', { displayName, photoURL, userDoc: userDoc?.photoURL, user: user?.photoURL });
       
       console.log('Calling createReply...');
-      const result = await createReply(
-        {
-          targetId,
-          targetType,
+      let result;
+      
+      if (targetType === 'touring') {
+        // ツーリングスレッドの場合は専用の関数を使用
+        result = await createTouringReply({
+          threadId: targetId,
+          authorId: user.uid,
+          authorName: displayName,
+          authorAvatar: photoURL || '',
           content: replyContent.trim()
-        },
-        user.uid,
-        displayName,
-        photoURL
-      );
+        });
+      } else {
+        // その他の場合は通常の返信関数を使用
+        result = await createReply(
+          {
+            targetId,
+            targetType,
+            content: replyContent.trim()
+          },
+          user.uid,
+          displayName,
+          photoURL
+        );
+      }
       
       console.log('Reply created successfully:', result);
       setReplyContent('');
@@ -122,7 +145,7 @@ export const FloatingReplyBar: React.FC<FloatingReplyBarProps> = ({
               <MentionTextarea
                 value={replyContent}
                 onChange={setReplyContent}
-                placeholder={`${targetAuthorName}に返信...`}
+                placeholder={`${targetAuthorName || '投稿者'}に返信...`}
                 className="w-full bg-transparent border-none outline-none text-white placeholder-gray-400 resize-none text-sm"
                 rows={1}
                 maxLength={120}

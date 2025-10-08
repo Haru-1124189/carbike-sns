@@ -1,7 +1,6 @@
 import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, Users } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { FloatingReplyBar } from '../components/ui/FloatingReplyBar';
 import { LikeHistoryModal } from '../components/ui/LikeHistoryModal';
 import { PersistentImage } from '../components/ui/PersistentImage';
@@ -113,7 +112,6 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
             onProfileClick={() => {}}
           />
           <main className="px-4 pb-24 pt-0">
-            <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
               <button
@@ -142,7 +140,6 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
             onProfileClick={() => {}}
           />
           <main className="px-4 pb-24 pt-0">
-            <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
               <button
@@ -173,7 +170,6 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
         />
         
         <main className="px-4 pb-24 pt-0">
-          <BannerAd />
           
           {/* 戻るボタン */}
           <div className="flex items-center space-x-3 mb-4 mt-4">
@@ -221,7 +217,7 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
               </div>
               
               <div className="text-xs text-text-secondary">
-                {thread.createdAt instanceof Date 
+                {thread.createdAt instanceof Date
                   ? thread.createdAt.toLocaleString('ja-JP', {
                       year: 'numeric',
                       month: '2-digit',
@@ -231,6 +227,14 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
                     })
                   : typeof thread.createdAt === 'string'
                   ? new Date(thread.createdAt).toLocaleString('ja-JP', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : thread.createdAt && typeof thread.createdAt === 'object' && 'toDate' in (thread.createdAt as any)
+                  ? (thread.createdAt as any).toDate().toLocaleString('ja-JP', {
                       year: 'numeric',
                       month: '2-digit',
                       day: '2-digit',
@@ -386,13 +390,14 @@ export const ThreadDetailPage: React.FC<ThreadDetailPageProps> = ({
           />
 
           {/* いいね履歴モーダル */}
-          <LikeHistoryModal
-            isOpen={showLikeHistory}
-            onClose={() => setShowLikeHistory(false)}
-            targetId={threadId}
-            targetType="thread"
-            onUserClick={onUserClick}
-          />
+          {showLikeHistory && (
+            <LikeHistoryModal
+              targetId={threadId}
+              targetType="thread"
+              onClose={() => setShowLikeHistory(false)}
+              onUserClick={onUserClick}
+            />
+          )}
         </main>
       </div>
     </div>

@@ -7,7 +7,7 @@ export interface CreateReportData {
   reporterId: string;
   reporterName: string;
   targetId: string;
-  targetType: 'thread' | 'maintenance' | 'user';
+  targetType: 'thread' | 'maintenance' | 'user' | 'touring';
   targetTitle?: string;
   targetAuthorId?: string;
   targetAuthorName?: string;

@@ -1,5 +1,5 @@
-import { Search, X, Plus } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import { Plus, Search, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 import { carList } from '../../data/dummy';
 
 interface InterestedCarSelectorProps {
@@ -73,13 +73,13 @@ export const InterestedCarSelector: React.FC<InterestedCarSelectorProps> = ({
         {/* 検索バー */}
         <div className="p-4 border-b border-surface-light">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary" size={20} />
             <input
               type="text"
               placeholder="車種を検索..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-surface-light border border-surface-light rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-primary"
+              className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-3 pl-10 focus:outline-none focus:border-primary transition-colors"
             />
           </div>
         </div>

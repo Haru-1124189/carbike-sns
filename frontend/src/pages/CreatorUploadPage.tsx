@@ -1,8 +1,7 @@
-import { ArrowLeft, Upload, Video, Image as ImageIcon, FileText } from 'lucide-react';
+import { ArrowLeft, FileText, Image as ImageIcon, Upload, Video } from 'lucide-react';
 import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
+import { useAuth } from '../hooks/useAuth';
 
 interface CreatorUploadPageProps {
   onBackClick?: () => void;
@@ -53,7 +52,6 @@ export const CreatorUploadPage: React.FC<CreatorUploadPageProps> = ({ onBackClic
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
-        <BannerAd />
         <AppHeader
           onNotificationClick={() => console.log('Notifications clicked')}
           onProfileClick={() => console.log('Profile clicked')}

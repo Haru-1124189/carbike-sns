@@ -1,17 +1,19 @@
-import { ArrowLeft, Bell, Heart, MessageCircle, Trash2, UserPlus, Video } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Bell, Car, Heart, Mail, MapPin, MessageCircle, Trash2, UserPlus, Video } from 'lucide-react';
 import React, { useEffect } from 'react';
-import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { AdminNotification, useAdminNotifications } from '../hooks/useAdminNotifications';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
-import { NotificationDoc } from '../types/notification';
+import { NotificationDoc } from '../types/index';
 
 interface NotificationsPageProps {
   onBackClick?: () => void;
+  onVehicleRequestClick?: (requestId: string, requestData: any, fromUserId: string, fromUserName: string, createdAt: Date) => void;
+  onReportClick?: (reportId: string, reportData: any, createdAt: Date) => void;
+  onNavigateToAdminDashboard?: () => void;
+  onNavigateToContactReplyDetail?: (inquiryId: string) => void;
 }
 
-export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClick }) => {
+export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClick, onVehicleRequestClick, onReportClick, onNavigateToAdminDashboard, onNavigateToContactReplyDetail }) => {
   const { user, userDoc } = useAuth();
   const { 
     notifications, 
@@ -30,10 +32,34 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
     markAllAsRead: markAllAdminAsRead
   } = useAdminNotifications();
 
-  // 通知ページが開かれた時に全ての通知を既読にする
+  // 管理者通知と一般通知を統合して時系列順にソート
+  const allNotifications = React.useMemo(() => {
+    const combined = [
+      ...adminNotifications.map(admin => ({
+        ...admin,
+        isAdminNotification: true
+      })),
+      ...notifications.map(notif => ({
+        ...notif,
+        isAdminNotification: false
+      }))
+    ];
+    
+    // 作成日時で降順ソート（新しいものが上）
+    return combined.sort((a, b) => {
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [adminNotifications, notifications]);
+
+  // 通知ページが開かれた時に全ての通知を既読にする（一度だけ実行）
   useEffect(() => {
+    let hasExecuted = false;
+    
     const markAllNotificationsAsRead = async () => {
-      if (!user?.uid) return;
+      if (!user?.uid || hasExecuted) return;
+      hasExecuted = true;
       
       try {
         console.log('Marking all notifications as read...');
@@ -60,16 +86,7 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
     if (!loading && !error && user?.uid) {
       markAllNotificationsAsRead();
     }
-  }, [loading, error, user?.uid, markAllAsRead, fetchUnreadCount, userDoc?.isAdmin, adminUnreadCount, markAllAdminAsRead]);
-
-  // 通知ページが開かれた瞬間に未読カウントを強制的にリセット
-  useEffect(() => {
-    if (user?.uid) {
-      console.log('NotificationsPage opened - forcing unread count reset');
-      // 即座に未読カウントを再取得
-      fetchUnreadCount();
-    }
-  }, [user?.uid, fetchUnreadCount]);
+  }, [loading, error, user?.uid]); // 依存配列を簡素化
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -83,6 +100,16 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
         return <Bell size={16} className="text-green-500" />;
       case 'creator_application':
         return <Video size={16} className="text-purple-500" />;
+      case 'nearby_touring':
+        return <MapPin size={16} className="text-orange-500" />;
+      case 'contact_inquiry':
+        return <Mail size={16} className="text-blue-500" />;
+      case 'user_report':
+        return <AlertTriangle size={16} className="text-red-500" />;
+      case 'vehicle_request':
+        return <Car size={16} className="text-green-500" />;
+      case 'contact_reply':
+        return <Mail size={16} className="text-blue-500" />;
       default:
         return <Bell size={16} className="text-gray-400" />;
     }
@@ -99,6 +126,19 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
         // TODO: フォロワーのプロフィールページに遷移する処理を追加
         console.log('Navigate to follower profile:', notification.followData.followerId);
       }
+      
+      // 近くのツーリング通知の場合はツーリングチャットページに遷移
+      if (notification.type === 'nearby_touring' && notification.data?.threadId) {
+        // ツーリングチャットページに遷移
+        window.location.href = '/touring-chat';
+      }
+      
+      // お問い合わせ返信通知の場合は返信詳細ページに遷移
+      if (notification.type === 'contact_reply' && notification.data?.inquiryId) {
+        console.log('Navigate to contact reply detail:', notification.data.inquiryId);
+        onNavigateToContactReplyDetail?.(notification.data.inquiryId);
+      }
+      
       // TODO: 他の通知タイプに関連する投稿に遷移する処理を追加
     } catch (error) {
       console.error('Error handling notification click:', error);
@@ -106,10 +146,85 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
     }
   };
 
-  const handleAdminNotificationClick = async (notification: AdminNotification) => {
+  // 統合された通知クリック処理
+  const handleUnifiedNotificationClick = async (notification: any) => {
     try {
       if (!notification.isRead) {
+        if (notification.isAdminNotification) {
+          // 管理者通知の既読処理（useAdminNotificationsのmarkAsReadを使用）
+          // 管理者通知の既読処理は別途実装が必要
+          console.log('Mark admin notification as read:', notification.id);
+        } else {
+          await markAsRead(notification.id);
+        }
+      }
+      
+      // 管理者通知の場合
+      if (notification.isAdminNotification) {
+        if (notification.type === 'contact_inquiry') {
+          onNavigateToAdminDashboard?.();
+        }
+        // 他の管理者通知タイプの処理を追加
+        return;
+      }
+      
+      // 一般通知の処理
+      if (notification.type === 'follow' && notification.followData) {
+        console.log('Navigate to follower profile:', notification.followData.followerId);
+      }
+      
+      if (notification.type === 'nearby_touring' && notification.data?.threadId) {
+        window.location.href = '/touring-chat';
+      }
+      
+      if (notification.type === 'contact_reply' && notification.data?.inquiryId) {
+        console.log('Navigate to contact reply detail:', notification.data.inquiryId);
+        onNavigateToContactReplyDetail?.(notification.data.inquiryId);
+      }
+      
+    } catch (error) {
+      console.error('Error handling unified notification click:', error);
+      alert('通知の処理中にエラーが発生しました。');
+    }
+  };
+
+  const handleAdminNotificationClick = async (notification: AdminNotification) => {
+    try {
+      console.log('Admin notification clicked:', notification);
+      
+      if (!notification.isRead) {
         await markAsRead(notification.id);
+      }
+      
+      // 車種申請の通知の場合は車種申請詳細ページに遷移
+      if (notification.type === 'vehicle_request' && notification.requestData && notification.fromUserId && notification.fromUserName) {
+        console.log('Vehicle request notification clicked, calling onVehicleRequestClick');
+        onVehicleRequestClick?.(
+          notification.id,
+          notification.requestData,
+          notification.fromUserId,
+          notification.fromUserName,
+          notification.createdAt.toDate()
+        );
+        return;
+      }
+      
+      // 通報の通知の場合は通報詳細ページに遷移
+      if (notification.type === 'report' && notification.reportData) {
+        console.log('Report notification clicked, calling onReportClick');
+        onReportClick?.(
+          notification.id,
+          notification.reportData,
+          notification.createdAt.toDate()
+        );
+        return;
+      }
+      
+      // お問い合わせの通知の場合は管理者ダッシュボードに遷移
+      if (notification.type === 'contact_inquiry') {
+        console.log('Contact inquiry notification clicked, navigating to admin dashboard');
+        onNavigateToAdminDashboard?.();
+        return;
       }
       
       // 配信者申請の通知の場合は申請管理ページに遷移
@@ -155,136 +270,118 @@ export const NotificationsPage: React.FC<NotificationsPageProps> = ({ onBackClic
   };
 
   return (
-    <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
-      <AppHeader 
-        onNotificationClick={() => console.log('Notifications clicked')}
-        onProfileClick={() => console.log('Profile clicked')}
-      />
-      
-              <main className="p-4 pb-24 pt-0">
-          {/* ヘッダー */}
-          <div className="flex items-center space-x-3 mb-6">
-            <button
-              onClick={onBackClick}
-              className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
-            >
-              <ArrowLeft size={20} className="text-white" />
-            </button>
-            <h1 className="text-lg font-bold text-white">通知</h1>
-            {unreadCount > 0 && (
-              <span className="text-xs text-gray-400">(未読: {unreadCount})</span>
-            )}
-          </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-6 py-8 pb-24">
+        {/* ヘッダー */}
+        <div className="flex items-center space-x-4 mb-8">
+          <button
+            onClick={onBackClick}
+            className="p-2 hover:bg-surface-light rounded-full transition-colors"
+          >
+            <ArrowLeft size={20} className="text-text-primary" />
+          </button>
+          <h1 className="text-2xl font-bold text-text-primary">通知</h1>
+          {unreadCount > 0 && (
+            <span className="text-sm text-text-secondary">(未読: {unreadCount})</span>
+          )}
+        </div>
 
-          {/* 管理者通知と一般通知を統合して表示 */}
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="text-sm text-gray-400">読み込み中...</div>
-            </div>
-          ) : error ? (
-            <div className="text-center py-8">
-              <div className="text-sm text-red-400 mb-4">{error}</div>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-dark transition-colors"
+
+        {/* 管理者通知と一般通知を統合して表示 */}
+        {loading ? (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-surface-light border-t-primary mx-auto mb-4"></div>
+            <div className="text-sm text-text-secondary">読み込み中...</div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-16">
+            <div className="text-sm text-red-400 mb-4">{error}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-primary text-white rounded-lg text-sm hover:bg-primary-dark transition-colors"
+            >
+              再試行
+            </button>
+          </div>
+        ) : allNotifications.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-text-primary text-lg font-medium mb-2">通知はありません</div>
+            <div className="text-text-secondary">新しい通知が届いたらここに表示されます</div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* 統合された通知リスト（時系列順） */}
+            {allNotifications.map((notification) => (
+              <div
+                key={`${notification.isAdminNotification ? 'admin-' : ''}${notification.id}`}
+                onClick={() => handleUnifiedNotificationClick(notification)}
+                className={`cursor-pointer hover:bg-surface-light rounded-lg p-4 transition-colors ${
+                  !notification.isRead ? 'bg-surface-light' : ''
+                }`}
               >
-                再試行
-              </button>
-            </div>
-          ) : (notifications.length === 0 && adminNotifications.length === 0) ? (
-            <div className="text-center py-8">
-              <div className="text-sm text-gray-400">通知はありません</div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* 管理者通知 */}
-              {userDoc?.isAdmin && adminNotifications.map((notification) => (
-                <div
-                  key={`admin-${notification.id}`}
-                  onClick={() => handleAdminNotificationClick(notification)}
-                  className={`bg-surface rounded-xl border border-surface-light p-4 cursor-pointer hover:scale-95 active:scale-95 transition-transform ${
-                    !notification.isRead ? 'bg-surface-light border-primary border-opacity-30' : ''
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-white mb-1">
-                        {notification.title || '管理者通知'}
-                      </h3>
-                      <p className="text-xs text-gray-400 mb-2">
-                        {notification.content || '通知内容がありません'}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">
-                          {notification.createdAt ? formatTime(notification.createdAt.toDate()) : '不明'}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-primary rounded-full"></div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0 mt-1">
+                    {getNotificationIcon(notification.type)}
                   </div>
-                </div>
-              ))}
-              
-              {/* 一般通知 */}
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={`bg-surface rounded-xl border border-surface-light p-4 cursor-pointer hover:scale-95 active:scale-95 transition-transform ${
-                    !notification.isRead ? 'bg-surface-light border-primary border-opacity-30' : ''
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-white mb-1">
-                        {notification.title || '通知'}
-                      </h3>
-                      <p className="text-xs text-gray-400 mb-2">
-                        {notification.content || '通知内容がありません'}
-                      </p>
-                      {notification.type === 'follow' && notification.followData && (
-                        <div className="mb-2">
-                          <span className="text-xs text-primary">
-                            @{notification.followData.followerName}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-medium text-text-primary mb-2">
+                      {notification.title || (notification.isAdminNotification ? '管理者通知' : '通知')}
+                    </h3>
+                    <p className="text-sm text-text-secondary mb-3">
+                      {notification.content || '通知内容がありません'}
+                    </p>
+                    {notification.type === 'follow' && notification.followData && (
+                      <div className="mb-3">
+                        <span className="text-sm text-primary">
+                          @{notification.followData.followerName}
+                        </span>
+                      </div>
+                    )}
+                    {notification.type === 'nearby_touring' && notification.data && (
+                      <div className="mb-3 bg-orange-500/10 p-3 rounded-lg">
+                        <div className="flex items-center space-x-2 text-sm">
+                          <MapPin size={14} className="text-orange-400" />
+                          <span className="text-orange-400">
+                            {notification.data.prefecture}
+                            {/* プライバシー保護のため詳細な場所情報は非表示 */}
                           </span>
                         </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">
-                          {notification.createdAt ? formatTime(notification.createdAt) : '不明'}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-primary rounded-full"></div>
-                          )}
-                          <button
-                            onClick={(e) => handleDeleteNotification(notification.id, e)}
-                            className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors"
-                          >
-                            <Trash2 size={14} className="text-gray-400 hover:text-red-400" />
-                          </button>
+                        {notification.data.touringDate && (
+                          <div className="text-sm text-text-secondary mt-1">
+                            ツーリング日: {new Date(notification.data.touringDate).toLocaleDateString('ja-JP')}
+                          </div>
+                        )}
+                        <div className="text-sm text-text-secondary mt-1">
+                          詳細はツーリングチャットでご確認ください
                         </div>
                       </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-text-secondary">
+                        {notification.createdAt ? 
+                          formatTime(notification.createdAt.toDate ? notification.createdAt.toDate() : notification.createdAt) : 
+                          '不明'
+                        }
+                      </span>
+                      <div className="flex items-center space-x-3">
+                        {!notification.isRead && (
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                        )}
+                        <button
+                          onClick={(e) => handleDeleteNotification(notification.id, e)}
+                          className="p-2 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors"
+                        >
+                          <Trash2 size={16} className="text-text-secondary hover:text-red-400" />
+                        </button>
+                      </div>
+                    </div>
                     </div>
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-
-       </main>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

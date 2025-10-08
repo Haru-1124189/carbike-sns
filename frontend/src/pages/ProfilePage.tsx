@@ -1,7 +1,6 @@
 import { Edit, MessageSquare, UserCheck, Users, Wrench } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { PersistentImage } from '../components/ui/PersistentImage';
 import { PrivacyToggle } from '../components/ui/PrivacyToggle';
 import { SectionTitle } from '../components/ui/SectionTitle';
@@ -29,6 +28,8 @@ interface ProfilePageProps {
   onBlockUser?: (author: string) => void;
   onReportThread?: (threadId: string, author: string) => void;
   onUserClick?: (userId: string, displayName: string) => void;
+  onFollowingClick?: () => void;
+  onFollowersClick?: () => void;
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
@@ -41,7 +42,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   blockedUsers = [],
   onBlockUser,
   onReportThread,
-  onUserClick
+  onUserClick,
+  onFollowingClick,
+  onFollowersClick
 }) => {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [isAdminEditing, setIsAdminEditing] = useState(false);
@@ -219,9 +222,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <div
                   key={record.id}
                   onClick={() => handleMaintenanceClick(record.id)}
-                  className="bg-surface rounded-xl border border-surface-light p-4 shadow-sm cursor-pointer hover:scale-95 active:scale-95 transition-transform"
+                  className="cursor-pointer hover:bg-surface-light rounded-lg p-4 transition-colors"
                 >
-                  <div className="flex items-start space-x-3">
+                  <div className="flex items-start space-x-4">
                     {/* 整備写真 */}
                     <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-surface-light">
                       {record.images && record.images.length > 0 ? (
@@ -232,16 +235,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                         />
                       ) : (
                         <div className="w-full h-full bg-surface-light flex items-center justify-center">
-                          <Wrench size={20} className="text-gray-400" />
+                          <Wrench size={20} className="text-text-secondary" />
                         </div>
                       )}
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-bold text-white truncate">{record.title}</h3>
-                        <span className="text-xs text-gray-400 flex-shrink-0">
-                          {record.createdAt instanceof Date 
+                        <h3 className="text-base font-medium text-text-primary truncate">{record.title}</h3>
+                        <span className="text-sm text-text-secondary flex-shrink-0">
+                          {record.createdAt instanceof Date
                             ? record.createdAt.toLocaleString('ja-JP', {
                                 year: 'numeric',
                                 month: '2-digit',
@@ -251,6 +254,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                               })
                             : typeof record.createdAt === 'string'
                             ? new Date(record.createdAt).toLocaleString('ja-JP', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : record.createdAt && typeof record.createdAt === 'object' && 'toDate' in (record.createdAt as any)
+                            ? (record.createdAt as any).toDate().toLocaleString('ja-JP', {
                                 year: 'numeric',
                                 month: '2-digit',
                                 day: '2-digit',
@@ -290,7 +301,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background container-mobile">
-        <BannerAd />
         <AppHeader
           user={{
             id: '',
@@ -320,7 +330,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   if (!user) {
     return (
       <div className="min-h-screen bg-background container-mobile">
-        <BannerAd />
         <AppHeader
           user={{
             id: '',
@@ -348,7 +357,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         user={userDoc ? { 
           id: user.uid, 
@@ -448,13 +456,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               
               {/* フォロー統計 */}
               <div className="flex items-center space-x-4 mt-2">
-                <div className="flex items-center space-x-1">
+                <div 
+                  className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={onFollowingClick}
+                >
                   <UserCheck size={14} className="text-text-secondary" />
                   <span className="text-sm text-text-secondary">
                     <span className="font-semibold text-text-primary">{followingCount}</span> フォロー中
                   </span>
                 </div>
-                <div className="flex items-center space-x-1">
+                <div 
+                  className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={onFollowersClick}
+                >
                   <Users size={14} className="text-text-secondary" />
                   <span className="text-sm text-text-secondary">
                     <span className="font-semibold text-text-primary">{followersCount}</span> フォロワー

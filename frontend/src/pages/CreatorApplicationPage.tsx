@@ -1,7 +1,6 @@
 import { ArrowLeft, Instagram, MessageCircle, Twitter, Video, Youtube } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { useAuth } from '../hooks/useAuth';
 import { useCreatorApplication } from '../hooks/useCreatorApplication';
 
@@ -122,7 +121,6 @@ export const CreatorApplicationPage: React.FC<CreatorApplicationPageProps> = ({
           onProfileClick={() => console.log('Profile clicked')}
         />
         
-        <BannerAd />
         
         <main className="p-4 pb-24">
           <div className="flex items-center space-x-3 mb-6">
@@ -205,7 +203,6 @@ export const CreatorApplicationPage: React.FC<CreatorApplicationPageProps> = ({
         onProfileClick={() => console.log('Profile clicked')}
       />
       
-      <BannerAd />
       
               <main className="p-4 pb-24">
         <div className="flex items-center space-x-3 mb-6">

@@ -1009,6 +1009,12 @@ export const postTemplates = [
     title: "整備記録",
     description: "整備の記録を共有しましょう",
     icon: "Wrench"
+  },
+  {
+    id: "touring",
+    title: "ツーリングチャット",
+    description: "ツーリングの募集をしましょう",
+    icon: "Users"
   }
 ];
 

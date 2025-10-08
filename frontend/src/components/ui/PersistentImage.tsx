@@ -115,10 +115,11 @@ export const PersistentImage: React.FC<PersistentImageProps> = ({
   };
 
   const handleImageClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 親要素へのイベント伝播を防ぐ
     if (clickable && !hasError) {
+      e.stopPropagation(); // 親要素へのイベント伝播を防ぐ
       setIsModalOpen(true);
     }
+    // clickableがfalseの場合は何もしない（親要素のクリックイベントを許可）
   };
 
   // エラー時はフォールバックを表示

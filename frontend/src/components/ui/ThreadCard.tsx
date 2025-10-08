@@ -135,7 +135,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
           />
           <div className="flex items-center space-x-2">
             <div className="text-xs text-text-secondary">
-              {thread.createdAt instanceof Date 
+              {thread.createdAt instanceof Date
                 ? thread.createdAt.toLocaleString('ja-JP', {
                     month: '2-digit',
                     day: '2-digit',
@@ -144,6 +144,13 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
                   })
                 : typeof thread.createdAt === 'string'
                 ? new Date(thread.createdAt).toLocaleString('ja-JP', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                : thread.createdAt && typeof thread.createdAt === 'object' && 'toDate' in (thread.createdAt as any)
+                ? (thread.createdAt as any).toDate().toLocaleString('ja-JP', {
                     month: '2-digit',
                     day: '2-digit',
                     hour: '2-digit',
@@ -231,7 +238,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
               <PersistentImage
                 src={thread.images[0]}
                 alt={thread.title}
-                className="w-full max-h-96 object-contain"
+                className="w-full max-h-64 object-contain"
                 clickable={true}
               />
             </div>
@@ -242,7 +249,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
                   <PersistentImage
                     src={image}
                     alt={`${thread.title} ${index + 1}`}
-                    className="w-80 h-60 object-contain rounded-lg"
+                    className="w-64 h-48 object-contain rounded-lg"
                     clickable={true}
                   />
                 </div>

@@ -1,11 +1,11 @@
 import { ArrowLeft, Eye, Globe, Lock, Tag, Upload } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { ThumbnailGenerator } from '../components/ui/ThumbnailGenerator';
 import { VideoUploader } from '../components/ui/VideoUploader';
 import { useAuth } from '../hooks/useAuth';
 import { useVideos } from '../hooks/useVideos';
+import { uploadToStorage } from '../lib/upload';
 
 interface UploadVideoPageProps {
   onBack?: () => void;
@@ -41,14 +41,42 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
   const [tagInput, setTagInput] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [durationSec, setDurationSec] = useState<number | null>(null);
+  const [uiError, setUiError] = useState<string | null>(null);
+  const thumbnailSectionRef = useRef<HTMLDivElement>(null);
+
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    if (hours > 0) return `${hours}:${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    return `${minutes}:${String(secs).padStart(2,'0')}`;
+  };
 
   const handleVideoSelect = (file: File) => {
     setVideoFile(file);
+    // 長さを取得
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => {
+      setDurationSec(v.duration || 0);
+      URL.revokeObjectURL(v.src);
+    };
+    v.src = URL.createObjectURL(file);
   };
 
   const handleVideoRemove = () => {
     setVideoFile(null);
     setSelectedThumbnail(null);
+    setDurationSec(null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -92,7 +120,9 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
     }
 
     if (!selectedThumbnail) {
-      alert('サムネイルを選択してください');
+      setUiError('サムネイルを選択してください');
+      // サムネイル欄へスクロール
+      thumbnailSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -100,26 +130,21 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
     setUploadProgress(0);
 
     try {
-      // 実際のアップロード処理をシミュレート
-      const uploadSteps = [
-        { progress: 20, message: 'ファイルをアップロード中...' },
-        { progress: 40, message: '動画を処理中...' },
-        { progress: 60, message: 'サムネイルを生成中...' },
-        { progress: 80, message: 'メタデータを保存中...' },
-        { progress: 100, message: '完了！' }
-      ];
-
-      for (const step of uploadSteps) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setUploadProgress(step.progress);
-      }
+      // 動画をStorageにアップロードして実URLを取得
+      setUploadProgress(5);
+      const storageVideoUrl = await uploadToStorage(user.uid, videoFile, false, false, (p)=>{
+        // p: 0-100
+        // サムネ処理やメタデータ保存の余地を残して最大を70%に制限
+        const capped = Math.min(70, Math.max(5, Math.round(p * 0.7)));
+        setUploadProgress(capped);
+      });
 
       // 動画データを作成
       const videoData = {
         title: formData.title,
         description: formData.description,
         thumbnailUrl: selectedThumbnail,
-        videoUrl: URL.createObjectURL(videoFile), // 実際のアプリではアップロードされたURL
+        videoUrl: storageVideoUrl,
         duration: '0:00', // 実際のアプリでは動画の長さを取得
         tags: formData.tags,
         category: formData.category as 'car' | 'bike' | 'maintenance' | 'review' | 'other',
@@ -127,7 +152,9 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
         ageRestriction: formData.ageRestriction
       };
 
-      await uploadVideo(videoData, user.displayName || 'ユーザー');
+      setUploadProgress(90);
+      await uploadVideo(videoData, userDoc?.displayName || user?.displayName || 'ユーザー');
+      setUploadProgress(100);
       alert('動画がアップロードされました！');
       onBack?.();
     } catch (err) {
@@ -154,14 +181,13 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
+    <div className="min-h-screen bg-background">
       <AppHeader
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
 
-      <main className="p-4 pb-24 pt-0 fade-in">
+      <main className="p-4 pb-24 pt-0 fade-in max-w-6xl mx-auto">
         <div className="flex items-center mb-6">
           <button
             onClick={onBack}
@@ -172,7 +198,10 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
           <h1 className={`text-xl font-bold ${permissionColor}`}>動画をアップロード</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* PC向け2カラムレイアウト */}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* 左カラム（動画アップロード + ファイル情報 + 基本情報） */}
+          <div className="md:col-span-7 space-y-6">
           {/* 動画アップロード */}
           <div>
             <label className="block text-sm font-medium text-white mb-4">
@@ -187,21 +216,29 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
             />
           </div>
 
-          {/* サムネイル生成 */}
-          {videoFile && (
-            <div>
-              <ThumbnailGenerator
-                videoFile={videoFile}
-                onThumbnailSelect={setSelectedThumbnail}
-                selectedThumbnail={selectedThumbnail}
-              />
+            {/* ファイル情報（動画の直下） */}
+            <div className="p-4 bg-surface rounded-xl border border-surface-light">
+              <h3 className="text-sm font-medium text-white mb-3">ファイル情報</h3>
+              {!videoFile ? (
+                <p className="text-xs text-gray-400">動画を選択するとここに情報が表示されます。</p>
+              ) : (
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>ファイル名: <span className="text-gray-200">{videoFile.name}</span></li>
+                  <li>サイズ: <span className="text-gray-200">{formatFileSize(videoFile.size)}</span></li>
+                  {durationSec !== null && (
+                    <li>再生時間: <span className="text-gray-200">{formatDuration(durationSec)}</span></li>
+                  )}
+                  <li>形式: <span className="text-gray-200">{videoFile.type || '不明'}</span></li>
+                </ul>
+              )}
             </div>
-          )}
 
-          {/* 基本情報 */}
+          {/* サムネイル生成は右カラムへ移動 */}
+
+          {/* 基本情報（動画の下） */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-white">基本情報</h3>
-            
+
             {/* タイトル */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
@@ -240,7 +277,12 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
                 {formData.description.length}/5000文字
               </p>
             </div>
+          </div>
 
+          {/* 詳細設定 */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-white">詳細設定</h3>
+            
             {/* カテゴリ */}
             <div>
               <label className="block text-sm font-medium text-white mb-2">
@@ -307,10 +349,48 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
             </div>
           </div>
 
-          {/* 詳細設定 */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-white">詳細設定</h3>
-            
+
+
+          {/* エラーメッセージ */}
+          {error && (
+            <div className="p-4 bg-red-500 bg-opacity-20 border border-red-500 rounded-xl text-red-300">
+              {error}
+            </div>
+          )}
+
+          {/* アップロードボタン */}
+          <button
+            type="submit"
+            disabled={loading || isUploading || !videoFile || !selectedThumbnail || !formData.title.trim()}
+            className="w-full py-4 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          >
+            {loading || isUploading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>{isUploading ? 'アップロード中...' : '処理中...'}</span>
+              </>
+            ) : (
+              <>
+                <Upload size={20} />
+                <span>動画をアップロード</span>
+              </>
+            )}
+          </button>
+          </div>
+
+          {/* 右カラム サムネイル選択と公開設定 */}
+          <aside className="md:col-span-5 md:sticky md:top-4 space-y-4">
+            <div ref={thumbnailSectionRef}>
+              <ThumbnailGenerator
+                videoFile={videoFile}
+                onThumbnailSelect={setSelectedThumbnail}
+                selectedThumbnail={selectedThumbnail}
+              />
+              {uiError && !selectedThumbnail && (
+                <p className="mt-2 text-sm text-red-400">{uiError}</p>
+              )}
+            </div>
+
             {/* 公開設定 */}
             <div>
               <label className="block text-sm font-medium text-white mb-3">
@@ -360,33 +440,7 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
                 年齢制限付きコンテンツとして設定
               </label>
             </div>
-          </div>
-
-          {/* エラーメッセージ */}
-          {error && (
-            <div className="p-4 bg-red-500 bg-opacity-20 border border-red-500 rounded-xl text-red-300">
-              {error}
-            </div>
-          )}
-
-          {/* アップロードボタン */}
-          <button
-            type="submit"
-            disabled={loading || isUploading || !videoFile || !selectedThumbnail || !formData.title.trim()}
-            className="w-full py-4 bg-primary text-white rounded-xl font-medium hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-          >
-            {loading || isUploading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>{isUploading ? 'アップロード中...' : '処理中...'}</span>
-              </>
-            ) : (
-              <>
-                <Upload size={20} />
-                <span>動画をアップロード</span>
-              </>
-            )}
-          </button>
+          </aside>
         </form>
       </main>
     </div>

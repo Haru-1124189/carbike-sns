@@ -1,5 +1,5 @@
-import { collection, onSnapshot, orderBy, query, where, limit, startAfter, getDocs } from 'firebase/firestore';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { db } from '../firebase/clients';
 import { Thread } from '../types';
 
@@ -89,14 +89,21 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
         ...doc.data()
       })) as Thread[];
 
+      // 削除された投稿を除外
+      const filteredThreads = newThreads.filter(thread => !thread.isDeleted);
+
+      console.log('useThreads - Raw threads:', newThreads.length);
+      console.log('useThreads - Filtered threads:', filteredThreads.length);
+      console.log('useThreads - Query options:', { currentUserId, type, limitCount });
+
       if (isInitial) {
-        setThreads(newThreads);
-        saveToCache(newThreads);
+        setThreads(filteredThreads);
+        saveToCache(filteredThreads);
       } else {
-        setThreads(prev => [...prev, ...newThreads]);
+        setThreads(prev => [...prev, ...filteredThreads]);
       }
 
-      setHasMore(snapshot.docs.length === limitCount);
+      setHasMore(filteredThreads.length === limitCount);
       lastDocRef.current = snapshot.docs[snapshot.docs.length - 1];
       
     } catch (err) {
@@ -105,7 +112,7 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
     } finally {
       setLoading(false);
     }
-  }, [buildQuery, getFromCache, saveToCache, limitCount]);
+  }, [buildQuery, getFromCache, saveToCache, limitCount, currentUserId, type]);
 
   // リアルタイムリスナーを設定
   const setupRealtimeListener = useCallback(() => {
@@ -123,8 +130,11 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
           ...doc.data()
         })) as Thread[];
         
-        setThreads(newThreads);
-        saveToCache(newThreads);
+        // 削除された投稿を除外
+        const filteredThreads = newThreads.filter(thread => !thread.isDeleted);
+        
+        setThreads(filteredThreads);
+        saveToCache(filteredThreads);
         setLoading(false);
       },
       (err) => {

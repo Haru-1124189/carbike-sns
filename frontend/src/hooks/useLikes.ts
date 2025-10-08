@@ -1,7 +1,7 @@
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from '../firebase/clients';
-import { LikeTarget, toggleLike, getLikeHistory } from '../lib/likes';
+import { getLikeHistory, LikeTarget, toggleLike } from '../lib/likes';
 
 export const useLikes = (targetId: string, userId: string, targetType: LikeTarget = 'thread') => {
   const [isLiked, setIsLiked] = useState(false);
@@ -42,8 +42,10 @@ export const useLikes = (targetId: string, userId: string, targetType: LikeTarge
       }
     );
 
-    // いいね総数を監視（スレッド/メンテナンス投稿のlikesフィールドから取得）
-    const collectionName = targetType === 'thread' ? 'threads' : 'maintenance_posts';
+    // いいね総数を監視（スレッド/メンテナンス投稿/ツーリングスレッドのlikesフィールドから取得）
+    const collectionName = targetType === 'thread' ? 'threads' : 
+                          targetType === 'maintenance' ? 'maintenance_posts' : 
+                          targetType === 'touring' ? 'touringThreads' : 'threads';
     const targetRef = doc(db, collectionName, targetId);
 
     const unsubscribeAllLikes = onSnapshot(
@@ -92,6 +94,11 @@ export const useThreadLikes = (threadId: string, userId: string) => {
 // メンテナンス投稿専用のいいねフック
 export const useMaintenanceLikes = (maintenanceId: string, userId: string) => {
   return useLikes(maintenanceId, userId, 'maintenance');
+};
+
+// ツーリングスレッド専用のいいねフック
+export const useTouringLikes = (touringId: string, userId: string) => {
+  return useLikes(touringId, userId, 'touring');
 };
 
 // いいね履歴を取得するフック

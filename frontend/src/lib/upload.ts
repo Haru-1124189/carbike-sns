@@ -1,4 +1,4 @@
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes, uploadBytesResumable } from 'firebase/storage';
 import { storage } from '../firebase/clients';
 
 // 画像をプリロードする関数
@@ -57,7 +57,7 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 // Firebase Storageに画像をアップロードする関数
-const uploadToFirebaseStorage = async (file: File, userId: string, isProfileImage: boolean = false, isMaintenanceImage: boolean = false): Promise<string> => {
+const uploadImageToFirebaseStorage = async (file: File, userId: string, isProfileImage: boolean = false, isMaintenanceImage: boolean = false): Promise<string> => {
   try {
     // プロフィール画像の場合は小さくリサイズ
     let processedFile = file;
@@ -98,6 +98,30 @@ const uploadToFirebaseStorage = async (file: File, userId: string, isProfileImag
     return downloadURL;
   } catch (error) {
     console.error('Error uploading to Firebase Storage:', error);
+    throw error;
+  }
+};
+
+// Firebase Storageに動画やバイナリをアップロードする関数（リサイズなし）
+const uploadBinaryToFirebaseStorage = async (file: File, userId: string, onProgress?: (progress: number) => void): Promise<string> => {
+  try {
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${file.name}`;
+    const isVideo = file.type.startsWith('video/');
+    const storagePath = isVideo ? `videos/${userId}/${fileName}` : `files/${userId}/${fileName}`;
+    const storageRef = ref(storage, storagePath);
+    const task = uploadBytesResumable(storageRef, file);
+    await new Promise<void>((resolve, reject) => {
+      task.on('state_changed', (snap) => {
+        const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
+        onProgress?.(pct);
+      }, reject, resolve);
+    });
+    const downloadURL = await getDownloadURL(task.snapshot.ref);
+    console.log('Binary uploaded to Firebase Storage:', downloadURL);
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading binary to Firebase Storage:', error);
     throw error;
   }
 };
@@ -154,13 +178,26 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-export const uploadToStorage = async (userId: string, file: File, isProfileImage: boolean = false, isMaintenanceImage: boolean = false): Promise<string> => {
+export const uploadToStorage = async (userId: string, file: File, isProfileImage: boolean = false, isMaintenanceImage: boolean = false, onProgress?: (progress: number) => void): Promise<string> => {
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
   try {
     console.log('Attempting to upload to Firebase Storage...');
-    return await uploadToFirebaseStorage(file, userId, isProfileImage, isMaintenanceImage);
+    if (isImage) {
+      return await uploadImageToFirebaseStorage(file, userId, isProfileImage, isMaintenanceImage);
+    }
+    // 動画/その他はそのままアップロード
+    if (isVideo || !isImage) {
+      return await uploadBinaryToFirebaseStorage(file, userId, onProgress);
+    }
+    // フォールバックで画像扱い
+    return await uploadImageToFirebaseStorage(file, userId, isProfileImage, isMaintenanceImage);
   } catch (error) {
-    console.error('Firebase Storage upload failed, falling back to local storage:', error);
-    // Firebase Storageが利用できない場合はローカルストレージにフォールバック
-    return await saveToLocalStorage(file, userId, isProfileImage, isMaintenanceImage);
+    console.error('Firebase Storage upload failed:', error);
+    // 画像のみローカルフォールバック、動画はフォールバックしない（再生不可のため）
+    if (isImage) {
+      return await saveToLocalStorage(file, userId, isProfileImage, isMaintenanceImage);
+    }
+    throw error;
   }
 };

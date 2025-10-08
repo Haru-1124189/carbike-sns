@@ -1,6 +1,5 @@
 import { ArrowLeft, Image, Minus, Plus, Send, Upload } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
-import { BannerAd } from '../components/ui/BannerAd';
+import React, { useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { updateMaintenancePost } from '../lib/threads';
@@ -186,13 +185,8 @@ export const EditMaintenancePage: React.FC<EditMaintenancePageProps> = ({
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
-        {/* バナー広告 - 最上部に固定 */}
-        <div className="sticky top-0 z-50 bg-background">
-          <BannerAd />
-        </div>
-
-        {/* ヘッダー - バナー広告の下 */}
-        <header className="bg-background/80 backdrop-blur-md sticky top-[50px] z-40">
+        {/* ヘッダー */}
+        <header className="bg-background/80 backdrop-blur-md sticky top-0 z-40">
           <div className="max-w-[420px] mx-auto w-full flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <button

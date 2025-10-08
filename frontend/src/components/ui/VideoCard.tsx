@@ -1,7 +1,7 @@
 import { Eye, Play, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
-import { Video } from '../../types';
 import { currentUser } from '../../data/dummy';
+import { Video } from '../../types';
 import { Chip } from './Chip';
 
 interface VideoCardProps {

@@ -70,21 +70,25 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
       <div className="relative mb-2">
         <div className="aspect-[4/3] w-full rounded-lg overflow-hidden">
           {post.carImage ? (
-            <PersistentImage
-              src={post.carImage}
-              alt={post.title}
-              className="w-full h-full object-contain transition-all duration-300"
-              clickable={true}
-            />
+            <div onClick={onClick} className="w-full h-full cursor-pointer">
+              <PersistentImage
+                src={post.carImage}
+                alt={post.title}
+                className="w-full h-full object-contain transition-all duration-300"
+                clickable={false}
+              />
+            </div>
           ) : post.images && post.images.length > 0 ? (
-            <PersistentImage
-              src={post.images[0]}
-              alt={post.title}
-              className="w-full h-full object-contain transition-all duration-300"
-              clickable={true}
-            />
+            <div onClick={onClick} className="w-full h-full cursor-pointer">
+              <PersistentImage
+                src={post.images[0]}
+                alt={post.title}
+                className="w-full h-full object-contain transition-all duration-300"
+                clickable={false}
+              />
+            </div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-600 to-gray-800">
+            <div onClick={onClick} className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-600 to-gray-800 cursor-pointer">
               <div className="w-12 h-12 bg-gray-400 rounded-full flex items-center justify-center">
                 <span className="text-sm text-gray-600 font-bold">車</span>
               </div>

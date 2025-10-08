@@ -1,7 +1,6 @@
-import { ArrowLeft, Check, Moon, Sun, Palette } from 'lucide-react';
+import { ArrowLeft, Check, Moon, Palette, Sun } from 'lucide-react';
 import React from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { useTheme } from '../contexts/ThemeContext';
 import { Theme } from '../types';
 
@@ -40,7 +39,6 @@ export const ThemeSettingsPage: React.FC<ThemeSettingsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => {}}
         onProfileClick={() => {}}

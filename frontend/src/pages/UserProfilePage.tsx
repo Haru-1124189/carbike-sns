@@ -2,7 +2,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { ArrowLeft, MessageSquare, User, UserCheck, Users, Wrench } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { FollowButton } from '../components/ui/FollowButton';
 import { ThreadCard } from '../components/ui/ThreadCard';
 import { db } from '../firebase/init';
@@ -222,7 +221,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
           showProfileButton={false}
         />
         
-        <BannerAd />
         
         <main className="p-4 pb-24">
           <div className="text-center py-8">
@@ -251,7 +249,6 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
         showProfileButton={false}
       />
       
-      <BannerAd />
       
       <main className="p-4 pb-24">
         

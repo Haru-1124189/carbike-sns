@@ -1,7 +1,6 @@
 import { ArrowLeft, Heart, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { FloatingReplyBar } from '../components/ui/FloatingReplyBar';
 import { ReplySection } from '../components/ui/ReplySection';
 import { ReportButton } from '../components/ui/ReportButton';
@@ -104,7 +103,6 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
             onProfileClick={() => {}}
           />
           <main className="px-4 pb-24 pt-0">
-            <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
               <button
@@ -134,7 +132,6 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
             onProfileClick={() => {}}
           />
           <main className="px-4 pb-24 pt-0">
-            <BannerAd />
             {/* 戻るボタン */}
             <div className="flex items-center space-x-3 mb-4 mt-4">
               <button
@@ -165,7 +162,6 @@ export const QuestionDetailPage: React.FC<QuestionDetailPageProps> = ({
           onProfileClick={() => {}}
         />
         <main className="px-4 pb-24 pt-0">
-          <BannerAd />
           {/* 戻るボタン */}
           <div className="flex items-center space-x-3 mb-4 mt-4">
             <button

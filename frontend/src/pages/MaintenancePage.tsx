@@ -1,8 +1,8 @@
 import { Plus, Wrench } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { MaintenanceThumbnail } from '../components/ui/MaintenanceThumbnail';
+import { NativeAd, insertNativeAds } from '../components/ui/NativeAd';
 import { SearchBar } from '../components/ui/SearchBar';
 import { currentUser } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
@@ -129,7 +129,6 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
@@ -138,6 +137,24 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
       <main className="p-4 pb-24 pt-0 fade-in">
         {/* ヘッダー */}
         <div className="sticky top-0 bg-background z-10">
+          {/* 検索バー */}
+          <div className="px-4 pb-3 pt-2">
+            <div className="flex space-x-2">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="整備記録を検索..."
+                className="flex-1"
+              />
+              <button
+                onClick={onAddMaintenance}
+                className="px-4 py-1 text-primary hover:text-primary/80 transition-colors"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
+          </div>
+
           {/* タブ切り替え */}
           <div className="px-4 pb-2">
             <div className="flex space-x-1 bg-surface rounded-xl p-0.5">
@@ -173,24 +190,6 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
               </button>
             </div>
           </div>
-
-          {/* 検索バー */}
-          <div className="px-4 pb-3">
-            <div className="flex space-x-2">
-              <SearchBar
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="整備記録を検索..."
-                className="flex-1"
-              />
-              <button
-                onClick={onAddMaintenance}
-                className="px-4 py-1 text-primary hover:text-primary/80 transition-colors"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* 整備記録一覧 */}
@@ -208,27 +207,81 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
               <div className="text-sm text-gray-400">しばらくお待ちください</div>
             </div>
           ) : filteredPosts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-4">
-              {filteredPosts.map((post) => {
-                // MaintenancePostDocをMaintenancePostにマッピング
-                const mappedPost = {
-                  ...post,
-                  author: post.authorName,
-                  authorAvatar: post.authorAvatar || '',
-                  createdAt: post.createdAt?.toDate?.()?.toLocaleDateString() || new Date().toLocaleDateString(),
-                  steps: post.steps || []
-                };
+            <div className="space-y-4">
+              {(() => {
+                const itemsWithAds = insertNativeAds(filteredPosts, 6);
+                const result: React.ReactNode[] = [];
+                let maintenancePosts: any[] = [];
                 
-                return (
-                  <MaintenanceThumbnail
-                    key={post.id}
-                    post={mappedPost}
-                    onClick={() => handleMaintenanceClick(post.id)}
-                    onDelete={handleDeleteMaintenance}
-                    onEdit={handleEditMaintenance}
-                  />
-                );
-              })}
+                for (let i = 0; i < itemsWithAds.length; i++) {
+                  const item = itemsWithAds[i];
+                  
+                  if ('type' in item && item.type === 'ad') {
+                    // メンテナンス投稿がある場合は2列グリッドで表示
+                    if (maintenancePosts.length > 0) {
+                      result.push(
+                        <div key={`maintenance-group-${i}`} className="grid grid-cols-2 gap-4">
+                          {maintenancePosts.map((post) => {
+                            const mappedPost = {
+                              ...post,
+                              author: post.authorName,
+                              authorAvatar: post.authorAvatar || '',
+                              createdAt: post.createdAt?.toDate?.()?.toLocaleDateString() || new Date().toLocaleDateString(),
+                              steps: post.steps || []
+                            };
+                            
+                            return (
+                              <MaintenanceThumbnail
+                                key={post.id}
+                                post={mappedPost}
+                                onClick={() => handleMaintenanceClick(post.id)}
+                                onDelete={handleDeleteMaintenance}
+                                onEdit={handleEditMaintenance}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                      maintenancePosts = [];
+                    }
+                    
+                    // 広告を1列で表示
+                    result.push(<NativeAd key={item.id} ad={item.ad} />);
+                  } else {
+                    // メンテナンス投稿を配列に追加
+                    maintenancePosts.push(item);
+                  }
+                }
+                
+                // 残りのメンテナンス投稿がある場合は2列グリッドで表示
+                if (maintenancePosts.length > 0) {
+                  result.push(
+                    <div key="maintenance-group-final" className="grid grid-cols-2 gap-4">
+                      {maintenancePosts.map((post) => {
+                        const mappedPost = {
+                          ...post,
+                          author: post.authorName,
+                          authorAvatar: post.authorAvatar || '',
+                          createdAt: post.createdAt?.toDate?.()?.toLocaleDateString() || new Date().toLocaleDateString(),
+                          steps: post.steps || []
+                        };
+                        
+                        return (
+                          <MaintenanceThumbnail
+                            key={post.id}
+                            post={mappedPost}
+                            onClick={() => handleMaintenanceClick(post.id)}
+                            onDelete={handleDeleteMaintenance}
+                            onEdit={handleEditMaintenance}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                }
+                
+                return result;
+              })()}
             </div>
           ) : (
             <div className="text-center py-12">

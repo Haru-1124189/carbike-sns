@@ -1,7 +1,6 @@
 import { ArrowLeft, Calendar, Car, Edit, MoreVertical, Settings } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { Base64Image } from '../components/ui/Base64Image';
 import { useAuth } from '../hooks/useAuth';
 import { Vehicle } from '../types';
@@ -52,7 +51,6 @@ export const VehicleDetailPage: React.FC<VehicleDetailPageProps> = ({
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => {}}
         onProfileClick={() => {}}

@@ -7,21 +7,30 @@ import { useAuth } from './hooks/useAuth';
 import { useMaintenancePosts } from './hooks/useMaintenancePosts';
 import { useNotifications } from './hooks/useNotifications';
 import { useThreads } from './hooks/useThreads';
+import { useTouringThreads } from './hooks/useTouringThreads';
 import { useVehicles } from './hooks/useVehicles';
 import { deleteMaintenancePost } from './lib/threads';
 import { AddVehiclePage } from './pages/AddVehiclePage';
 import { AdminApplicationsPage } from './pages/AdminApplicationsPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import AdminContactManagementPage from './pages/AdminContactManagementPage';
+import AdminContentManagementPage from './pages/AdminContentManagementPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminReportManagementPage from './pages/AdminReportManagementPage';
+import AdminUserManagementPage from './pages/AdminUserManagementPage';
 import { AuthPage } from './pages/AuthPage';
 import { BlockListPage } from './pages/BlockListPage';
 
 import { ChannelsPage } from './pages/ChannelsPage';
 import { ContactPage } from './pages/ContactPage';
+import ContactReplyDetailPage from './pages/ContactReplyDetailPage';
 import { CreatePostPage } from './pages/CreatePostPage';
+import { CreateTouringThreadPage } from './pages/CreateTouringThreadPage';
 import { CreatorApplicationPage } from './pages/CreatorApplicationPage';
 import { CreatorUploadPage } from './pages/CreatorUploadPage';
 import { EditMaintenancePage } from './pages/EditMaintenancePage';
 import { EditVehiclePage } from './pages/EditVehiclePage';
+import { FollowersListPage } from './pages/FollowersListPage';
+import { FollowingListPage } from './pages/FollowingListPage';
 import { HelpPage } from './pages/HelpPage';
 import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
@@ -32,18 +41,25 @@ import { NewMaintenancePage } from './pages/NewMaintenancePage';
 import { NewThreadPage } from './pages/NewThreadPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { PostPage } from './pages/PostPage';
+import { PrivacySettingsPage } from './pages/PrivacySettingsPage';
 import { ProfileEditPage } from './pages/ProfileEditPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisteredInterestedCarsPage } from './pages/RegisteredInterestedCarsPage';
+import { ReportDetailPage } from './pages/ReportDetailPage';
 import { ReportPage } from './pages/ReportPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ThemeSettingsPage } from './pages/ThemeSettingsPage';
 import { ThreadDetailPage } from './pages/ThreadDetailPage';
 import { ThreadsPage } from './pages/ThreadsPage';
+import { TouringChatPage } from './pages/TouringChatPage';
+import { TouringChatRoomPage } from './pages/TouringChatRoomPage';
+import { TouringThreadDetailPage } from './pages/TouringThreadDetailPage';
 import { UploadVideoPage } from './pages/UploadVideoPage';
 import { UsernameSetupPage } from './pages/UserNameSetupPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { VehicleDetailPage } from './pages/VehicleDetailPage';
+import { VehicleRequestDetailPage } from './pages/VehicleRequestDetailPage';
+import { VideoAnalyticsPage } from './pages/VideoAnalyticsPage';
 import { VideoDetailPage } from './pages/VideoDetailPage';
 import { VideosPage } from './pages/VideosPage';
 import { AuthProvider } from './providers/AuthProvider';
@@ -54,6 +70,7 @@ function AppContent() {
   const { user, userDoc, loading } = useAuth();
   const { threads: allThreads } = useThreads();
   const { maintenancePosts: allMaintenancePosts } = useMaintenancePosts();
+  const { threads: touringThreads } = useTouringThreads();
   const { unreadCount, fetchUnreadCount } = useNotifications();
   const { vehicles, deleteVehicle, loading: vehiclesLoading } = useVehicles();
   
@@ -92,6 +109,29 @@ function AppContent() {
   const [showUserNameSetup, setShowUserNameSetup] = useState(false);
   const [showUploadVideo, setShowUploadVideo] = useState(false);
   const [showChannels, setShowChannels] = useState(false);
+  const [showFollowingList, setShowFollowingList] = useState(false);
+  const [showTouringChat, setShowTouringChat] = useState(false);
+  const [showTouringChatDetail, setShowTouringChatDetail] = useState(false);
+  const [showCreateTouringThread, setShowCreateTouringThread] = useState(false);
+  const [showTouringThreadDetail, setShowTouringThreadDetail] = useState(false);
+  const [selectedTouringThread, setSelectedTouringThread] = useState<any>(null);
+  const [showTouringChatRoom, setShowTouringChatRoom] = useState(false);
+  const [selectedChatRoomId, setSelectedChatRoomId] = useState<string | null>(null);
+  const [showFollowersList, setShowFollowersList] = useState(false);
+  const [showVehicleRequestDetail, setShowVehicleRequestDetail] = useState(false);
+  const [selectedVehicleRequest, setSelectedVehicleRequest] = useState<any>(null);
+  const [showReportDetail, setShowReportDetail] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [showVideoAnalytics, setShowVideoAnalytics] = useState(false);
+  const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<any>(null);
+  const [showPrivacySettings, setShowPrivacySettings] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [showAdminContactManagement, setShowAdminContactManagement] = useState(false);
+  const [showAdminReportManagement, setShowAdminReportManagement] = useState(false);
+  const [showAdminUserManagement, setShowAdminUserManagement] = useState(false);
+  const [showAdminContentManagement, setShowAdminContentManagement] = useState(false);
+  const [showContactReplyDetail, setShowContactReplyDetail] = useState(false);
+  const [selectedContactInquiryId, setSelectedContactInquiryId] = useState<string | null>(null);
 
   // 初期ローディング状態を管理
   useEffect(() => {
@@ -105,6 +145,46 @@ function AppContent() {
   // アプリ起動時にキャッシュのクリーンアップを実行
   useEffect(() => {
     cleanupExpiredCache();
+  }, []);
+
+  // 募集締切の監視（5分ごと）
+  useEffect(() => {
+    const processExpiredThreads = async () => {
+      try {
+        const { processExpiredTouringThreads } = await import('./lib/touring');
+        await processExpiredTouringThreads();
+      } catch (error) {
+        console.error('Error processing expired touring threads:', error);
+      }
+    };
+
+    // 初回実行
+    processExpiredThreads();
+
+    // 5分ごとに実行
+    const interval = setInterval(processExpiredThreads, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // 期限切れチャットルームの自動解散（5分ごと）
+  useEffect(() => {
+    const processExpiredChatRooms = async () => {
+      try {
+        const { processExpiredChatRooms } = await import('./lib/touring');
+        await processExpiredChatRooms();
+      } catch (error) {
+        console.error('Error processing expired chat rooms:', error);
+      }
+    };
+
+    // 初回実行
+    processExpiredChatRooms();
+
+    // 5分ごとに実行
+    const interval = setInterval(processExpiredChatRooms, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // 初期ローディング中はローディング画面を表示
@@ -175,6 +255,15 @@ function AppContent() {
     }
   };
 
+  const handleVideoAnalytics = (videoId: string) => {
+    console.log('Video analytics clicked:', videoId);
+    const video = videos.find(v => v.id === videoId);
+    if (video) {
+      setSelectedVideoForAnalytics(video);
+      setShowVideoAnalytics(true);
+    }
+  };
+
   const handleVehicleClick = async (vehicleId: string) => {
     // まずローカルのvehicles配列から検索
     let vehicle = vehicles.find(v => v.id === vehicleId);
@@ -224,55 +313,53 @@ function AppContent() {
     setShowEditVehicle(true);
   };
 
-  const handleUserClick = async (userId: string, displayName?: string) => {
+  const handleUserClick = (userId: string, displayName?: string) => {
     console.log('handleUserClick called:', { userId, displayName });
+    console.log('Current state - showUserProfile:', showUserProfile, 'selectedUser:', selectedUser);
     
-    try {
-      // Firestoreからユーザー情報を取得
-      const { doc, getDoc } = await import('firebase/firestore');
-      const { db } = await import('./firebase/init');
-      
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const user = {
-          id: userId,
-          name: userData.displayName || displayName || 'Unknown User',
-          avatar: userData.photoURL || '',
-          cars: userData.cars || [],
-          interestedCars: userData.interestedCars || []
-        };
+    // 即座にユーザー情報を設定してページを表示
+    const user = {
+      id: userId,
+      name: displayName || 'Unknown User',
+      avatar: '',
+      cars: [],
+      interestedCars: []
+    };
+    
+    console.log('Setting user immediately:', user);
+    setSelectedUser(user);
+    setShowUserProfile(true);
+    console.log('State updated - showUserProfile set to true');
+    
+    // バックグラウンドでFirestoreから詳細情報を取得
+    const fetchUserDetails = async () => {
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('./firebase/clients');
         
-        console.log('User data retrieved:', user);
-        setSelectedUser(user);
-        setShowUserProfile(true);
-      } else {
-        console.warn('User not found in Firestore:', userId);
-        // フォールバック：基本的なユーザー情報を作成
-        const user = {
-          id: userId,
-          name: displayName || 'Unknown User',
-          avatar: '',
-          cars: [],
-          interestedCars: []
-        };
-        setSelectedUser(user);
-        setShowUserProfile(true);
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const updatedUser = {
+            id: userId,
+            name: userData.displayName || displayName || 'Unknown User',
+            avatar: userData.photoURL || '',
+            cars: userData.cars || [],
+            interestedCars: userData.interestedCars || []
+          };
+          
+          console.log('User data retrieved from Firestore:', updatedUser);
+          setSelectedUser(updatedUser);
+        } else {
+          console.warn('User not found in Firestore:', userId);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      // エラー時のフォールバック
-      const user = {
-        id: userId,
-        name: displayName || 'Unknown User',
-        avatar: '',
-        cars: [],
-        interestedCars: []
-      };
-      setSelectedUser(user);
-      setShowUserProfile(true);
-    }
+    };
+    
+    fetchUserDetails();
   };
 
   const handleMaintenanceClick = (postId: string) => {
@@ -291,6 +378,30 @@ function AppContent() {
 
   const handleNotificationClick = () => {
     setShowNotifications(true);
+  };
+
+  const handleVehicleRequestClick = (requestId: string, requestData: any, fromUserId: string, fromUserName: string, createdAt: Date) => {
+    console.log('handleVehicleRequestClick called:', { requestId, requestData, fromUserId, fromUserName, createdAt });
+    setSelectedVehicleRequest({
+      id: requestId,
+      data: requestData,
+      fromUserId,
+      fromUserName,
+      createdAt
+    });
+    setShowVehicleRequestDetail(true);
+    console.log('Vehicle request detail page should be shown');
+  };
+
+  const handleReportClick = (reportId: string, reportData: any, createdAt: Date) => {
+    console.log('handleReportClick called:', { reportId, reportData, createdAt });
+    setSelectedReport({
+      id: reportId,
+      data: reportData,
+      createdAt
+    });
+    setShowReportDetail(true);
+    console.log('Report detail page should be shown');
   };
 
   const handleAddVehicleClick = () => {
@@ -332,6 +443,47 @@ function AppContent() {
     setActiveTab('threads');
   };
 
+  const handleNavigateToAdminDashboard = () => {
+    setShowAdminDashboard(true);
+    // 他のページを閉じる
+    setShowNotifications(false);
+    setShowSettings(false);
+    setShowThreadDetail(false);
+    setShowVideoDetail(false);
+    setShowTouringChat(false);
+    setShowCreateTouringThread(false);
+    setShowTouringThreadDetail(false);
+    setShowTouringChatRoom(false);
+    setShowVideoAnalytics(false);
+    setShowPrivacySettings(false);
+  };
+
+  const handleNavigateToAdminContactManagement = () => {
+    setShowAdminContactManagement(true);
+    setShowAdminDashboard(false);
+  };
+
+  const handleNavigateToAdminReportManagement = () => {
+    setShowAdminReportManagement(true);
+    setShowAdminDashboard(false);
+  };
+
+  const handleNavigateToAdminUserManagement = () => {
+    setShowAdminUserManagement(true);
+    setShowAdminDashboard(false);
+  };
+
+  const handleNavigateToAdminContentManagement = () => {
+    setShowAdminContentManagement(true);
+    setShowAdminDashboard(false);
+  };
+
+  const handleNavigateToContactReplyDetail = (inquiryId: string) => {
+    setSelectedContactInquiryId(inquiryId);
+    setShowContactReplyDetail(true);
+    setShowNotifications(false);
+  };
+
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     setShowSettings(false);
@@ -353,6 +505,29 @@ function AppContent() {
     setShowEditMaintenance(false);
     setShowChannels(false); // チャンネルページを閉じる
     setShowUploadVideo(false); // 動画アップロードページも閉じる
+    
+    // ツーリングチャット関連のページを閉じる
+    setShowTouringChat(false);
+    setShowCreateTouringThread(false);
+    setShowTouringThreadDetail(false);
+    setSelectedTouringThread(null);
+    setShowTouringChatRoom(false);
+    setSelectedChatRoomId(null);
+    
+    // 動画分析ページを閉じる
+    setShowVideoAnalytics(false);
+    setSelectedVideoForAnalytics(null);
+    
+    // プライバシー設定ページを閉じる
+    setShowPrivacySettings(false);
+    
+    // 管理者ダッシュボードを閉じる
+    setShowAdminDashboard(false);
+    setShowAdminContactManagement(false);
+    setShowAdminReportManagement(false);
+    setShowContactReplyDetail(false);
+    setSelectedContactInquiryId(null);
+    
     setPreviousPage(tabId);
   };
 
@@ -406,6 +581,210 @@ function AppContent() {
   };
 
   const renderPage = () => {
+    console.log('renderPage called - showTouringChat:', showTouringChat, 'showCreateTouringThread:', showCreateTouringThread);
+    
+    // 管理者ダッシュボードページの表示（最優先）
+    if (showAdminDashboard) {
+      console.log('Showing AdminDashboardPage');
+      return (
+        <AdminDashboardPage
+          onBackClick={() => {
+            setShowAdminDashboard(false);
+          }}
+          onNavigateToContactManagement={handleNavigateToAdminContactManagement}
+          onNavigateToReportManagement={handleNavigateToAdminReportManagement}
+          onNavigateToUserManagement={handleNavigateToAdminUserManagement}
+          onNavigateToContentManagement={handleNavigateToAdminContentManagement}
+        />
+      );
+    }
+
+    // 管理者お問い合わせ管理ページの表示
+    if (showAdminContactManagement) {
+      console.log('Showing AdminContactManagementPage');
+      return (
+        <AdminContactManagementPage
+          onBackClick={() => {
+            setShowAdminContactManagement(false);
+            setShowAdminDashboard(true);
+          }}
+        />
+      );
+    }
+
+    // 管理者通報管理ページの表示
+    if (showAdminReportManagement) {
+      console.log('Showing AdminReportManagementPage');
+      return (
+        <AdminReportManagementPage
+          onBackClick={() => {
+            setShowAdminReportManagement(false);
+            setShowAdminDashboard(true);
+          }}
+        />
+      );
+    }
+
+    // 管理者ユーザー管理ページの表示
+    if (showAdminUserManagement) {
+      console.log('Showing AdminUserManagementPage');
+      return (
+        <AdminUserManagementPage
+          onBackClick={() => {
+            setShowAdminUserManagement(false);
+            setShowAdminDashboard(true);
+          }}
+        />
+      );
+    }
+
+    // 管理者コンテンツ管理ページの表示
+    if (showAdminContentManagement) {
+      console.log('Showing AdminContentManagementPage');
+      return (
+        <AdminContentManagementPage
+          onBackClick={() => {
+            setShowAdminContentManagement(false);
+            setShowAdminDashboard(true);
+          }}
+        />
+      );
+    }
+
+    // お問い合わせ返信詳細ページの表示
+    if (showContactReplyDetail && selectedContactInquiryId) {
+      return (
+        <ContactReplyDetailPage
+          inquiryId={selectedContactInquiryId}
+          onBack={() => {
+            setShowContactReplyDetail(false);
+            setSelectedContactInquiryId(null);
+            setShowNotifications(true);
+          }}
+        />
+      );
+    }
+    
+    // プライバシー設定ページの表示（最優先）
+    if (showPrivacySettings) {
+      console.log('Showing PrivacySettingsPage');
+      return (
+        <PrivacySettingsPage
+          onBackClick={() => {
+            setShowPrivacySettings(false);
+          }}
+        />
+      );
+    }
+    
+    // 動画分析ページの表示（最優先）
+    if (showVideoAnalytics && selectedVideoForAnalytics) {
+      console.log('Showing VideoAnalyticsPage');
+      return (
+        <VideoAnalyticsPage
+          video={selectedVideoForAnalytics}
+          onBackClick={() => {
+            setShowVideoAnalytics(false);
+            setSelectedVideoForAnalytics(null);
+          }}
+        />
+      );
+    }
+    
+    // ツーリングチャットルームページの表示（最優先）
+    if (showTouringChatRoom && selectedTouringThread && selectedChatRoomId) {
+      console.log('Showing TouringChatRoomPage');
+      return (
+        <TouringChatRoomPage
+          thread={selectedTouringThread}
+          onBackClick={() => {
+            setShowTouringChatRoom(false);
+            setSelectedTouringThread(null);
+            setSelectedChatRoomId(null);
+          }}
+        />
+      );
+    }
+
+    // ツーリングスレッド詳細ページの表示
+    if (showTouringThreadDetail && selectedTouringThread) {
+      console.log('Showing TouringThreadDetailPage');
+      return (
+        <TouringThreadDetailPage
+          thread={selectedTouringThread}
+          onBackClick={() => {
+            setShowTouringThreadDetail(false);
+            setSelectedTouringThread(null);
+          }}
+          onUserClick={(userId, userName) => {
+            // ユーザープロフィールページに遷移
+            console.log('User clicked:', userId, userName);
+          }}
+          onDeleteClick={(threadId) => {
+            // ツーリングスレッドを削除
+            console.log('Delete touring thread:', threadId);
+            setShowTouringThreadDetail(false);
+            setSelectedTouringThread(null);
+          }}
+        />
+      );
+    }
+
+    // ツーリング募集作成ページの表示
+    if (showCreateTouringThread) {
+      console.log('Showing CreateTouringThreadPage');
+      return (
+        <CreateTouringThreadPage
+          onBack={() => setShowCreateTouringThread(false)}
+          onSubmit={(data) => {
+            console.log('Touring thread created:', data);
+            // 実際の実装ではFirestoreに保存
+            setShowCreateTouringThread(false);
+            setShowTouringChat(true);
+          }}
+        />
+      );
+    }
+
+    // ツーリングチャットページの表示
+    if (showTouringChat) {
+      return (
+        <TouringChatPage
+          onBack={() => {
+            setShowTouringChat(false);
+            setActiveTab('home'); // ホームに戻る
+          }}
+          onCreateThread={() => {
+            console.log('onCreateThread called, setting showCreateTouringThread to true');
+            setShowCreateTouringThread(true);
+          }}
+          onThreadClick={(threadId) => {
+            // ツーリング詳細ページに遷移
+            console.log('Touring thread clicked:', threadId);
+            // 選択されたスレッドを取得
+            const thread = touringThreads.find(t => t.id === threadId);
+            if (thread) {
+              setSelectedTouringThread(thread);
+              setShowTouringThreadDetail(true);
+            } else {
+              console.error('Touring thread not found:', threadId);
+            }
+          }}
+          onChatRoomClick={(chatRoomId, threadId) => {
+            // チャットルームページに遷移
+            console.log('Chat room clicked:', chatRoomId, threadId);
+            const thread = touringThreads.find(t => t.id === threadId);
+            if (thread) {
+              setSelectedTouringThread(thread);
+              setSelectedChatRoomId(chatRoomId);
+              setShowTouringChatRoom(true);
+            } else {
+              console.error('Touring thread not found for chat room:', threadId);
+            }
+          }}
+        />
+      );
+    }
     
     if (settingsSubPage) {
       switch (settingsSubPage) {
@@ -432,7 +811,13 @@ function AppContent() {
         case 'adminApplications':
           return <AdminApplicationsPage onBackClick={() => setSettingsSubPage(null)} />;
         case 'adminDashboard':
-          return <AdminDashboardPage onBackClick={() => setSettingsSubPage(null)} />;
+          return <AdminDashboardPage 
+            onBackClick={() => setSettingsSubPage(null)}
+            onNavigateToContactManagement={handleNavigateToAdminContactManagement}
+            onNavigateToReportManagement={handleNavigateToAdminReportManagement}
+            onNavigateToUserManagement={handleNavigateToAdminUserManagement}
+            onNavigateToContentManagement={handleNavigateToAdminContentManagement}
+          />;
         case 'profile':
           return <ProfileEditPage onBackClick={() => setSettingsSubPage(null)} />;
         case 'theme':
@@ -443,17 +828,59 @@ function AppContent() {
     }
 
     if (showSettings) {
-      return <SettingsPage onBackClick={() => setShowSettings(false)} onNavigate={(screen) => setSettingsSubPage(screen)} onLoginClick={() => setShowAuth(true)} />;
+      return <SettingsPage onBackClick={() => setShowSettings(false)} onNavigate={(screen) => {
+        if (screen === 'privacySettings') {
+          setShowPrivacySettings(true);
+        } else {
+          setSettingsSubPage(screen);
+        }
+      }} onLoginClick={() => setShowAuth(true)} />;
+    }
+
+    console.log('App render state:', { showVehicleRequestDetail, selectedVehicleRequest, showReportDetail, selectedReport, showNotifications });
+
+    if (showReportDetail && selectedReport) {
+      console.log('Rendering ReportDetailPage with:', selectedReport);
+      return <ReportDetailPage
+        onBackClick={() => {
+          setShowReportDetail(false);
+          setSelectedReport(null);
+        }}
+        reportId={selectedReport.id}
+        reportData={selectedReport.data}
+        createdAt={selectedReport.createdAt}
+      />;
+    }
+
+    if (showVehicleRequestDetail && selectedVehicleRequest) {
+      console.log('Rendering VehicleRequestDetailPage with:', selectedVehicleRequest);
+      return <VehicleRequestDetailPage
+        onBackClick={() => {
+          setShowVehicleRequestDetail(false);
+          setSelectedVehicleRequest(null);
+        }}
+        requestId={selectedVehicleRequest.id}
+        requestData={selectedVehicleRequest.data}
+        fromUserId={selectedVehicleRequest.fromUserId}
+        fromUserName={selectedVehicleRequest.fromUserName}
+        createdAt={selectedVehicleRequest.createdAt}
+      />;
     }
 
     if (showNotifications) {
-      return <NotificationsPage onBackClick={() => {
-        setShowNotifications(false);
-        // 通知ページから戻る際に未読カウントを再取得（複数回実行して確実に）
-        setTimeout(() => fetchUnreadCount(), 100);
-        setTimeout(() => fetchUnreadCount(), 500);
-        setTimeout(() => fetchUnreadCount(), 1000);
-      }} />;
+      return <NotificationsPage 
+        onBackClick={() => {
+          setShowNotifications(false);
+          // 通知ページから戻る際に未読カウントを再取得（複数回実行して確実に）
+          setTimeout(() => fetchUnreadCount(), 100);
+          setTimeout(() => fetchUnreadCount(), 500);
+          setTimeout(() => fetchUnreadCount(), 1000);
+        }}
+        onVehicleRequestClick={handleVehicleRequestClick}
+        onReportClick={handleReportClick}
+        onNavigateToAdminDashboard={handleNavigateToAdminDashboard}
+        onNavigateToContactReplyDetail={handleNavigateToContactReplyDetail}
+      />;
     }
 
     if (showThreadDetail) {
@@ -495,6 +922,32 @@ function AppContent() {
       />;
     }
 
+    if (showUserProfile) {
+      return <UserProfilePage 
+        user={selectedUser} 
+        onBackClick={() => setShowUserProfile(false)}
+        onUserClick={handleUserClick}
+      />;
+    }
+
+    if (showFollowingList) {
+      return (
+        <FollowingListPage
+          onBackClick={() => setShowFollowingList(false)}
+          onUserClick={handleUserClick}
+        />
+      );
+    }
+
+    if (showFollowersList) {
+      return (
+        <FollowersListPage
+          onBackClick={() => setShowFollowersList(false)}
+          onUserClick={handleUserClick}
+        />
+      );
+    }
+
     if (showEditVehicle) {
       return <EditVehiclePage 
         vehicle={selectedVehicle} 
@@ -507,14 +960,6 @@ function AppContent() {
 
     if (showThemeSettings) {
       return <ThemeSettingsPage onBackClick={() => setShowThemeSettings(false)} />;
-    }
-
-    if (showUserProfile) {
-      return <UserProfilePage 
-        user={selectedUser} 
-        onBackClick={() => setShowUserProfile(false)}
-        onUserClick={handleUserClick}
-      />;
     }
 
     if (showMaintenanceDetail) {
@@ -626,6 +1071,10 @@ function AppContent() {
             onDeleteThread={handleDeleteThread}
             onVideoClick={handleVideoClick}
             onViewAllVideos={() => setActiveTab('videos')}
+            onTouringChatClick={() => {
+              setShowTouringChat(true);
+              setActiveTab('threads'); // ツーリングチャットはスレッド関連として扱う
+            }}
             blockedUsers={blockedUsers}
             onBlockUser={handleBlockUser}
             onReportThread={handleReportThread}
@@ -659,23 +1108,26 @@ function AppContent() {
           />
         );
       case 'post':
-        return <PostPage onCreatePost={(postType) => {
-          if (postType === 'maintenance') {
-            setShowNewMaintenance(true);
-          } else {
-            setSelectedPostType(postType);
-            setShowNewThread(true);
-          }
-        }} />;
+        return <PostPage 
+          onCreatePost={(postType) => {
+            if (postType === 'maintenance') {
+              setShowNewMaintenance(true);
+            } else {
+              setSelectedPostType(postType);
+              setShowNewThread(true);
+            }
+          }}
+          onTouringChatClick={() => setShowTouringChat(true)}
+        />;
       case 'videos':
         return (
           <VideosPage
-            onVideoClick={handleVideoClick}
             onUserClick={handleUserClick}
             onDeleteVideo={handleDeleteVideo}
             onUploadVideo={() => setShowUploadVideo(true)}
             onCreatorApplication={() => setSettingsSubPage('creatorApplication')}
             onShowChannels={() => setShowChannels(true)}
+            onVideoAnalytics={handleVideoAnalytics}
           />
         );
       case 'profile':
@@ -691,6 +1143,8 @@ function AppContent() {
             onBlockUser={handleBlockUser}
             onReportThread={handleReportThread}
             onUserClick={handleUserClick}
+            onFollowingClick={() => setShowFollowingList(true)}
+            onFollowersClick={() => setShowFollowersList(true)}
           />
         );
       default:

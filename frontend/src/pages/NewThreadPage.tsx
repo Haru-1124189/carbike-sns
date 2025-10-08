@@ -1,11 +1,11 @@
-import { ArrowLeft, Hash, Image, Send, X } from 'lucide-react';
+import { ArrowLeft, Car, Hash, Send } from 'lucide-react';
 import React, { useRef, useState } from 'react';
-import { BannerAd } from '../components/ui/BannerAd';
 import { MentionTextarea } from '../components/ui/MentionTextarea';
+import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
+import { useVehicles } from '../hooks/useVehicles';
 import { createThread } from '../lib/threads';
-import { uploadToStorage } from '../lib/upload';
 
 interface NewThreadPageProps {
   postType: 'post' | 'question';
@@ -19,12 +19,13 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
   onSuccess 
 }) => {
   const { user, userDoc } = useAuth();
+  const { vehicles } = useVehicles();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,6 +101,12 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
     }
   };
 
+  const addVehicleTag = (vehicleName: string) => {
+    if (!tags.includes(vehicleName) && tags.length < 5) {
+      setTags([...tags, vehicleName]);
+    }
+  };
+
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
@@ -111,44 +118,16 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
     }
   };
 
-  const removeImage = (index: number) => {
-    setUploadedImages(uploadedImages.filter((_, i) => i !== index));
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !user?.uid) return;
-
-    setUploadingImages(true);
-    setError('');
-
-    try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        if (file.type.startsWith('image/')) {
-          return await uploadToStorage(user.uid, file);
-        }
-        throw new Error('画像ファイルのみアップロード可能です');
-      });
-
-      const urls = await Promise.all(uploadPromises);
-      setUploadedImages(prev => [...prev, ...urls]);
-    } catch (err: any) {
-      setError(err.message || '画像のアップロードに失敗しました');
-    } finally {
-      setUploadingImages(false);
-    }
+  const handleImageChange = (url: string | null) => {
+    setUploadedImages(url ? [url] : []);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[420px] mx-auto">
-        {/* バナー広告 - 最上部に固定 */}
-        <div className="sticky top-0 z-50 bg-background">
-          <BannerAd />
-        </div>
 
-        {/* ヘッダー - バナー広告の下 */}
-        <header className="bg-background/80 backdrop-blur-md sticky top-[50px] z-40">
+        {/* ヘッダー */}
+        <header className="bg-background/80 backdrop-blur-md sticky top-0 z-40">
           <div className="max-w-[420px] mx-auto w-full flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <button
@@ -216,56 +195,41 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
               </div>
             </div>
 
-            {/* 画像アップロード */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                画像
-              </label>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  disabled={uploadingImages}
-                  className="hidden"
-                  id="image-upload"
-                  data-testid="image-upload"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="flex items-center space-x-2 px-4 py-2 bg-surface border border-surface-light rounded-lg cursor-pointer hover:bg-surface-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Image size={16} className="text-gray-400" />
-                  <span className="text-sm text-gray-400">
-                    {uploadingImages ? 'アップロード中...' : '画像を選択'}
-                  </span>
-                </label>
-              </div>
-              
-              {/* アップロード済み画像のプレビュー */}
-              {uploadedImages.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {uploadedImages.map((url, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={url}
-                        alt={`アップロード画像 ${index + 1}`}
-                        className="w-full h-20 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                        data-testid={`remove-image-${index}`}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* 画像/動画アイコンツールバー（画像は最大5枚、動画は30秒） */}
+            <div className="-mt-2">
+              <SingleImageUpload
+                image={null}
+                onImageChange={() => {}}
+                onImagesAppend={(urls)=>setUploadedImages(prev=>{
+                  const next = [...prev, ...urls];
+                  return next.slice(0,5);
+                })}
+                allowMultipleImages
+                maxImages={5}
+                currentImageCount={uploadedImages.length}
+                video={uploadedVideo}
+                onVideoChange={(url)=>setUploadedVideo(url)}
+                variant="toolbar"
+              />
             </div>
+
+            {/* 画像サムネイル一覧と削除 */}
+            {uploadedImages.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {uploadedImages.map((img, idx)=> (
+                  <div key={idx} className="relative">
+                    <img src={img} alt={`選択画像${idx+1}`} className="w-20 h-20 object-cover rounded-md border border-surface-light/60" />
+                    <button
+                      type="button"
+                      onClick={()=> setUploadedImages(uploadedImages.filter((_,i)=> i!==idx))}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-black/70 text-white text-xs flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* タグ */}
             <div>
@@ -308,6 +272,35 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* 愛車タグ */}
+              {vehicles && vehicles.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Car size={14} className="text-gray-400" />
+                    <span className="text-xs text-gray-400">愛車から選択</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {vehicles.map((vehicle) => (
+                      <button
+                        key={vehicle.id}
+                        type="button"
+                        onClick={() => addVehicleTag(vehicle.name)}
+                        disabled={tags.includes(vehicle.name) || tags.length >= 5}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          tags.includes(vehicle.name)
+                            ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                            : tags.length >= 5
+                            ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                            : 'bg-surface-light border border-surface-light text-gray-300 hover:bg-primary/20 hover:border-primary/30 hover:text-primary'
+                        }`}
+                      >
+                        {vehicle.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

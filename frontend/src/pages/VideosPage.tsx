@@ -1,9 +1,7 @@
-import { Play, Plus, Trash2, Users } from 'lucide-react';
+import { BarChart3, Play, Plus, Trash2, Users } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { SearchBar } from '../components/ui/SearchBar';
-import { SectionTitle } from '../components/ui/SectionTitle';
 import { useAuth } from '../hooks/useAuth';
 import { useCreatorApplication } from '../hooks/useCreatorApplication';
 import { useSearch } from '../hooks/useSearch';
@@ -16,9 +14,10 @@ interface VideosPageProps {
   onUploadVideo?: () => void;
   onCreatorApplication?: () => void;
   onShowChannels?: () => void;
+  onVideoAnalytics?: (videoId: string) => void;
 }
 
-export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo, onUploadVideo, onCreatorApplication, onShowChannels }) => {
+export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo, onUploadVideo, onCreatorApplication, onShowChannels, onVideoAnalytics }) => {
   const { user, userDoc } = useAuth();
   const { videos, userVideos, deleteVideo } = useVideos(user?.uid);
   const { userApplication } = useCreatorApplication(user?.uid);
@@ -127,15 +126,23 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={() => console.log('Profile clicked')}
       />
 
       <main className="p-4 pb-24 pt-0 fade-in">
-        <div className="flex items-center justify-between mb-4">
-          <SectionTitle title="動画一覧" />
+        {/* 検索バー */}
+        <div className="mb-6">
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="動画を検索..."
+          />
+        </div>
+
+        {/* アクションボタン */}
+        <div className="flex items-center justify-end mb-6">
           <div className="flex items-center space-x-2">
             {canUploadVideos && (
               <button
@@ -154,15 +161,6 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
               <span>チャンネル一覧</span>
             </button>
           </div>
-        </div>
-
-        {/* 検索バー */}
-        <div className="mb-4">
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="動画を検索..."
-          />
         </div>
 
         {/* 動画アップロード権限がない場合の案内 */}
@@ -366,16 +364,28 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
                       <div className="flex items-center justify-between">
                         <h3 className="text-xs font-bold text-white line-clamp-2 leading-tight flex-1">{video.title}</h3>
                         {isOwnVideo && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteVideo(video.id);
-                            }}
-                            className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors ml-1 flex-shrink-0"
-                            title="削除"
-                          >
-                            <Trash2 size={12} className="text-red-400 hover:text-red-300" />
-                          </button>
+                          <div className="flex space-x-1 ml-1 flex-shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onVideoAnalytics?.(video.id);
+                              }}
+                              className="p-1 rounded-full hover:bg-blue-500 hover:bg-opacity-20 transition-colors"
+                              title="分析"
+                            >
+                              <BarChart3 size={12} className="text-blue-400 hover:text-blue-300" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteVideo(video.id);
+                              }}
+                              className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors"
+                              title="削除"
+                            >
+                              <Trash2 size={12} className="text-red-400 hover:text-red-300" />
+                            </button>
+                          </div>
                         )}
                       </div>
                       <button

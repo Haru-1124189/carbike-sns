@@ -21,21 +21,21 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <div className={`relative ${className}`}>
       <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-        <Search size={16} className="text-gray-400" />
+        <Search size={16} className="text-text-secondary" />
       </div>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-10 pr-10 py-2 bg-surface border border-surface-light rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary transition-colors"
+        className="w-full bg-transparent text-text-primary placeholder-text-secondary border-b border-border rounded-none px-4 py-3 pl-10 focus:outline-none focus:border-primary transition-colors"
       />
       {value && (
         <button
           onClick={handleClear}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-surface-light rounded-full transition-colors"
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
         >
-          <X size={14} className="text-gray-400" />
+          <X size={16} />
         </button>
       )}
     </div>

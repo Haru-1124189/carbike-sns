@@ -1,8 +1,6 @@
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
-import { currentUser } from '../data/dummy';
 
 interface ReportPageProps {
   onBackClick?: () => void;
@@ -20,7 +18,6 @@ export const ReportPage: React.FC<ReportPageProps> = ({ onBackClick }) => {
   return (
     <div className="min-h-screen bg-background container-mobile">
       <AppHeader onNotificationClick={() => {}} onProfileClick={() => {}} />
-      <BannerAd />
               <main className="p-4 pb-24">
         <div className="flex items-center space-x-3 mb-6">
           <button onClick={onBackClick} className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm">

@@ -1,8 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import React from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
-import { currentUser } from '../data/dummy';
 
 interface LegalPageProps {
   type: 'terms' | 'privacy' | 'about';
@@ -21,7 +19,6 @@ export const LegalPage: React.FC<LegalPageProps> = ({ type, onBackClick }) => {
   return (
     <div className="min-h-screen bg-background container-mobile">
       <AppHeader onNotificationClick={() => {}} onProfileClick={() => {}} />
-      <BannerAd />
               <main className="p-4 pb-24">
         <div className="flex items-center space-x-3 mb-6">
           <button onClick={onBackClick} className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm">

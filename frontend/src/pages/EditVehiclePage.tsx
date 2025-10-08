@@ -1,7 +1,6 @@
-import { ArrowLeft, Car, Bike } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Bike, Car } from 'lucide-react';
+import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { BannerAd } from '../components/ui/BannerAd';
 import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { useVehicles } from '../hooks/useVehicles';
 import { Vehicle } from '../types';
@@ -79,7 +78,6 @@ export const EditVehiclePage: React.FC<EditVehiclePageProps> = ({
 
   return (
     <div className="min-h-screen bg-background container-mobile">
-      <BannerAd />
       <AppHeader
         onNotificationClick={() => {}}
         onProfileClick={() => {}}
