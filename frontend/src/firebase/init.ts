@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // 直接Firebase設定を記述（一時的な解決策）
 const firebaseConfig = {
@@ -21,6 +22,7 @@ console.log('Project ID:', firebaseConfig.projectId);
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 // 初期化の確認
 console.log('Firebase App initialized:', app);
