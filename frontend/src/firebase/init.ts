@@ -3,30 +3,25 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// 直接Firebase設定を記述（一時的な解決策）
+// CRAではREACT_APP_で始まる環境変数のみが参照可能
 const firebaseConfig = {
-  apiKey: "AIzaSyDPFyH8WWB7boK0s_DsIseBfvwPauM3A7Q",
-  authDomain: "carbaike-sns.firebaseapp.com",
-  projectId: "carbaike-sns",
-  storageBucket: "carbaike-sns.firebasestorage.app",
-  messagingSenderId: "794823967964",
-  appId: "1:794823967964:web:65bd6acde871f7a8072019"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY as string,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN as string,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID as string,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET as string,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID as string,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID as string,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID as string | undefined
 };
-
-// 環境変数のデバッグ
-console.log('Firebase Config Debug:');
-console.log('API Key:', firebaseConfig.apiKey);
-console.log('Auth Domain:', firebaseConfig.authDomain);
-console.log('Project ID:', firebaseConfig.projectId);
 
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
-// 初期化の確認
-console.log('Firebase App initialized:', app);
-console.log('Firebase App name:', app.name);
-console.log('Firebase App options:', app.options);
-console.log('Firestore db initialized:', db);
-console.log('Firebase Auth initialized:', auth);
+// NOTE: 機微情報をログに出さない
+if (process.env.NODE_ENV !== 'production') {
+  // 最小限のヘルスチェックのみ
+  // eslint-disable-next-line no-console
+  console.log('Firebase initialized');
+}
