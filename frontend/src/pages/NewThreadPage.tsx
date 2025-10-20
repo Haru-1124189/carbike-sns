@@ -1,11 +1,13 @@
 import { ArrowLeft, Car, Hash, Send } from 'lucide-react';
 import React, { useRef, useState } from 'react';
+import { CarTagSelector } from '../components/ui/CarTagSelector';
 import { MentionTextarea } from '../components/ui/MentionTextarea';
 import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { useAuth } from '../hooks/useAuth';
 import { useSwipeBack } from '../hooks/useSwipeBack';
 import { useVehicles } from '../hooks/useVehicles';
 import { createThread } from '../lib/threads';
+import { Car as CarType } from '../types/car';
 
 interface NewThreadPageProps {
   postType: 'post' | 'question';
@@ -24,6 +26,7 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+  const [carTags, setCarTags] = useState<Array<{ car: CarType; yearRange?: any; tagName: string }>>([]);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedVideo, setUploadedVideo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,11 +69,21 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
     setError('');
 
     try {
+      // 車種タグを通常のタグに変換
+      const allTags = [...tags, ...carTags.map(carTag => carTag.tagName)];
+      
+      // 車種情報を含むcar_tagsを作成
+      const car_tags = carTags.map(carTag => ({
+        display_name: carTag.car.display_name,
+        selected_year_range: carTag.yearRange
+      }));
+
       const threadData = {
         title: title.trim(),
         content: content.trim(),
         type: postType,
-        tags,
+        tags: allTags,
+        car_tags,
         images: uploadedImages,
       };
 
@@ -101,6 +114,24 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
     }
   };
 
+  const handleCarTagSelect = (car: CarType, yearRange?: any) => {
+    const tagName = yearRange 
+      ? `${car.display_name} ${yearRange.start_year}.${yearRange.start_month}-${yearRange.end_year}.${yearRange.end_month}`
+      : car.display_name;
+    
+    const newCarTag = { car, yearRange, tagName };
+    
+    // 重複チェック
+    if (!carTags.some(existing => existing.car.id === car.id && 
+        (!yearRange || (existing.yearRange && 
+         existing.yearRange.start_year === yearRange.start_year &&
+         existing.yearRange.start_month === yearRange.start_month &&
+         existing.yearRange.end_year === yearRange.end_year &&
+         existing.yearRange.end_month === yearRange.end_month)))) {
+      setCarTags([...carTags, newCarTag]);
+    }
+  };
+
   const addVehicleTag = (vehicleName: string) => {
     if (!tags.includes(vehicleName) && tags.length < 5) {
       setTags([...tags, vehicleName]);
@@ -109,6 +140,10 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const removeCarTag = (indexToRemove: number) => {
+    setCarTags(carTags.filter((_, index) => index !== indexToRemove));
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -236,6 +271,46 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 タグ
               </label>
+              
+              {/* 車種タグ選択 */}
+              <div className="mb-3">
+                <CarTagSelector
+                  value={newTag}
+                  onChange={setNewTag}
+                  onCarSelect={handleCarTagSelect}
+                  placeholder="車名を入力して検索"
+                />
+              </div>
+
+              {/* 車種タグ一覧 */}
+              {carTags.length > 0 && (
+                <div className="mb-3">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Car size={14} className="text-primary" />
+                    <span className="text-xs text-gray-400">選択された車種タグ</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {carTags.map((carTag, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center space-x-1 bg-blue-500/20 border border-blue-400/30 rounded-lg px-2 py-1"
+                      >
+                        <Car size={12} className="text-blue-400" />
+                        <span className="text-xs text-blue-400">{carTag.tagName}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeCarTag(index)}
+                          className="text-blue-400 hover:text-red-400 text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 通常タグ */}
               <div className="flex space-x-2 mb-2">
                 <input
                   type="text"
@@ -243,7 +318,7 @@ export const NewThreadPage: React.FC<NewThreadPageProps> = ({
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={handleKeyPress}
                   className="flex-1 bg-transparent border border-surface-light rounded-lg p-2 text-white placeholder-gray-400 focus:outline-none focus:border-primary text-sm"
-                  placeholder="タグを入力"
+                  placeholder="その他のタグを入力"
                   maxLength={20}
                 />
                 <button

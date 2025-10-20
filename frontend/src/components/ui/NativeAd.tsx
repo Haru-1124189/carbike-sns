@@ -70,10 +70,22 @@ const nativeAds: NativeAdProps[] = [
   }
 ];
 
-// ランダムな広告を取得
-export const getRandomAd = (): NativeAdProps => {
+// セッション中は同じ広告を返すためのキャッシュ
+let sessionAdCache: { [key: string]: NativeAdProps } = {};
+
+// ランダムな広告を取得（セッション中は固定）
+export const getRandomAd = (key: string = 'default'): NativeAdProps => {
+  // セッションキャッシュから取得
+  if (sessionAdCache[key]) {
+    return sessionAdCache[key];
+  }
+  
+  // 新しい広告を生成してキャッシュに保存
   const randomIndex = Math.floor(Math.random() * nativeAds.length);
-  return nativeAds[randomIndex];
+  const selectedAd = nativeAds[randomIndex];
+  sessionAdCache[key] = selectedAd;
+  
+  return selectedAd;
 };
 
 export const NativeAd: React.FC<{ ad: NativeAdProps }> = ({ ad }) => {
@@ -153,7 +165,7 @@ export const insertNativeAds = <T extends { id: string }>(
     // 指定された頻度で広告を挿入（最初の投稿の後は除く）
     if (index > 0 && (index + 1) % adFrequency === 0) {
       try {
-        const ad = getRandomAd();
+        const ad = getRandomAd(`ad-${Math.floor(index / adFrequency)}`);
         if (ad) {
           result.push({
             type: 'ad',

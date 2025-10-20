@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { createReplyNotification } from './notifications';
 
 export interface CreateReplyData {

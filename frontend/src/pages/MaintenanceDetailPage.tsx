@@ -245,7 +245,7 @@ export const MaintenanceDetailPage: React.FC<MaintenanceDetailPageProps> = ({
               <div className="mb-3">
                 <PersistentImage
                   src={post.carImage}
-                  alt={post.carModel}
+                  alt={post.carModel || '車種画像'}
                   className="w-full max-h-64 object-contain rounded-lg"
                   clickable={true}
                 />

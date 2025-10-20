@@ -1,5 +1,5 @@
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { UserDoc } from '../types/user';
 
 // メンション用のユーザー検索

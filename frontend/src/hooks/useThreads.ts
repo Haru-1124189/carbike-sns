@@ -1,12 +1,16 @@
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
+import { canViewUserContent } from '../lib/privacy';
 import { Thread } from '../types';
+import { filterMutedPosts } from '../utils/muteWords';
 
 interface UseThreadsOptions {
   currentUserId?: string;
   limit?: number;
   type?: 'post' | 'question' | 'all';
+  blockedUsers?: string[];
+  mutedWords?: string[];
 }
 
 interface UseThreadsReturn {
@@ -23,7 +27,7 @@ const threadCache = new Map<string, { data: Thread[]; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5分
 
 export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn => {
-  const { currentUserId, limit: limitCount = 20, type = 'all' } = options;
+  const { currentUserId, limit: limitCount = 20, type = 'all', blockedUsers = [], mutedWords = [] } = options;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +37,8 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
 
   // キャッシュキーを生成
   const getCacheKey = useCallback(() => {
-    return `threads_${currentUserId || 'all'}_${type}_${limitCount}`;
-  }, [currentUserId, type, limitCount]);
+    return `threads_${currentUserId || 'all'}_${type}_${limitCount}_${blockedUsers.join(',')}_${mutedWords.join(',')}`;
+  }, [currentUserId, type, limitCount, blockedUsers, mutedWords]);
 
   // キャッシュからデータを取得
   const getFromCache = useCallback(() => {
@@ -90,7 +94,31 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
       })) as Thread[];
 
       // 削除された投稿を除外
-      const filteredThreads = newThreads.filter(thread => !thread.isDeleted);
+      let filteredThreads = newThreads.filter(thread => !thread.isDeleted);
+
+      // ブロックユーザーの投稿を除外
+      if (blockedUsers.length > 0) {
+        filteredThreads = filteredThreads.filter(thread => 
+          !thread.authorId || !blockedUsers.includes(thread.authorId)
+        );
+      }
+
+      // ミュートワードを含む投稿を除外
+      if (mutedWords.length > 0) {
+        filteredThreads = filterMutedPosts(filteredThreads, mutedWords);
+      }
+
+      // 鍵アカウントのLink(threads)はフォロワーのみ表示
+      if (currentUserId) {
+        const visibilityChecked = await Promise.all(
+          filteredThreads.map(async (t) => {
+            if (!t.authorId) return t;
+            const canView = await canViewUserContent(t.authorId, currentUserId);
+            return canView ? t : null;
+          })
+        );
+        filteredThreads = visibilityChecked.filter(Boolean) as Thread[];
+      }
 
       console.log('useThreads - Raw threads:', newThreads.length);
       console.log('useThreads - Filtered threads:', filteredThreads.length);
@@ -124,14 +152,38 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
     
     unsubscribeRef.current = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const newThreads = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as Thread[];
         
         // 削除された投稿を除外
-        const filteredThreads = newThreads.filter(thread => !thread.isDeleted);
+        let filteredThreads = newThreads.filter(thread => !thread.isDeleted);
+
+        // ブロックユーザーの投稿を除外
+        if (blockedUsers.length > 0) {
+          filteredThreads = filteredThreads.filter(thread => 
+            !thread.authorId || !blockedUsers.includes(thread.authorId)
+          );
+        }
+
+        // ミュートワードを含む投稿を除外
+        if (mutedWords.length > 0) {
+          filteredThreads = filterMutedPosts(filteredThreads, mutedWords);
+        }
+
+        // 鍵アカウントのLink(threads)はフォロワーのみ表示
+        if (currentUserId) {
+          const visibilityChecked = await Promise.all(
+            filteredThreads.map(async (t) => {
+              if (!t.authorId) return t;
+              const canView = await canViewUserContent(t.authorId, currentUserId);
+              return canView ? t : null;
+            })
+          );
+          filteredThreads = visibilityChecked.filter(Boolean) as Thread[];
+        }
         
         setThreads(filteredThreads);
         saveToCache(filteredThreads);

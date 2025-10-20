@@ -10,7 +10,7 @@ import {
     where
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { Vehicle } from '../types';
 import { useAuth } from './useAuth';
 

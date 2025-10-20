@@ -40,7 +40,7 @@ const AdminContentManagementPage: React.FC<AdminContentManagementPageProps> = ({
 
         const allContent: ContentItem[] = [];
 
-        // スレッド
+        // Link
         threadsSnapshot.docs.forEach(doc => {
           const data = doc.data();
           allContent.push({
@@ -148,7 +148,7 @@ const AdminContentManagementPage: React.FC<AdminContentManagementPageProps> = ({
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'thread':
-        return 'スレッド';
+        return 'Link';
       case 'maintenance':
         return '整備記録';
       case 'touring':
@@ -198,7 +198,7 @@ const AdminContentManagementPage: React.FC<AdminContentManagementPageProps> = ({
             <div className="flex space-x-2">
               {[
                 { value: 'all', label: 'すべて' },
-                { value: 'thread', label: 'スレッド' },
+                { value: 'thread', label: 'Link' },
                 { value: 'maintenance', label: '整備記録' },
                 { value: 'touring', label: 'ツーリング' }
               ].map((filter) => (
@@ -224,7 +224,7 @@ const AdminContentManagementPage: React.FC<AdminContentManagementPageProps> = ({
               <div className="text-xl font-bold">{stats.total}</div>
             </div>
             <div className="bg-surface rounded-xl p-4 border border-surface-light">
-              <div className="text-sm text-gray-400">スレッド</div>
+              <div className="text-sm text-gray-400">Link</div>
               <div className="text-xl font-bold">{stats.threads}</div>
             </div>
             <div className="bg-surface rounded-xl p-4 border border-surface-light">

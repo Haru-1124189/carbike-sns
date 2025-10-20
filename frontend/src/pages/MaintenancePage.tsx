@@ -4,11 +4,13 @@ import { AppHeader } from '../components/ui/AppHeader';
 import { MaintenanceThumbnail } from '../components/ui/MaintenanceThumbnail';
 import { NativeAd, insertNativeAds } from '../components/ui/NativeAd';
 import { SearchBar } from '../components/ui/SearchBar';
-import { currentUser } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
+import { useFavoriteCars } from '../hooks/useFavoriteCars';
 import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
 import { useSearch } from '../hooks/useSearch';
+import { useVehicles } from '../hooks/useVehicles';
 import { deleteMaintenancePost } from '../lib/threads';
+import { filterThreadsByUserVehicles } from '../utils/yearRangeFilter';
 
 type TabType = 'all' | 'my-cars' | 'interested-cars';
 
@@ -18,6 +20,8 @@ interface MaintenancePageProps {
   onAddMaintenance?: () => void;
   onDeleteMaintenance?: (postId: string) => void;
   onEditMaintenance?: (postId: string) => void;
+  blockedUsers?: string[];
+  mutedWords?: string[];
 }
 
 export const MaintenancePage: React.FC<MaintenancePageProps> = ({ 
@@ -25,15 +29,23 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
   onUserClick,
   onAddMaintenance,
   onDeleteMaintenance,
-  onEditMaintenance
+  onEditMaintenance,
+  blockedUsers = [],
+  mutedWords = []
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const { user } = useAuth();
 
   // useMaintenancePostsフックを使用してFirestoreからデータを取得（プライバシーフィルタリング付き）
   const { maintenancePosts, loading, error, refresh } = useMaintenancePosts({ 
-    currentUserId: user?.uid 
+    currentUserId: user?.uid,
+    blockedUsers,
+    mutedWords
   });
+
+  // ユーザーの愛車とお気に入り車種を取得
+  const { vehicles } = useVehicles();
+  const { favoriteCars } = useFavoriteCars();
 
   // 検索機能を実装
   const { searchQuery, setSearchQuery, filteredItems: searchedPosts } = useSearch(maintenancePosts, ['title', 'content', 'carModel', 'tags']);
@@ -42,63 +54,25 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
   const filteredPosts = useMemo(() => {
     let allPosts = searchedPosts;
     
-    // タブでフィルタリング
+    // タブでフィルタリング（年式レンジ対応）
     if (activeTab === 'my-cars') {
-      const myCarModels = currentUser.cars;
-      // 車種名のマッピング（フルネーム → 短縮名）
-      const carNameMapping: { [key: string]: string[] } = {
-        "Nissan S13": ["S13", "Nissan S13"],
-        "Civic EK9": ["EK9", "Civic EK9"],
-        "Swift Sport ZC32S": ["Swift Sport", "ZC32S"],
-        "Skyline R34": ["R34", "Skyline R34"]
-      };
-      
-      allPosts = allPosts.filter((post: any) => {
-        // carModelフィールドがある場合は直接比較
-        if (post.carModel) {
-          return myCarModels.includes(post.carModel);
-        }
-        // ない場合はタイトル、コンテンツ、タグで検索
-        return myCarModels.some(carModel => {
-          const shortNames = carNameMapping[carModel] || [carModel];
-          return shortNames.some(shortName => 
-            post.title.includes(shortName) || 
-            post.content.includes(shortName) ||
-            post.tags.some((tag: any) => tag.includes(shortName))
-          );
-        });
-      });
+      // 年式レンジフィルタリングを使用
+      return filterThreadsByUserVehicles(allPosts, vehicles);
     } else if (activeTab === 'interested-cars') {
-      const interestedCarModels = currentUser.interestedCars;
-      // お気に入り車種名のマッピング
-      const interestedCarNameMapping: { [key: string]: string[] } = {
-        "RX-7 FD3S": ["RX-7", "FD3S"],
-        "Trueno AE86": ["AE86", "Trueno"],
-        "S2000 AP1": ["S2000", "AP1"],
-        "Supra A80": ["Supra", "A80"]
-      };
-      
-      allPosts = allPosts.filter(post => {
-        // carModelフィールドがある場合は直接比較
-        if (post.carModel) {
-          return interestedCarModels.includes(post.carModel);
-        }
-        // ない場合はタイトル、コンテンツ、タグで検索
-        return interestedCarModels.some(carModel => {
-          const shortNames = interestedCarNameMapping[carModel] || [carModel];
-          return shortNames.some(shortName => 
-            post.title.includes(shortName) || 
-            post.content.includes(shortName) ||
-            post.tags.some((tag: any) => tag.includes(shortName))
-          );
-        });
-      });
+      // お気に入り車種の年式レンジフィルタリングを使用
+      return filterThreadsByUserVehicles(allPosts, favoriteCars);
     }
     
 
     
     return allPosts;
-  }, [activeTab, searchedPosts]);
+  }, [activeTab, searchedPosts, vehicles, favoriteCars]);
+
+  // 広告付きの投稿リストをメモ化
+  const itemsWithAds = useMemo(() => {
+    if (filteredPosts.length === 0) return [];
+    return insertNativeAds(filteredPosts, 6);
+  }, [filteredPosts]);
 
   const handleMaintenanceClick = (postId: string) => {
     onMaintenanceClick?.(postId);
@@ -209,7 +183,6 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({
           ) : filteredPosts.length > 0 ? (
             <div className="space-y-4">
               {(() => {
-                const itemsWithAds = insertNativeAds(filteredPosts, 6);
                 const result: React.ReactNode[] = [];
                 let maintenancePosts: any[] = [];
                 

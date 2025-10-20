@@ -3,15 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RSS_FEEDS = void 0;
 exports.RSS_FEEDS = [
     {
-        url: 'https://www.kurumano.com/rss.xml',
+        url: 'https://kuruma-news.jp/feed',
         source: 'くるまのニュース'
     },
     {
-        url: 'https://www.bestcarweb.jp/rss.xml',
+        url: 'https://bestcarweb.jp/feed',
         source: 'ベストカーWeb'
     },
     {
-        url: 'https://www.autoby.jp/rss.xml',
+        url: 'https://www.autoby.jp/feed',
         source: 'オートバイ'
     },
     {
@@ -23,7 +23,7 @@ exports.RSS_FEEDS = [
         source: 'Car Watch'
     },
     {
-        url: 'https://motor-fan.jp/rss.xml',
+        url: 'https://motor-fan.jp/feed',
         source: 'Motor Fan'
     },
     {
@@ -33,6 +33,23 @@ exports.RSS_FEEDS = [
     {
         url: 'https://www.webcg.net/rss.xml',
         source: 'WebCG'
+    },
+    // 取得安定性向上のため海外メディアも追加
+    {
+        url: 'https://feeds.feedburner.com/autoblog/',
+        source: 'Autoblog'
+    },
+    {
+        url: 'https://feeds.feedburner.com/CarAndDriver/',
+        source: 'Car and Driver'
+    },
+    {
+        url: 'https://feeds.feedburner.com/MotorTrend/',
+        source: 'Motor Trend'
+    },
+    {
+        url: 'https://feeds.feedburner.com/TheDrive/',
+        source: 'The Drive'
     }
 ];
 //# sourceMappingURL=config.js.map

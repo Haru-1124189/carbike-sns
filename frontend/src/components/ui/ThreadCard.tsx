@@ -1,5 +1,5 @@
 import { Heart, MessageSquare, MoreHorizontal, Pin, UserX } from 'lucide-react';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useThreadLikes } from '../../hooks/useLikes';
 import { useReplies } from '../../hooks/useReplies';
@@ -19,6 +19,7 @@ interface ThreadCardProps {
   onBlockUser?: (author: string) => void;
   onReportThread?: (threadId: string, author: string) => void;
   onUserClick?: (userId: string, displayName: string) => void;
+  blockedUsers?: string[];
 }
 
 export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
@@ -27,9 +28,11 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
   onDelete,
   onBlockUser,
   onReportThread,
-  onUserClick
+  onUserClick,
+  blockedUsers = []
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   
   const { user } = useAuth();
   const { isLiked, likeCount, loading } = useThreadLikes(thread.id, user?.uid || '');
@@ -46,8 +49,24 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
   }, [user?.uid, thread.authorId]);
 
   const isBlocked = useMemo(() => {
-    return false; // ブロック機能は後で実装
-  }, []);
+    return thread.authorId ? blockedUsers.includes(thread.authorId) : false;
+  }, [thread.authorId, blockedUsers]);
+
+  // 外部クリックでメニューを閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showMenu]);
 
   // コールバック関数の最適化
   const handleMenuClick = useCallback((e: React.MouseEvent) => {
@@ -171,7 +190,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
           </div>
         </div>
         
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             onClick={handleMenuClick}
             className="p-1 rounded-full hover:bg-surface/50 transition-colors"
@@ -180,7 +199,7 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
           </button>
           
                      {showMenu && (
-             <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+             <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-50 min-w-[120px]">
                {isAuthor && (
                  <>
                    <button
@@ -198,23 +217,27 @@ export const ThreadCard: React.FC<ThreadCardProps> = React.memo(({
                    </button>
                  </>
                )}
-               <button
-                 onClick={handleBlockUser}
-                 className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50 flex items-center space-x-2"
-               >
-                 <UserX size={14} />
-                 <span>ユーザーをブロック</span>
-               </button>
-               <div className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50">
-                 <ReportButton
-                   targetId={thread.id}
-                   targetType="thread"
-                   targetTitle={thread.title}
-                   targetAuthorId={thread.authorId}
-                   targetAuthorName={displayAuthorName}
-                   className="flex items-center space-x-2 w-full"
-                 />
-               </div>
+               {!isAuthor && (
+                 <button
+                   onClick={handleBlockUser}
+                   className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50 flex items-center space-x-2"
+                 >
+                   <UserX size={14} />
+                   <span>ユーザーをブロック</span>
+                 </button>
+               )}
+               {!isAuthor && (
+                 <div className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface/50">
+                   <ReportButton
+                     targetId={thread.id}
+                     targetType="thread"
+                     targetTitle={thread.title}
+                     targetAuthorId={thread.authorId}
+                     targetAuthorName={displayAuthorName}
+                     className="flex items-center space-x-2 w-full"
+                   />
+                 </div>
+               )}
              </div>
            )}
         </div>

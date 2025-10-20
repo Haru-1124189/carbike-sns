@@ -1,9 +1,34 @@
 import { ArrowLeft, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
+import { ClickableUserName } from '../components/ui/ClickableUserName';
 import { TabBar } from '../components/ui/TabBar';
 import { useAuth } from '../hooks/useAuth';
+import { useChannelSubscriberCount, useChannelSubscriptions } from '../hooks/useChannelSubscriptions';
+import { useUserName } from '../hooks/useUserName';
 import { useVideos } from '../hooks/useVideos';
+
+// チャンネル名表示用のコンポーネント
+const ChannelNameDisplay: React.FC<{ userId: string; fallbackName?: string }> = ({ userId, fallbackName }) => {
+  const { displayName, loading } = useUserName(userId);
+  if (loading) return <span className="text-sm font-bold text-white">読み込み中...</span>;
+  return <span className="text-sm font-bold text-white">{displayName || fallbackName || 'ユーザー'}</span>;
+};
+
+// チャンネル説明表示用のコンポーネント
+const ChannelDescriptionDisplay: React.FC<{ userId: string; videoCount: number }> = ({ userId, videoCount }) => {
+  const { displayName, loading } = useUserName(userId);
+  if (loading) return <span className="text-xs text-gray-500 mt-1 line-clamp-2">読み込み中...</span>;
+  const userName = displayName || 'ユーザー';
+  return <span className="text-xs text-gray-500 mt-1 line-clamp-2">{userName}のチャンネル</span>;
+};
+
+// チャンネル登録者数表示用のコンポーネント
+const ChannelSubscriberCountDisplay: React.FC<{ channelId: string; videoCount: number }> = ({ channelId, videoCount }) => {
+  const { subscriberCount, loading } = useChannelSubscriberCount(channelId);
+  if (loading) return <span className="text-xs text-gray-400 mt-1">読み込み中...</span>;
+  return <span className="text-xs text-gray-400 mt-1">{subscriberCount.toLocaleString()}人登録 • {videoCount}本の動画</span>;
+};
 
 interface Channel {
   id: string;
@@ -20,11 +45,13 @@ interface ChannelsPageProps {
   onChannelClick?: (channelId: string) => void;
   onTabChange?: (tabId: string) => void;
   activeTab?: string;
+  onUserClick?: (userId: string, displayName?: string) => void;
 }
 
-export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelClick, onTabChange, activeTab = 'videos' }) => {
+export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelClick, onTabChange, activeTab = 'videos', onUserClick }) => {
   const { user, userDoc } = useAuth();
   const { videos } = useVideos(user?.uid);
+  const { subscribe, unsubscribe, isSubscribed } = useChannelSubscriptions(user?.uid);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,11 +65,11 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelCli
         if (!channelMap.has(video.channelId)) {
           channelMap.set(video.channelId, {
             id: video.channelId,
-            name: video.author,
+            name: video.channelId, // 実際のユーザー名はChannelNameDisplayコンポーネントで取得
             avatar: video.thumbnailUrl || '',
             subscriberCount: Math.floor(Math.random() * 5000) + 100, // ダミーデータ
-            description: `${video.author}のチャンネル`,
-            isSubscribed: Math.random() > 0.5, // ダミーデータ
+            description: `${video.channelId}のチャンネル`, // 実際の説明はChannelDescriptionDisplayコンポーネントで取得
+            isSubscribed: isSubscribed(video.channelId),
             videoCount: videos.filter(v => v.channelId === video.channelId).length
           });
         } else {
@@ -55,24 +82,42 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelCli
       setChannels(Array.from(channelMap.values()));
     }
     setLoading(false);
-  }, [videos]);
+  }, [videos, isSubscribed]);
 
   const handleSubscribeToggle = async (channelId: string) => {
-    // チャンネル登録/解除の処理
-    setChannels(prev => 
-      prev.map(channel => 
-        channel.id === channelId 
-          ? { ...channel, isSubscribed: !channel.isSubscribed }
-          : channel
-      )
-    );
+    console.log('Subscribe toggle clicked for channel:', channelId);
+    console.log('Current user:', user?.uid);
+    console.log('Current subscription status:', isSubscribed(channelId));
     
-    // TODO: 実際の登録/解除APIを呼び出す
-    console.log(`${channelId}の登録状態を変更しました`);
+    if (!user?.uid) {
+      alert('ログインが必要です');
+      return;
+    }
+
+    try {
+      if (isSubscribed(channelId)) {
+        console.log('Unsubscribing from channel:', channelId);
+        await unsubscribe(channelId);
+        console.log('Successfully unsubscribed');
+      } else {
+        console.log('Subscribing to channel:', channelId);
+        const channel = channels.find(ch => ch.id === channelId);
+        await subscribe(channelId, channel?.name);
+        console.log('Successfully subscribed');
+      }
+    } catch (error) {
+      console.error('Error toggling subscription:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`登録状態の変更に失敗しました: ${errorMessage}`);
+    }
   };
 
   const handleChannelClick = (channelId: string) => {
     onChannelClick?.(channelId);
+  };
+
+  const handleUserClick = (userId: string, displayName: string) => {
+    onUserClick?.(userId, displayName);
   };
 
   return (
@@ -122,7 +167,7 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelCli
                   {/* チャンネルアバター */}
                   <div className="relative">
                     <img
-                      src={channel.avatar || 'https://via.placeholder.com/48x48/666666/FFFFFF?text=CH'}
+                      src={channel.avatar || '/api/placeholder/48x48/666666/FFFFFF?text=CH'}
                       alt={channel.name}
                       className="w-12 h-12 rounded-full object-cover"
                     />
@@ -135,11 +180,20 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelCli
 
                   {/* チャンネル情報 */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white truncate">{channel.name}</h3>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {channel.subscriberCount.toLocaleString()}人登録 • {channel.videoCount}本の動画
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">{channel.description}</p>
+                    <h3 className="text-sm font-bold text-white truncate">
+                      <ClickableUserName 
+                        userId={channel.id} 
+                        fallbackName="チャンネル"
+                        size="sm"
+                        showAvatar={false}
+                        onClick={(userId, displayName) => {
+                          handleUserClick(userId, displayName);
+                        }}
+                        className="hover:text-primary transition-colors"
+                      />
+                    </h3>
+                    <ChannelSubscriberCountDisplay channelId={channel.id} videoCount={channel.videoCount} />
+                    <ChannelDescriptionDisplay userId={channel.id} videoCount={channel.videoCount} />
                   </div>
 
                   {/* 登録ボタン */}
@@ -181,3 +235,4 @@ export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelCli
     </div>
   );
 };
+

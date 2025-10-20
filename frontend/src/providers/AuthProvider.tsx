@@ -1,7 +1,7 @@
 import { User, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import React, { createContext, useEffect, useState } from 'react';
-import { auth, db } from '../firebase/clients';
+import { auth, db } from '../firebase/init';
 import { UserDoc } from '../types/user';
 import { UserDataBackup } from '../utils/userDataBackup';
 

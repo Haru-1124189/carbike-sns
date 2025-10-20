@@ -25,9 +25,12 @@ import { ContactPage } from './pages/ContactPage';
 import ContactReplyDetailPage from './pages/ContactReplyDetailPage';
 import { CreatePostPage } from './pages/CreatePostPage';
 import { CreateTouringThreadPage } from './pages/CreateTouringThreadPage';
+import { CreatorAnalyticsPage } from './pages/CreatorAnalyticsPage';
 import { CreatorApplicationPage } from './pages/CreatorApplicationPage';
 import { CreatorUploadPage } from './pages/CreatorUploadPage';
+import { EditItemPage } from './pages/EditItemPage';
 import { EditMaintenancePage } from './pages/EditMaintenancePage';
+import { EditMarketplaceItemPage } from './pages/EditMarketplaceItemPage';
 import { EditVehiclePage } from './pages/EditVehiclePage';
 import { FollowersListPage } from './pages/FollowersListPage';
 import { FollowingListPage } from './pages/FollowingListPage';
@@ -36,18 +39,29 @@ import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
 import { MaintenanceDetailPage } from './pages/MaintenanceDetailPage';
 import { MaintenancePage } from './pages/MaintenancePage';
+import MarketplaceCancelPage from './pages/MarketplaceCancelPage';
+import { MarketplaceCheckoutPage } from './pages/MarketplaceCheckoutPage';
+import { MarketplaceHomePage } from './pages/MarketplaceHomePage';
+import { MarketplaceItemDetailPage } from './pages/MarketplaceItemDetailPage';
+import { MarketplaceReviewsPage } from './pages/MarketplaceReviewsPage';
+import MarketplaceSuccessPage from './pages/MarketplaceSuccessPage';
+import { MessagesPage } from './pages/MessagesPage';
 import { MutedWordsPage } from './pages/MutedWordsPage';
 import { NewMaintenancePage } from './pages/NewMaintenancePage';
 import { NewThreadPage } from './pages/NewThreadPage';
 import { NotificationsPage } from './pages/NotificationsPage';
-import { PostPage } from './pages/PostPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { PrivacySettingsPage } from './pages/PrivacySettingsPage';
 import { ProfileEditPage } from './pages/ProfileEditPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { RatingPage } from './pages/RatingPage';
 import { RegisteredInterestedCarsPage } from './pages/RegisteredInterestedCarsPage';
 import { ReportDetailPage } from './pages/ReportDetailPage';
 import { ReportPage } from './pages/ReportPage';
+import { SellItemPage } from './pages/SellItemPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ShopApplicationPage } from './pages/ShopApplicationPage';
+import { TermsOfServicePage } from './pages/TermsOfServicePage';
 import { ThemeSettingsPage } from './pages/ThemeSettingsPage';
 import { ThreadDetailPage } from './pages/ThreadDetailPage';
 import { ThreadsPage } from './pages/ThreadsPage';
@@ -78,9 +92,12 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('home');
   const [showSettings, setShowSettings] = useState(false);
   const [settingsSubPage, setSettingsSubPage] = useState<string | null>(null);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showTermsOfService, setShowTermsOfService] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showThreadDetail, setShowThreadDetail] = useState(false);
   const [showVideoDetail, setShowVideoDetail] = useState(false);
+  const [showCreatorAnalytics, setShowCreatorAnalytics] = useState(false);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showVehicleDetail, setShowVehicleDetail] = useState(false);
   const [showEditVehicle, setShowEditVehicle] = useState(false);
@@ -99,6 +116,7 @@ function AppContent() {
   const [previousPage, setPreviousPage] = useState<string>('home');
   const [previousThreadTab, setPreviousThreadTab] = useState<'post' | 'question'>('post');
   const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
+  const [mutedWords, setMutedWords] = useState<string[]>([]);
   const [interestedCars, setInterestedCars] = useState<string[]>(currentUser.interestedCars || []);
   const [showAuth, setShowAuth] = useState(false);
   const [showNewThread, setShowNewThread] = useState(false);
@@ -132,6 +150,26 @@ function AppContent() {
   const [showAdminContentManagement, setShowAdminContentManagement] = useState(false);
   const [showContactReplyDetail, setShowContactReplyDetail] = useState(false);
   const [selectedContactInquiryId, setSelectedContactInquiryId] = useState<string | null>(null);
+  const [showMarketplace, setShowMarketplace] = useState(false);
+  const [showMarketplaceItemDetail, setShowMarketplaceItemDetail] = useState(false);
+  const [showEditMarketplaceItem, setShowEditMarketplaceItem] = useState(false);
+  const [showEditItem, setShowEditItem] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [showMessages, setShowMessages] = useState(false);
+  const [messagesItemId, setMessagesItemId] = useState<string | null>(null);
+  const [messagesSellerId, setMessagesSellerId] = useState<string | null>(null);
+  const [showRating, setShowRating] = useState(false);
+  const [ratingItemId, setRatingItemId] = useState<string | null>(null);
+  const [ratingSellerId, setRatingSellerId] = useState<string | null>(null);
+  const [ratingBuyerId, setRatingBuyerId] = useState<string | null>(null);
+  const [showSellItem, setShowSellItem] = useState(false);
+  const [showMarketplaceCheckout, setShowMarketplaceCheckout] = useState(false);
+  const [showMarketplaceSuccess, setShowMarketplaceSuccess] = useState(false);
+  const [showMarketplaceCancel, setShowMarketplaceCancel] = useState(false);
+  const [showMarketplaceReviews, setShowMarketplaceReviews] = useState(false);
+  const [showShopApplication, setShowShopApplication] = useState(false);
+  const [showCreatorApplication, setShowCreatorApplication] = useState(false);
+  const [selectedMarketplaceItem, setSelectedMarketplaceItem] = useState<any>(null);
 
   // 初期ローディング状態を管理
   useEffect(() => {
@@ -145,6 +183,43 @@ function AppContent() {
   // アプリ起動時にキャッシュのクリーンアップを実行
   useEffect(() => {
     cleanupExpiredCache();
+  }, []);
+
+  // ユーザーデータからブロックリストとミュートワードを取得
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('./firebase/init');
+        
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setBlockedUsers(userData.blockedUsers || []);
+          setMutedWords(userData.mutedWords || []);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.uid]);
+
+  // カスタムイベントでタブ変更を処理
+  useEffect(() => {
+    const handleTabChange = (event: CustomEvent) => {
+      const tabId = event.detail;
+      setActiveTab(tabId);
+    };
+
+    window.addEventListener('changeTab', handleTabChange as EventListener);
+    return () => {
+      window.removeEventListener('changeTab', handleTabChange as EventListener);
+    };
   }, []);
 
   // 募集締切の監視（5分ごと）
@@ -264,6 +339,11 @@ function AppContent() {
     }
   };
 
+  const handleCreatorAnalytics = () => {
+    console.log('Creator analytics clicked');
+    setShowCreatorAnalytics(true);
+  };
+
   const handleVehicleClick = async (vehicleId: string) => {
     // まずローカルのvehicles配列から検索
     let vehicle = vehicles.find(v => v.id === vehicleId);
@@ -314,8 +394,15 @@ function AppContent() {
   };
 
   const handleUserClick = (userId: string, displayName?: string) => {
-    console.log('handleUserClick called:', { userId, displayName });
-    console.log('Current state - showUserProfile:', showUserProfile, 'selectedUser:', selectedUser);
+    console.log('App.tsx - handleUserClick called:', { userId, displayName });
+    console.log('App.tsx - Current state - showUserProfile:', showUserProfile, 'selectedUser:', selectedUser);
+    
+    // 全ての他のページを閉じる
+    setShowMarketplaceItemDetail(false);
+    setShowMarketplace(false);
+    setShowThreadDetail(false);
+    setShowMaintenanceDetail(false);
+    setShowVideoDetail(false);
     
     // 即座にユーザー情報を設定してページを表示
     const user = {
@@ -326,16 +413,16 @@ function AppContent() {
       interestedCars: []
     };
     
-    console.log('Setting user immediately:', user);
+    console.log('App.tsx - Setting user immediately:', user);
     setSelectedUser(user);
     setShowUserProfile(true);
-    console.log('State updated - showUserProfile set to true');
+    console.log('App.tsx - State updated - showUserProfile set to true');
     
     // バックグラウンドでFirestoreから詳細情報を取得
     const fetchUserDetails = async () => {
       try {
         const { doc, getDoc } = await import('firebase/firestore');
-        const { db } = await import('./firebase/clients');
+        const { db } = await import('./firebase/init');
         
         const userDoc = await getDoc(doc(db, 'users', userId));
         
@@ -408,6 +495,33 @@ function AppContent() {
     setShowAddVehicle(true);
   };
 
+  const handleItemClick = (item: any) => {
+    console.log('handleItemClick called with item:', item);
+    setSelectedMarketplaceItem(item);
+    setShowMarketplaceItemDetail(true);
+  };
+
+  const handleEditItemClick = (itemId: string) => {
+    console.log('handleEditItemClick called with itemId:', itemId);
+    setEditingItemId(itemId);
+    setShowEditItem(true);
+  };
+
+  const handleNavigateToMessages = (itemId: string, sellerId: string) => {
+    console.log('handleNavigateToMessages called:', { itemId, sellerId });
+    setMessagesItemId(itemId);
+    setMessagesSellerId(sellerId);
+    setShowMessages(true);
+  };
+
+  const handleNavigateToRating = (itemId: string, sellerId: string, buyerId: string) => {
+    console.log('handleNavigateToRating called:', { itemId, sellerId, buyerId });
+    setRatingItemId(itemId);
+    setRatingSellerId(sellerId);
+    setRatingBuyerId(buyerId);
+    setShowRating(true);
+  };
+
   const handleAddMaintenance = () => {
     setSelectedPostType('maintenance');
     setShowCreatePost(true);
@@ -433,6 +547,12 @@ function AppContent() {
         break;
       case 'maintenance':
         setShowNewMaintenance(true);
+        break;
+      case 'marketplace':
+        setActiveTab('marketplace');
+        break;
+      case 'creator-analytics':
+        setShowCreatorAnalytics(true);
         break;
       default:
         console.log(`${actionId} clicked`);
@@ -488,6 +608,8 @@ function AppContent() {
     setActiveTab(tabId);
     setShowSettings(false);
     setSettingsSubPage(null);
+    setShowPrivacyPolicy(false);
+    setShowTermsOfService(false);
     setShowNotifications(false);
     setShowThreadDetail(false);
     setShowVideoDetail(false);
@@ -505,6 +627,14 @@ function AppContent() {
     setShowEditMaintenance(false);
     setShowChannels(false); // チャンネルページを閉じる
     setShowUploadVideo(false); // 動画アップロードページも閉じる
+    setShowMarketplace(false);
+    setShowMarketplaceItemDetail(false);
+    setShowEditMarketplaceItem(false);
+    setShowSellItem(false);
+    setShowMarketplaceCheckout(false);
+    setShowMarketplaceSuccess(false);
+    setShowMarketplaceCancel(false);
+    setShowMarketplaceReviews(false);
     
     // ツーリングチャット関連のページを閉じる
     setShowTouringChat(false);
@@ -580,12 +710,20 @@ function AppContent() {
     alert('通報を送信しました（ダミー）');
   };
 
+
   const renderPage = () => {
-    console.log('renderPage called - showTouringChat:', showTouringChat, 'showCreateTouringThread:', showCreateTouringThread);
     
-    // 管理者ダッシュボードページの表示（最優先）
+    // ユーザープロフィールページの表示（最優先）
+    if (showUserProfile) {
+      return <UserProfilePage 
+        user={selectedUser} 
+        onBackClick={() => setShowUserProfile(false)}
+        onUserClick={handleUserClick}
+      />;
+    }
+    
+    // 管理者ダッシュボードページの表示
     if (showAdminDashboard) {
-      console.log('Showing AdminDashboardPage');
       return (
         <AdminDashboardPage
           onBackClick={() => {
@@ -601,7 +739,6 @@ function AppContent() {
 
     // 管理者お問い合わせ管理ページの表示
     if (showAdminContactManagement) {
-      console.log('Showing AdminContactManagementPage');
       return (
         <AdminContactManagementPage
           onBackClick={() => {
@@ -614,7 +751,6 @@ function AppContent() {
 
     // 管理者通報管理ページの表示
     if (showAdminReportManagement) {
-      console.log('Showing AdminReportManagementPage');
       return (
         <AdminReportManagementPage
           onBackClick={() => {
@@ -627,7 +763,6 @@ function AppContent() {
 
     // 管理者ユーザー管理ページの表示
     if (showAdminUserManagement) {
-      console.log('Showing AdminUserManagementPage');
       return (
         <AdminUserManagementPage
           onBackClick={() => {
@@ -640,7 +775,6 @@ function AppContent() {
 
     // 管理者コンテンツ管理ページの表示
     if (showAdminContentManagement) {
-      console.log('Showing AdminContentManagementPage');
       return (
         <AdminContentManagementPage
           onBackClick={() => {
@@ -667,7 +801,6 @@ function AppContent() {
     
     // プライバシー設定ページの表示（最優先）
     if (showPrivacySettings) {
-      console.log('Showing PrivacySettingsPage');
       return (
         <PrivacySettingsPage
           onBackClick={() => {
@@ -676,10 +809,31 @@ function AppContent() {
         />
       );
     }
+
+    // プライバシーポリシーページの表示
+    if (showPrivacyPolicy) {
+      return (
+        <PrivacyPolicyPage
+          onBackClick={() => {
+            setShowPrivacyPolicy(false);
+          }}
+        />
+      );
+    }
+
+    // 利用規約ページの表示
+    if (showTermsOfService) {
+      return (
+        <TermsOfServicePage
+          onBackClick={() => {
+            setShowTermsOfService(false);
+          }}
+        />
+      );
+    }
     
     // 動画分析ページの表示（最優先）
     if (showVideoAnalytics && selectedVideoForAnalytics) {
-      console.log('Showing VideoAnalyticsPage');
       return (
         <VideoAnalyticsPage
           video={selectedVideoForAnalytics}
@@ -691,9 +845,19 @@ function AppContent() {
       );
     }
     
+    // クリエイター分析ページの表示（最優先）
+    if (showCreatorAnalytics) {
+      return (
+        <CreatorAnalyticsPage
+          onBackClick={() => {
+            setShowCreatorAnalytics(false);
+          }}
+        />
+      );
+    }
+    
     // ツーリングチャットルームページの表示（最優先）
     if (showTouringChatRoom && selectedTouringThread && selectedChatRoomId) {
-      console.log('Showing TouringChatRoomPage');
       return (
         <TouringChatRoomPage
           thread={selectedTouringThread}
@@ -708,7 +872,6 @@ function AppContent() {
 
     // ツーリングスレッド詳細ページの表示
     if (showTouringThreadDetail && selectedTouringThread) {
-      console.log('Showing TouringThreadDetailPage');
       return (
         <TouringThreadDetailPage
           thread={selectedTouringThread}
@@ -732,7 +895,6 @@ function AppContent() {
 
     // ツーリング募集作成ページの表示
     if (showCreateTouringThread) {
-      console.log('Showing CreateTouringThreadPage');
       return (
         <CreateTouringThreadPage
           onBack={() => setShowCreateTouringThread(false)}
@@ -802,8 +964,6 @@ function AppContent() {
           return <LegalPage type="terms" onBackClick={() => setSettingsSubPage(null)} />;
         case 'privacy':
           return <LegalPage type="privacy" onBackClick={() => setSettingsSubPage(null)} />;
-        case 'about':
-          return <LegalPage type="about" onBackClick={() => setSettingsSubPage(null)} />;
         case 'creatorUpload':
           return <CreatorUploadPage onBackClick={() => setSettingsSubPage(null)} />;
         case 'creatorApplication':
@@ -828,16 +988,26 @@ function AppContent() {
     }
 
     if (showSettings) {
-      return <SettingsPage onBackClick={() => setShowSettings(false)} onNavigate={(screen) => {
-        if (screen === 'privacySettings') {
-          setShowPrivacySettings(true);
-        } else {
-          setSettingsSubPage(screen);
-        }
-      }} onLoginClick={() => setShowAuth(true)} />;
+      return <SettingsPage 
+        onBackClick={() => setShowSettings(false)} 
+        onNavigate={(screen) => {
+          if (screen === 'privacySettings') {
+            setShowPrivacySettings(true);
+          } else if (screen === 'privacyPolicy') {
+            setShowPrivacyPolicy(true);
+          } else if (screen === 'termsOfService') {
+            setShowTermsOfService(true);
+          } else {
+            setSettingsSubPage(screen);
+          }
+        }} 
+        onLoginClick={() => setShowAuth(true)}
+        onNavigateToShopApplication={() => setShowShopApplication(true)}
+        onNavigateToCreatorApplication={() => setShowCreatorApplication(true)}
+      />;
     }
 
-    console.log('App render state:', { showVehicleRequestDetail, selectedVehicleRequest, showReportDetail, selectedReport, showNotifications });
+    // App render state ログを削除
 
     if (showReportDetail && selectedReport) {
       console.log('Rendering ReportDetailPage with:', selectedReport);
@@ -922,13 +1092,6 @@ function AppContent() {
       />;
     }
 
-    if (showUserProfile) {
-      return <UserProfilePage 
-        user={selectedUser} 
-        onBackClick={() => setShowUserProfile(false)}
-        onUserClick={handleUserClick}
-      />;
-    }
 
     if (showFollowingList) {
       return (
@@ -1043,6 +1206,7 @@ function AppContent() {
           }}
           onTabChange={handleTabChange}
           activeTab="videos"
+          onUserClick={handleUserClick}
         />
       );
     }
@@ -1076,6 +1240,7 @@ function AppContent() {
               setActiveTab('threads'); // ツーリングチャットはスレッド関連として扱う
             }}
             blockedUsers={blockedUsers}
+            mutedWords={mutedWords}
             onBlockUser={handleBlockUser}
             onReportThread={handleReportThread}
             interestedCars={interestedCars}
@@ -1088,6 +1253,7 @@ function AppContent() {
             onUserClick={handleUserClick}
             onDeleteThread={handleDeleteThread}
             blockedUsers={blockedUsers}
+            mutedWords={mutedWords}
             onBlockUser={handleBlockUser}
             onReportThread={handleReportThread}
             onNewThread={(type) => {
@@ -1105,20 +1271,27 @@ function AppContent() {
             onAddMaintenance={() => setShowNewMaintenance(true)}
             onDeleteMaintenance={handleDeleteMaintenance}
             onEditMaintenance={handleEditMaintenance}
+            blockedUsers={blockedUsers}
+            mutedWords={mutedWords}
           />
         );
-      case 'post':
-        return <PostPage 
-          onCreatePost={(postType) => {
-            if (postType === 'maintenance') {
-              setShowNewMaintenance(true);
-            } else {
-              setSelectedPostType(postType);
-              setShowNewThread(true);
-            }
-          }}
-          onTouringChatClick={() => setShowTouringChat(true)}
-        />;
+      case 'marketplace':
+        return (
+          <MarketplaceHomePage
+            onBackClick={() => setShowMarketplace(false)}
+            onItemClick={(item) => {
+              setSelectedMarketplaceItem(item);
+              setShowMarketplaceItemDetail(true);
+            }}
+            onNavigateToItemDetail={(itemId) => {
+              // itemIdを直接設定
+              setSelectedMarketplaceItem({ id: itemId } as any);
+              setShowMarketplaceItemDetail(true);
+            }}
+            onNavigateToSell={() => setShowSellItem(true)}
+            onSellClick={() => setShowSellItem(true)}
+          />
+        );
       case 'videos':
         return (
           <VideosPage
@@ -1128,6 +1301,7 @@ function AppContent() {
             onCreatorApplication={() => setSettingsSubPage('creatorApplication')}
             onShowChannels={() => setShowChannels(true)}
             onVideoAnalytics={handleVideoAnalytics}
+            onCreatorAnalytics={handleCreatorAnalytics}
           />
         );
       case 'profile':
@@ -1145,6 +1319,8 @@ function AppContent() {
             onUserClick={handleUserClick}
             onFollowingClick={() => setShowFollowingList(true)}
             onFollowersClick={() => setShowFollowersList(true)}
+            onItemClick={handleItemClick}
+            onSellItemClick={() => setShowSellItem(true)}
           />
         );
       default:
@@ -1166,6 +1342,161 @@ function AppContent() {
         />;
     }
   };
+
+  // マーケットプレイス関連のページレンダリング（編集を優先）
+  if (showEditMarketplaceItem) {
+    return (
+      <EditMarketplaceItemPage
+        itemId={selectedMarketplaceItem?.id}
+        item={selectedMarketplaceItem}
+        onBackClick={() => setShowEditMarketplaceItem(false)}
+        onSave={() => {
+          setShowEditMarketplaceItem(false);
+          setShowMarketplaceItemDetail(false);
+        }}
+      />
+    );
+  }
+
+  if (showMarketplaceItemDetail) {
+    return (
+      <MarketplaceItemDetailPage
+        itemId={selectedMarketplaceItem?.id}
+        item={selectedMarketplaceItem}
+        onBackClick={() => setShowMarketplaceItemDetail(false)}
+        onNavigateToEdit={handleEditItemClick}
+        onNavigateToMarketplace={() => {
+          setShowMarketplaceItemDetail(false);
+          setShowMarketplace(true);
+        }}
+        onNavigateToMessages={handleNavigateToMessages}
+        onNavigateToRating={handleNavigateToRating}
+        onEditClick={() => setShowEditMarketplaceItem(true)}
+        onCheckoutClick={() => setShowMarketplaceCheckout(true)}
+        onReviewsClick={() => setShowMarketplaceReviews(true)}
+        onUserClick={handleUserClick}
+      />
+    );
+  }
+
+  if (showEditItem && editingItemId) {
+    return (
+      <EditItemPage
+        itemId={editingItemId}
+        onBack={() => {
+          setShowEditItem(false);
+          setEditingItemId(null);
+        }}
+        onSave={() => {
+          setShowEditItem(false);
+          setEditingItemId(null);
+          setShowMarketplaceItemDetail(false);
+        }}
+      />
+    );
+  }
+
+  if (showMessages) {
+    return (
+      <MessagesPage
+        itemId={messagesItemId || undefined}
+        sellerId={messagesSellerId || undefined}
+        onBackClick={() => {
+          setShowMessages(false);
+          setMessagesItemId(null);
+          setMessagesSellerId(null);
+        }}
+      />
+    );
+  }
+
+  if (showRating && ratingItemId && ratingSellerId && ratingBuyerId) {
+    return (
+      <RatingPage
+        orderId="temp-order-id" // 実際の注文IDが必要
+        itemId={ratingItemId}
+        sellerId={ratingSellerId}
+        buyerId={ratingBuyerId}
+        itemTitle={selectedMarketplaceItem?.title || '商品'}
+        isSeller={user?.uid === ratingSellerId}
+        onBackClick={() => {
+          setShowRating(false);
+          setRatingItemId(null);
+          setRatingSellerId(null);
+          setRatingBuyerId(null);
+        }}
+      />
+    );
+  }
+
+  if (showSellItem) {
+    return (
+      <SellItemPage
+        onBackClick={() => setShowSellItem(false)}
+        onSave={() => setShowSellItem(false)}
+      />
+    );
+  }
+
+  if (showShopApplication) {
+    return (
+      <ShopApplicationPage
+        onBackClick={() => setShowShopApplication(false)}
+      />
+    );
+  }
+
+  if (showCreatorApplication) {
+    return (
+      <CreatorApplicationPage
+        onBackClick={() => setShowCreatorApplication(false)}
+      />
+    );
+  }
+
+  if (showMarketplaceCheckout) {
+    return (
+      <MarketplaceCheckoutPage
+        item={selectedMarketplaceItem}
+        onBackClick={() => setShowMarketplaceCheckout(false)}
+        onSuccess={() => setShowMarketplaceSuccess(true)}
+        onCancel={() => setShowMarketplaceCancel(true)}
+      />
+    );
+  }
+
+  if (showMarketplaceSuccess) {
+    return (
+      <MarketplaceSuccessPage
+        onBackClick={() => {
+          setShowMarketplaceSuccess(false);
+          setShowMarketplaceCheckout(false);
+          setShowMarketplaceItemDetail(false);
+        }}
+      />
+    );
+  }
+
+  if (showMarketplaceCancel) {
+    return (
+      <MarketplaceCancelPage
+        onBackClick={() => {
+          setShowMarketplaceCancel(false);
+          setShowMarketplaceCheckout(false);
+          setShowMarketplaceItemDetail(false);
+        }}
+      />
+    );
+  }
+
+  if (showMarketplaceReviews) {
+    return (
+      <MarketplaceReviewsPage
+        item={selectedMarketplaceItem}
+        onBackClick={() => setShowMarketplaceReviews(false)}
+      />
+    );
+  }
 
     return (
     <div className="App">

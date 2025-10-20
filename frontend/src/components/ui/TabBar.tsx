@@ -1,4 +1,4 @@
-import { Activity, Car, Plus, User, Video, Wrench } from 'lucide-react';
+import { Activity, Car, ShoppingBag, User, Video, Wrench } from 'lucide-react';
 import React from 'react';
 
 interface TabBarProps {
@@ -8,9 +8,9 @@ interface TabBarProps {
 
 const tabs = [
   { id: 'home', label: 'Home', icon: Car },
-  { id: 'threads', label: 'Threads', icon: Activity },
+  { id: 'threads', label: 'Link', icon: Activity },
   { id: 'maintenance', label: 'Maint', icon: Wrench },
-  { id: 'post', label: 'Post', icon: Plus },
+  { id: 'marketplace', label: 'Market', icon: ShoppingBag },
   { id: 'videos', label: 'Videos', icon: Video },
   { id: 'profile', label: 'Profile', icon: User },
 ];

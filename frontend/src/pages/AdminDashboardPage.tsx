@@ -265,7 +265,7 @@ const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 onClick={onNavigateToContentManagement}
               >
                 <h3 className="font-semibold mb-2">コンテンツ管理</h3>
-                <p className="text-sm text-gray-400 mb-3">投稿・動画・スレッドの管理</p>
+                <p className="text-sm text-gray-400 mb-3">投稿・動画・Linkの管理</p>
                 <div className="text-xs text-blue-400">
                   総数: {loading ? '...' : stats.totalPosts.toLocaleString()}件
                   </div>

@@ -1,11 +1,56 @@
 import { BarChart3, Play, Plus, Trash2, Users } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
+import { ClickableUserName } from '../components/ui/ClickableUserName';
 import { SearchBar } from '../components/ui/SearchBar';
 import { useAuth } from '../hooks/useAuth';
+import { useChannelSubscriberCount, useChannelSubscriptions } from '../hooks/useChannelSubscriptions';
 import { useCreatorApplication } from '../hooks/useCreatorApplication';
 import { useSearch } from '../hooks/useSearch';
+import { useUserName } from '../hooks/useUserName';
 import { useVideos } from '../hooks/useVideos';
+
+// 動画の作者名を表示するコンポーネント
+const VideoAuthorName: React.FC<{
+  authorId: string;
+  fallbackName: string;
+  onClick: (authorId: string, authorName: string) => void;
+}> = ({ authorId, fallbackName, onClick }) => {
+  const { displayName, loading } = useUserName(authorId);
+  
+  const handleClick = () => {
+    onClick(authorId, displayName || fallbackName);
+  };
+
+  // displayNameが取得できている場合はそれを優先、なければフォールバック名を使用
+  const displayText = loading 
+    ? '読み込み中...' 
+    : (displayName || fallbackName);
+
+  return (
+    <button
+      onClick={handleClick}
+      className="text-xs text-gray-400 hover:text-primary transition-colors"
+    >
+      {displayText}
+    </button>
+  );
+};
+
+// チャンネル（ユーザー）名表示用のコンポーネント
+const ChannelDisplayName: React.FC<{ userId: string; fallbackName?: string }>
+  = ({ userId, fallbackName }) => {
+  const { displayName, loading } = useUserName(userId);
+  if (loading) return <span className="text-xs text-gray-400">読み込み中...</span>;
+  return <span className="text-xs text-white text-center leading-tight">{displayName || fallbackName || 'ユーザー'}</span>;
+};
+
+// チャンネル登録者数表示用のコンポーネント
+const ChannelSubscriberCount: React.FC<{ channelId: string }> = ({ channelId }) => {
+  const { subscriberCount, loading } = useChannelSubscriberCount(channelId);
+  if (loading) return <span className="text-xs text-gray-400">読み込み中...</span>;
+  return <span className="text-xs text-gray-400">{subscriberCount.toLocaleString()}人登録</span>;
+};
 
 interface VideosPageProps {
   onVideoClick?: (videoId: string) => void;
@@ -15,12 +60,14 @@ interface VideosPageProps {
   onCreatorApplication?: () => void;
   onShowChannels?: () => void;
   onVideoAnalytics?: (videoId: string) => void;
+  onCreatorAnalytics?: () => void;
 }
 
-export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo, onUploadVideo, onCreatorApplication, onShowChannels, onVideoAnalytics }) => {
+export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo, onUploadVideo, onCreatorApplication, onShowChannels, onVideoAnalytics, onCreatorAnalytics }) => {
   const { user, userDoc } = useAuth();
   const { videos, userVideos, deleteVideo } = useVideos(user?.uid);
   const { userApplication } = useCreatorApplication(user?.uid);
+  const { subscriptions, subscribedChannelIds: subscribedChannelIdsFromHook, subscribe, unsubscribe, isSubscribed } = useChannelSubscriptions(user?.uid);
   
   const [showChannels, setShowChannels] = useState(false);
   const [activeTab, setActiveTab] = useState<'subscribed' | 'all'>('subscribed');
@@ -58,8 +105,18 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
     onVideoClick?.(videoId);
   };
 
-  const handleSubscribeToggle = (channelId: string) => {
-    console.log('Subscribe toggle:', channelId);
+  const handleSubscribeToggle = async (channelId: string) => {
+    try {
+      if (isSubscribed(channelId)) {
+        await unsubscribe(channelId);
+      } else {
+        const channel = channels.find(ch => ch.id === channelId);
+        await subscribe(channelId, channel?.name);
+      }
+    } catch (error) {
+      console.error('Error toggling subscription:', error);
+      alert('登録状態の変更に失敗しました');
+    }
   };
 
   const handleUserClick = (userId: string, displayName: string) => {
@@ -86,43 +143,53 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
     }
   };
 
-  // チャンネル情報を動画から生成
-  const channels = Array.from(new Set(videos.map(v => v.channelId))).map(channelId => {
-    const channelVideos = videos.filter(v => v.channelId === channelId);
-    const firstVideo = channelVideos[0];
-    return {
-      id: channelId,
-      name: firstVideo?.author || 'チャンネル',
-      avatar: firstVideo?.thumbnailUrl || '',
-      subscriberCount: Math.floor(Math.random() * 1000) + 100,
-      description: `${channelVideos.length}本の動画`,
-      isSubscribed: Math.random() > 0.5
-    };
-  });
+  // チャンネル情報を動画から生成（メモ化）
+  const channels = useMemo(() => {
+    return Array.from(new Set(videos.map(v => v.channelId))).map(channelId => {
+      const channelVideos = videos.filter(v => v.channelId === channelId);
+      const firstVideo = channelVideos[0];
+      return {
+        id: channelId,
+        name: channelId, // 実際のユーザー名はChannelDisplayNameコンポーネントで取得
+        avatar: firstVideo?.thumbnailUrl || '',
+        subscriberCount: Math.floor(Math.random() * 1000) + 100,
+        description: `${channelVideos.length}本の動画`,
+        isSubscribed: isSubscribed(channelId)
+      };
+    });
+  }, [videos, isSubscribed]);
 
-  // 登録チャンネルの動画を取得
-  const subscribedChannelIds = channels.filter(ch => ch.isSubscribed).map(ch => ch.id);
-  const subscribedVideos = searchedVideos.filter(video => subscribedChannelIds.includes(video.channelId));
-  const allVideos = searchedVideos;
+  // 登録チャンネルの動画を取得（メモ化）
+  const subscribedVideos = useMemo(() => {
+    return searchedVideos.filter(video => subscribedChannelIdsFromHook.includes(video.channelId));
+  }, [searchedVideos, subscribedChannelIdsFromHook]);
 
-  // 選択されたチャンネルの動画を取得（最新順）
-  const selectedChannelVideos = selectedChannel 
-    ? searchedVideos
-        .filter(video => video.channelId === selectedChannel)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    : [];
+  // 選択されたチャンネルの動画を取得（メモ化）
+  const selectedChannelVideos = useMemo(() => {
+    if (!selectedChannel) return [];
+    return searchedVideos
+      .filter(video => video.channelId === selectedChannel)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [searchedVideos, selectedChannel]);
 
-  // 動画を最新順にソート
-  const sortedSubscribedVideos = subscribedVideos.sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-  const sortedAllVideos = allVideos.sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // 動画を最新順にソート（メモ化）
+  const sortedSubscribedVideos = useMemo(() => {
+    return subscribedVideos.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [subscribedVideos]);
 
-  const displayVideos = selectedChannel 
-    ? selectedChannelVideos 
-    : (activeTab === 'subscribed' ? sortedSubscribedVideos : sortedAllVideos);
+  const sortedAllVideos = useMemo(() => {
+    return searchedVideos.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [searchedVideos]);
+
+  // 表示する動画を決定（メモ化）
+  const displayVideos = useMemo(() => {
+    if (selectedChannel) return selectedChannelVideos;
+    return activeTab === 'subscribed' ? sortedSubscribedVideos : sortedAllVideos;
+  }, [selectedChannel, selectedChannelVideos, activeTab, sortedSubscribedVideos, sortedAllVideos]);
 
   return (
     <div className="min-h-screen bg-background container-mobile">
@@ -145,13 +212,22 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
         <div className="flex items-center justify-end mb-6">
           <div className="flex items-center space-x-2">
             {canUploadVideos && (
-              <button
-                onClick={handleUploadClick}
-                className={`flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors shadow-sm ${permissionColor}`}
-              >
-                <Plus size={16} />
-                <span>アップロード</span>
-              </button>
+              <>
+                <button
+                  onClick={handleUploadClick}
+                  className={`flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors shadow-sm ${permissionColor}`}
+                >
+                  <Plus size={16} />
+                  <span>アップロード</span>
+                </button>
+                <button
+                  onClick={() => onCreatorAnalytics?.()}
+                  className="flex items-center space-x-2 px-3 py-2 bg-surface border border-surface-light rounded-xl text-sm font-medium hover:scale-95 active:scale-95 transition-transform shadow-sm"
+                >
+                  <BarChart3 size={16} />
+                  <span>分析</span>
+                </button>
+              </>
             )}
             <button
               onClick={() => onShowChannels?.()}
@@ -204,9 +280,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className="text-xs text-white text-center leading-tight">
-                    {channel.name}
-                  </span>
+                  <ChannelDisplayName userId={channel.id} fallbackName={channel.name} />
                 </button>
               ))}
             </div>
@@ -224,7 +298,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
               />
               <div>
                 <h3 className="text-sm font-bold text-white">
-                  {channels.find(ch => ch.id === selectedChannel)?.name}
+                  <ChannelDisplayName userId={selectedChannel} fallbackName="チャンネル" />
                 </h3>
                 <p className="text-xs text-gray-400">
                   {selectedChannelVideos.length}本の動画
@@ -320,6 +394,8 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
               displayVideos.map((video) => {
                 const channel = channels.find(ch => ch.id === video.channelId);
                 const isOwnVideo = video.authorId === user?.uid;
+                
+                
                 return (
                   <div
                     key={video.id}
@@ -388,15 +464,17 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUserClick(video.authorId || '', video.author);
+                      <ClickableUserName 
+                        key={`${video.id}-${video.authorId}`}
+                        userId={video.authorId || ''} 
+                        fallbackName={video.author}
+                        size="sm"
+                        showAvatar={false}
+                        onClick={(userId, displayName) => {
+                          handleUserClick(userId, displayName);
                         }}
                         className="text-xs text-gray-400 hover:text-primary transition-colors"
-                      >
-                        {video.author}
-                      </button>
+                      />
                       <div className="flex items-center space-x-1 text-xs text-gray-500">
                         <span>{video.views.toLocaleString()}回</span>
                         <span>•</span>

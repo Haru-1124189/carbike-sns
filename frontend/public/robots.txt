@@ -1,3 +1,8 @@
+User-agent: *
+Allow: /
+
+# Disallow service worker and manifest direct indexing noise
+Disallow: /service-worker.js
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Disallow:

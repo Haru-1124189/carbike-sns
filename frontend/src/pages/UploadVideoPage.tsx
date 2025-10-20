@@ -153,7 +153,7 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
       };
 
       setUploadProgress(90);
-      await uploadVideo(videoData, userDoc?.displayName || user?.displayName || 'ユーザー');
+      await uploadVideo(videoData, userDoc?.displayName || user?.displayName || user?.email || 'ユーザー');
       setUploadProgress(100);
       alert('動画がアップロードされました！');
       onBack?.();

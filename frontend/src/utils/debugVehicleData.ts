@@ -1,5 +1,5 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 
 /**
  * 現在のユーザーの車両データを詳細にデバッグ

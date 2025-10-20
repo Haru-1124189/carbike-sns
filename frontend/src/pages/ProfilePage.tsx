@@ -1,6 +1,9 @@
-import { Edit, MessageSquare, UserCheck, Users, Wrench } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { Edit, MessageSquare, Package, Star, UserCheck, Users, Wrench } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { RatingList } from '../components/RatingList';
 import { AppHeader } from '../components/ui/AppHeader';
+import { MarketplaceItemCard } from '../components/ui/MarketplaceItemCard';
 import { PersistentImage } from '../components/ui/PersistentImage';
 import { PrivacyToggle } from '../components/ui/PrivacyToggle';
 import { SectionTitle } from '../components/ui/SectionTitle';
@@ -8,14 +11,17 @@ import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { ThreadCard } from '../components/ui/ThreadCard';
 import { VehicleCard } from '../components/ui/VehicleCard';
 import { threadAds } from '../data/dummy';
+import { db } from '../firebase/init';
 import { useAuth } from '../hooks/useAuth';
 import { useMyFollowData } from '../hooks/useFollow';
 import { useMaintenancePosts } from '../hooks/useMaintenancePosts';
+import { useItemSearch } from '../hooks/useMarketplace';
 import { usePrivacy } from '../hooks/usePrivacy';
+import { useRatings } from '../hooks/useRatings';
 import { useThreads } from '../hooks/useThreads';
 import { useVehicles } from '../hooks/useVehicles';
 
-type ProfileTab = 'posts' | 'questions' | 'maintenance';
+type ProfileTab = 'posts' | 'questions' | 'maintenance' | 'items' | 'ratings';
 
 interface ProfilePageProps {
   onSettingsClick?: () => void;
@@ -30,6 +36,9 @@ interface ProfilePageProps {
   onUserClick?: (userId: string, displayName: string) => void;
   onFollowingClick?: () => void;
   onFollowersClick?: () => void;
+  onItemClick?: (item: any) => void;
+  onSellItemClick?: () => void;
+  onNavigateToRating?: (itemId: string, sellerId: string, buyerId: string) => void;
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
@@ -44,17 +53,27 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onReportThread,
   onUserClick,
   onFollowingClick,
-  onFollowersClick
+  onFollowersClick,
+  onItemClick,
+  onSellItemClick,
+  onNavigateToRating
 }) => {
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
   const [isAdminEditing, setIsAdminEditing] = useState(false);
   const [adminEditingAvatar, setAdminEditingAvatar] = useState(false);
   const [adminAvatarError, setAdminAvatarError] = useState('');
+  const [userRatings, setUserRatings] = useState<any[]>([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalRatings, setTotalRatings] = useState(0);
 
   const { user, userDoc, updateUserDoc, loading: authLoading } = useAuth();
   const { vehicles, loading: vehiclesLoading, error: vehiclesError } = useVehicles();
   const { followersCount, followingCount } = useMyFollowData();
   const { isPrivate } = usePrivacy();
+  const { getUserRatings, calculateUserAverageRating, getPendingRatingReminders } = useRatings();
+  const [pendingRateCount, setPendingRateCount] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [showPendingModal, setShowPendingModal] = useState(false);
   
   const { threads: allThreads, loading: threadsLoading } = useThreads({ 
     currentUserId: user?.uid 
@@ -63,6 +82,77 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const { maintenancePosts, loading: maintenanceLoading } = useMaintenancePosts({ 
     currentUserId: user?.uid 
   });
+
+  // 自分の商品を取得
+  const { items: myItems, loading: itemsLoading } = useItemSearch(
+    { sellerId: user?.uid, status: 'active' },
+    'newest'
+  );
+
+  // 評価データを読み込み
+  const loadUserRatingsInternal = async (type: 'seller'|'buyer'|'all' = 'all') => {
+    if (!user?.uid) return;
+    const ratingsData = await getUserRatings(user.uid);
+    const filtered = type === 'all' ? ratingsData : ratingsData.filter((r: any) => r.type === type);
+    setUserRatings(filtered);
+    const ratingStats = await calculateUserAverageRating(user.uid);
+    setAverageRating(ratingStats.averageRating);
+    setTotalRatings(ratingStats.totalRatings);
+  };
+
+  useEffect(() => {
+    loadUserRatingsInternal('all');
+    // 未評価件数の取得（アプリ内リマインダー）
+    (async () => {
+      if (user?.uid) {
+        const res = await getPendingRatingReminders(user.uid);
+        setPendingRateCount(res.count);
+        // 注文の詳細（商品タイトル/画像、相手の表示名）を取得
+        const detailed = await Promise.all(
+          res.orders.map(async (o: any) => {
+            try {
+              const itemSnap = await getDoc(doc(db, 'items', o.itemId));
+              const itemData: any = itemSnap.exists() ? itemSnap.data() : {};
+              const itemTitle = itemData.title || '商品';
+              const itemThumb = itemData.thumbnail || (itemData.images && itemData.images[0]) || '';
+
+              const counterpartId = user.uid === o.sellerId ? o.buyerId : o.sellerId;
+              let counterpartName = `ユーザー${(counterpartId || '').slice(-4)}`;
+              if (counterpartId) {
+                const userSnap = await getDoc(doc(db, 'users', counterpartId));
+                if (userSnap.exists()) {
+                  const u = userSnap.data() as any;
+                  counterpartName = u.displayName || counterpartName;
+                }
+              }
+
+              return { ...o, itemTitle, itemThumb, counterpartName };
+            } catch {
+              return { ...o, itemTitle: '商品', itemThumb: '', counterpartName: 'ユーザー' };
+            }
+          })
+        );
+        setPendingOrders(detailed);
+      }
+    })();
+
+    // 評価作成イベントで未評価リストを更新
+    const handler = (e: any) => {
+      const { orderId, raterId } = e.detail || {};
+      if (!orderId || !raterId || raterId !== user?.uid) return;
+      setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setPendingRateCount((c) => Math.max(0, c - 1));
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('rating:created' as any, handler as any);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('rating:created' as any, handler as any);
+      }
+    };
+  }, [user?.uid]);
 
   // 自分の投稿と質問のみをフィルタリング
   const userPosts = useMemo(() => {
@@ -161,7 +251,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   };
 
   const renderTabContent = () => {
-    if (threadsLoading || maintenanceLoading) {
+    if (threadsLoading || maintenanceLoading || itemsLoading) {
       return (
         <div className="text-center py-8">
           <div className="text-sm text-gray-400">読み込み中...</div>
@@ -292,6 +382,183 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             )}
           </div>
         );
+      case 'items':
+        return (
+          <div className="space-y-4">
+            {myItems.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {myItems.map((item) => (
+                  <MarketplaceItemCard
+                    key={item.id}
+                    item={item}
+                    viewMode="grid"
+                    onClick={() => onItemClick?.(item)}
+                    showSellerType={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-sm text-gray-400 mb-4">出品した商品がありません</div>
+                <button
+                  onClick={onSellItemClick}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm"
+                >
+                  商品を出品する
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      case 'ratings':
+        return (
+          <div className="space-y-4">
+            {/* 評価サマリー */}
+            <div className="bg-surface border border-border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                  取引評価
+                  {pendingRateCount > 0 && (
+                    <button
+                      onClick={() => setShowPendingModal(true)}
+                      className="inline-flex items-center px-2 py-0.5 bg-red-500 text-white rounded-full text-xs hover:bg-red-600"
+                      title="未評価の取引を確認"
+                    >
+                      未評価 {pendingRateCount}
+                    </button>
+                  )}
+                </h3>
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        size={20}
+                        className={`${
+                          star <= Math.round(averageRating)
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-lg font-bold text-text-primary">
+                    {averageRating.toFixed(1)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary">
+                <span>{totalRatings}件の評価</span>
+                {/* 並び替え */}
+                <label className="ml-auto flex items-center gap-2">
+                  <span className="text-xs">並び替え</span>
+                  <select
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setUserRatings(prev => {
+                        const arr = [...prev];
+                        if (v === 'new') arr.sort((a: any,b: any)=> (b.createdAt?.toMillis?.()||0) - (a.createdAt?.toMillis?.()||0));
+                        if (v === 'old') arr.sort((a: any,b: any)=> (a.createdAt?.toMillis?.()||0) - (b.createdAt?.toMillis?.()||0));
+                        if (v === 'high') arr.sort((a: any,b: any)=> b.rating - a.rating);
+                        if (v === 'low') arr.sort((a: any,b: any)=> a.rating - b.rating);
+                        return arr;
+                      });
+                    }}
+                    className="bg-surface-light border border-border rounded px-2 py-1"
+                  >
+                    <option value="new">新しい順</option>
+                    <option value="old">古い順</option>
+                    <option value="high">評価高い順</option>
+                    <option value="low">評価低い順</option>
+                  </select>
+                </label>
+                {/* フィルタ */}
+                <label className="flex items-center gap-2">
+                  <span className="text-xs">種別</span>
+                  <select
+                    onChange={(e) => {
+                      const v = e.target.value as 'all'|'seller'|'buyer';
+                      if (v === 'all') {
+                        loadUserRatingsInternal();
+                      } else {
+                        loadUserRatingsInternal(v);
+                      }
+                    }}
+                    className="bg-surface-light border border-border rounded px-2 py-1"
+                  >
+                    <option value="all">すべて</option>
+                    <option value="seller">出品者への評価</option>
+                    <option value="buyer">購入者への評価</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* 評価一覧 */}
+            <RatingList
+              ratings={userRatings}
+              title="評価履歴"
+              showItemInfo={true}
+            />
+
+            {/* 未評価モーダル */}
+            {showPendingModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div className="bg-surface border border-border rounded-lg w-full max-w-md p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-text-primary">未評価の取引</h4>
+                    <button
+                      onClick={() => setShowPendingModal(false)}
+                      className="text-text-secondary hover:text-text-primary"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                  {pendingOrders.length === 0 ? (
+                    <div className="text-center text-text-secondary py-6">未評価の取引はありません</div>
+                  ) : (
+                    <div className="space-y-3 max-h-80 overflow-auto">
+                      {pendingOrders.map((o, idx) => (
+                        <div key={o.id || idx} className="bg-surface-light border border-border rounded-lg p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-surface rounded overflow-hidden flex-shrink-0">
+                              {o.itemThumb ? (
+                                <img src={o.itemThumb} alt={o.itemTitle} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-text-secondary text-xs">No Image</div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm text-text-primary font-medium truncate">{o.itemTitle}</div>
+                              <div className="text-xs text-text-secondary">相手: {o.counterpartName}</div>
+                              <div className="text-[11px] text-text-secondary/80">注文ID: {o.id}</div>
+                            </div>
+                          </div>
+                          <div className="flex justify-end">
+                            <button
+                              onClick={() => {
+                                // 評価ページへ遷移（App側のハンドラが必要な場合はここでイベントを発火）
+                                setShowPendingModal(false);
+                                if (onNavigateToRating) {
+                                  const sellerId = o.sellerId;
+                                  const buyerId = o.buyerId;
+                                  onNavigateToRating(o.itemId, sellerId, buyerId);
+                                }
+                              }}
+                              className="px-3 py-1 bg-primary text-white rounded hover:bg-primary-dark text-xs"
+                            >
+                              評価する
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
       default:
         return null;
     }
@@ -377,6 +644,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         showTitle={true}
         showLogo={true}
         showSettings={true}
+        showUserName={false}
         showProfileButton={false}
       />
 
@@ -452,7 +720,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <h2 className="text-lg font-bold text-white">
                 {userDoc?.displayName || user?.displayName || 'ユーザー'}
               </h2>
-              <p className="text-sm text-gray-400">登録メール: {user?.email}</p>
               
               {/* フォロー統計 */}
               <div className="flex items-center space-x-4 mt-2">
@@ -560,7 +827,29 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             }`}
           >
             <Wrench size={14} />
-            <span>整備記録</span>
+            <span>整備</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('items')}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
+              activeTab === 'items'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Package size={14} />
+            <span>商品</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('ratings')}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
+              activeTab === 'ratings'
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Star size={14} />
+            <span>評価</span>
           </button>
         </div>
         <div key={activeTab} className="fade-in">

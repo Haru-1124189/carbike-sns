@@ -32,12 +32,18 @@ export const ReportPage: React.FC<ReportPageProps> = ({ onBackClick }) => {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-transparent border border-surface-light rounded-lg p-2 text-sm text-white focus:outline-none"
+              className="w-full bg-surface border border-surface-light rounded-lg p-2 text-sm text-white focus:outline-none focus:border-primary appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+                backgroundPosition: 'right 8px center',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '16px'
+              }}
             >
-              <option value="spam">スパム / 不適切</option>
-              <option value="harassment">迷惑行為</option>
-              <option value="bug">バグ報告</option>
-              <option value="other">その他</option>
+              <option value="spam" className="bg-surface text-white">スパム / 不適切</option>
+              <option value="harassment" className="bg-surface text-white">迷惑行為</option>
+              <option value="bug" className="bg-surface text-white">バグ報告</option>
+              <option value="other" className="bg-surface text-white">その他</option>
             </select>
           </div>
           <div className="bg-surface rounded-xl border border-surface-light p-4 shadow-sm">

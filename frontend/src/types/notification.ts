@@ -1,7 +1,7 @@
 export interface NotificationDoc {
   id: string;
   userId: string; // 通知を受け取るユーザーのUID
-  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply';
+  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply' | 'car_application' | 'follow_request' | 'follow_approved' | 'follow_rejected' | 'new_video';
   title: string;
   content: string;
   isRead: boolean;
@@ -10,7 +10,7 @@ export interface NotificationDoc {
   
   // 通知に関連するデータ
   targetId?: string; // いいね/返信された投稿のID
-  targetType?: 'thread' | 'question' | 'maintenance' | 'touring'; // 投稿の種類
+  targetType?: 'thread' | 'question' | 'maintenance' | 'touring' | 'car_application'; // 投稿の種類
   fromUserId?: string; // 通知を送ったユーザーのUID
   fromUserName?: string; // 通知を送ったユーザーの名前
   
@@ -34,17 +34,22 @@ export interface NotificationDoc {
     prefecture?: string;
     location?: string;
     touringDate?: string;
+    // 動画通知用のデータ
+    videoId?: string;
+    channelId?: string;
+    authorName?: string;
+    videoTitle?: string;
     [key: string]: any;
   };
 }
 
 export interface CreateNotificationData {
   userId: string;
-  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply';
+  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply' | 'car_application' | 'follow_request' | 'follow_approved' | 'follow_rejected' | 'new_video';
   title: string;
   content: string;
   targetId?: string;
-  targetType?: 'thread' | 'question' | 'maintenance' | 'touring';
+  targetType?: 'thread' | 'question' | 'maintenance' | 'touring' | 'car_application';
   fromUserId?: string;
   fromUserName?: string;
   requestData?: {
@@ -53,11 +58,26 @@ export interface CreateNotificationData {
     year: string;
     notes: string;
   };
+  applicationData?: {
+    maker: string;
+    model: string;
+    yearRanges: Array<{
+      start_year: number;
+      start_month: number;
+      end_year: number;
+      end_month: number;
+    }>;
+  };
   data?: {
     threadId?: string;
     prefecture?: string;
     location?: string;
     touringDate?: string;
+    // 動画通知用のデータ
+    videoId?: string;
+    channelId?: string;
+    authorName?: string;
+    videoTitle?: string;
     [key: string]: any;
   };
 }

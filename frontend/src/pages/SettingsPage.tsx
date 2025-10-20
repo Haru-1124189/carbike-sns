@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, HelpCircle, Palette, Shield, Upload, User } from 'lucide-react';
+import { ArrowLeft, Building2, FileText, HelpCircle, Palette, Shield, Upload, User } from 'lucide-react';
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -6,11 +6,38 @@ interface SettingsPageProps {
   onBackClick?: () => void;
   onNavigate?: (screen: string) => void;
   onLoginClick?: () => void;
+  onNavigateToShopApplication?: () => void;
+  onNavigateToCreatorApplication?: () => void;
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavigate, onLoginClick }) => {
-  const { userDoc } = useAuth();
+export const SettingsPage: React.FC<SettingsPageProps> = ({ 
+  onBackClick, 
+  onNavigate, 
+  onLoginClick, 
+  onNavigateToShopApplication,
+  onNavigateToCreatorApplication 
+}) => {
+  const { userDoc, logout } = useAuth();
   
+  const applicationSection = {
+    title: "申請",
+    icon: Building2,
+    items: [
+      {
+        id: 'shopApplication',
+        title: 'Shop申請',
+        description: 'ショップとして商品を販売するための申請',
+        type: 'action'
+      },
+      {
+        id: 'creatorApplication',
+        title: 'クリエイター申請',
+        description: '動画配信権限を取得するための申請',
+        type: 'action'
+      }
+    ]
+  };
+
   const creatorSection = {
     title: "クリエイター",
     icon: Upload,
@@ -45,6 +72,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
 
   const settingsSections = [
     ...(userDoc?.isAdmin ? [adminSection] : []),
+    applicationSection,
     {
       title: "アカウント",
       icon: User,
@@ -147,25 +175,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
           type: 'action'
         },
         {
-          id: 'privacy',
+          id: 'privacyPolicy',
           title: 'プライバシーポリシー',
           description: '個人情報の取り扱い',
-          type: 'action'
-        },
-        {
-          id: 'about',
-          title: 'このアプリについて',
-          description: 'RevLink の概要',
           type: 'action'
         }
       ]
     }
   ];
 
-  const handleSettingClick = (sectionTitle: string, itemId: string) => {
+  const handleSettingClick = async (sectionTitle: string, itemId: string) => {
     if (itemId === 'logout') {
       if (window.confirm('ログアウトしますか？')) {
-        onLoginClick?.();
+        try {
+          await logout();
+          // ログアウト成功後、ログインページに遷移
+          onLoginClick?.();
+        } catch (error) {
+          console.error('ログアウトエラー:', error);
+          alert('ログアウトに失敗しました。もう一度お試しください。');
+        }
       }
       return;
     }
@@ -175,12 +204,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBackClick, onNavig
       }
       return;
     }
+    if (itemId === 'shopApplication') {
+      onNavigateToShopApplication?.();
+      return;
+    }
+    if (itemId === 'creatorApplication') {
+      onNavigateToCreatorApplication?.();
+      return;
+    }
     if (itemId === 'theme') {
       onNavigate?.('theme');
       return;
     }
     if (itemId === 'privacy') {
       onNavigate?.('privacySettings');
+      return;
+    }
+    if (itemId === 'terms') {
+      onNavigate?.('termsOfService');
+      return;
+    }
+    if (itemId === 'privacyPolicy') {
+      onNavigate?.('privacyPolicy');
       return;
     }
     onNavigate?.(itemId);

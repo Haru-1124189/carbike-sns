@@ -7,6 +7,7 @@ import { useVehicles } from '../hooks/useVehicles';
 import { createMaintenancePost } from '../lib/threads';
 import { uploadToStorage } from '../lib/upload';
 import { MaintenanceStep } from '../types';
+import { Car as CarType } from '../types/car';
 
 interface NewMaintenancePageProps {
   onBackClick?: () => void;
@@ -31,6 +32,7 @@ export const NewMaintenancePage: React.FC<NewMaintenancePageProps> = ({ onBackCl
   const [newPart, setNewPart] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+  const [carTags, setCarTags] = useState<Array<{ car: CarType; yearRange?: any; tagName: string }>>([]);
   const [steps, setSteps] = useState<MaintenanceStep[]>([
     {
       id: '1',

@@ -13,15 +13,7 @@ export const PrivacySettingsPage: React.FC<PrivacySettingsPageProps> = ({ onBack
   const { settings, updateSetting } = useNotificationSettings();
   const [saving, setSaving] = useState(false);
 
-  // 住所の表示設定
-  const [addressVisibility, setAddressVisibility] = useState(
-    userDoc?.address?.isPrivate !== false // デフォルトで非表示
-  );
 
-  // プロフィールの公開設定
-  const [profileVisibility, setProfileVisibility] = useState(
-    userDoc?.isPrivate !== true // デフォルトで公開
-  );
 
   // 近くのツーリング通知設定
   const [locationNotifications, setLocationNotifications] = useState(
@@ -33,11 +25,10 @@ export const PrivacySettingsPage: React.FC<PrivacySettingsPageProps> = ({ onBack
 
     setSaving(true);
     try {
+      // プライバシー設定を保存
       await updateUserDoc({
-        isPrivate: profileVisibility,
         address: userDoc.address ? {
           ...userDoc.address,
-          isPrivate: addressVisibility,
           isNotificationEnabled: locationNotifications
         } : undefined
       });
@@ -65,76 +56,12 @@ export const PrivacySettingsPage: React.FC<PrivacySettingsPageProps> = ({ onBack
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white">プライバシー設定</h1>
-            <p className="text-sm text-gray-400">個人情報の表示と通知を管理</p>
+            <p className="text-sm text-gray-400">通知設定を管理</p>
           </div>
         </div>
 
         <div className="space-y-6">
-          {/* プロフィール公開設定 */}
-          <div className="bg-surface rounded-xl border border-surface-light p-6">
-            <div className="flex items-center mb-4">
-              <Users size={20} className="text-primary mr-3" />
-              <h2 className="text-lg font-semibold text-white">プロフィール公開設定</h2>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white font-medium">プロフィールの公開</p>
-                  <p className="text-sm text-gray-400">他のユーザーがプロフィールを閲覧できるかどうか</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!profileVisibility}
-                    onChange={(e) => setProfileVisibility(!e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              <div className="bg-surface-light p-3 rounded-lg">
-                <p className="text-xs text-gray-400">
-                  {profileVisibility ? 
-                    '🔒 プロフィールは非公開です。他のユーザーからは見えません。' : 
-                    '🌍 プロフィールは公開されています。他のユーザーから閲覧可能です。'
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
 
-          {/* 住所情報設定 */}
-          <div className="bg-surface rounded-xl border border-surface-light p-6">
-            <div className="flex items-center mb-4">
-              <MapPin size={20} className="text-orange-400 mr-3" />
-              <h2 className="text-lg font-semibold text-white">住所情報の表示</h2>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white font-medium">住所情報の表示</p>
-                  <p className="text-sm text-gray-400">他のユーザーに住所情報を表示するかどうか</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!addressVisibility}
-                    onChange={(e) => setAddressVisibility(!e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-              <div className="bg-surface-light p-3 rounded-lg">
-                <p className="text-xs text-gray-400">
-                  {addressVisibility ? 
-                    '🔒 住所情報は非表示です。他のユーザーには都道府県のみ表示されます。' : 
-                    '🌍 住所情報が表示されます。他のユーザーに詳細な住所が表示される可能性があります。'
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* 通知設定 */}
           <div className="bg-surface rounded-xl border border-surface-light p-6">

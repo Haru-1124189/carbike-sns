@@ -3,15 +3,14 @@ import React from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 
 interface LegalPageProps {
-  type: 'terms' | 'privacy' | 'about';
+  type: 'terms' | 'privacy';
   onBackClick?: () => void;
 }
 
 export const LegalPage: React.FC<LegalPageProps> = ({ type, onBackClick }) => {
   const titleMap = {
     terms: '利用規約',
-    privacy: 'プライバシーポリシー',
-    about: 'このアプリについて'
+    privacy: 'プライバシーポリシー'
   } as const;
 
   const content = `これはダミーの${titleMap[type]}です。実際の文面は本番で差し替えます。`;

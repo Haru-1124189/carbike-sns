@@ -1,5 +1,5 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { CreateNotificationData, NotificationDoc } from '../types/notification';
 
 // 通知設定をチェック

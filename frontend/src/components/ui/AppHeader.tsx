@@ -40,6 +40,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const { unreadCount } = useNotifications();
   const { unreadCount: adminUnreadCount } = useAdminNotifications();
 
+  // デバッグ用ログ
+  if (showUserName && process.env.NODE_ENV === 'development') {
+    console.log('AppHeader debug:', {
+      userDocDisplayName: userDoc?.displayName,
+      userDisplayName: user?.name,
+      finalDisplayName: userDoc?.displayName || user?.name || 'ユーザー'
+    });
+  }
+
   // 管理者の場合は管理者通知の数を、一般ユーザーの場合は通常の通知の数を表示
   const displayUnreadCount = userDoc?.isAdmin ? adminUnreadCount : unreadCount;
 

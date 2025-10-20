@@ -22,9 +22,13 @@ export const ClickableUserName: React.FC<ClickableUserNameProps> = ({
   const { displayName, photoURL, loading } = useUserName(userId);
 
   const handleClick = (e: React.MouseEvent) => {
+    console.log('ClickableUserName - handleClick called:', { userId, displayName, fallbackName, onClick });
     e.stopPropagation();
     if (onClick && userId) {
+      console.log('ClickableUserName - calling onClick with:', userId, displayName || fallbackName || 'Unknown User');
       onClick(userId, displayName || fallbackName || 'Unknown User');
+    } else {
+      console.log('ClickableUserName - onClick not available or userId missing');
     }
   };
 
@@ -53,6 +57,7 @@ export const ClickableUserName: React.FC<ClickableUserNameProps> = ({
       onClick={handleClick}
       className={`flex items-center space-x-2 hover:opacity-80 transition-all duration-300 ${className}`}
       disabled={!onClick}
+      style={{ zIndex: 10, position: 'relative' }}
     >
       {showAvatar && (
         <div className={`${currentSize.avatar} rounded-full overflow-hidden flex items-center justify-center bg-primary flex-shrink-0`}>

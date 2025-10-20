@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, EyeOff, Mail, User } from 'lucide-react';
+import { Eye, EyeOff, Mail, User } from 'lucide-react';
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -56,18 +56,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onBackClick }) => {
       <div className="max-w-[420px] mx-auto">
         {/* ヘッダー */}
         <header className="bg-background/80 backdrop-blur-md sticky top-0 z-50">
-          <div className="max-w-[420px] mx-auto w-full flex items-center justify-between p-4">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={onBackClick}
-                className="p-2 rounded-xl bg-surface border border-surface-light hover:scale-95 active:scale-95 transition-transform shadow-sm"
-              >
-                <ArrowLeft size={20} className="text-white" />
-              </button>
-              <span className="text-base text-text-primary font-medium">
-                {isLogin ? 'ログイン' : 'アカウント作成'}
-              </span>
-            </div>
+          <div className="max-w-[420px] mx-auto w-full flex items-center justify-center p-4">
+            <span className="text-base text-text-primary font-medium">
+              {isLogin ? 'ログイン' : 'アカウント作成'}
+            </span>
           </div>
         </header>
 

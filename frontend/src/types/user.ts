@@ -8,6 +8,28 @@ export interface UserDoc {
   role: 'user' | 'creator' | 'admin';
   isAdmin?: boolean; // 管理者権限フラグ
   isPrivate?: boolean; // プロフィールの公開/非公開設定
+  // Shop申請関連
+  shopApplication?: {
+    status: 'none' | 'pending' | 'approved' | 'rejected'; // 申請状態
+    submittedAt?: Date; // 申請日時
+    reviewedAt?: Date; // 審査日時
+    reviewedBy?: string; // 審査者UID
+    rejectionReason?: string; // 却下理由
+  };
+  // Shop情報（承認後）
+  shopInfo?: {
+    shopName: string; // 屋号・店舗名
+    businessLicense?: string; // 事業許可番号
+    taxId?: string; // 税務署届出番号
+    contactEmail: string; // 連絡先メール
+    contactPhone?: string; // 連絡先電話番号
+    businessAddress: {
+      prefecture: string;
+      city: string;
+      address: string;
+      postalCode: string;
+    };
+  };
   // 住所情報（プライベート情報）
   address?: {
     prefecture: string; // 都道府県
@@ -27,4 +49,21 @@ export interface UserDoc {
   interestedCars: string[];
   blockedUsers: string[];
   mutedWords: string[];
+}
+
+// Shop申請フォームデータ
+export interface ShopApplicationData {
+  shopName: string; // 屋号・店舗名
+  businessLicense?: string; // 事業許可番号
+  taxId?: string; // 税務署届出番号
+  contactEmail: string; // 連絡先メール
+  contactPhone?: string; // 連絡先電話番号
+  businessAddress: {
+    prefecture: string;
+    city: string;
+    address: string;
+    postalCode: string;
+  };
+  businessDescription: string; // 事業内容説明
+  reasonForApplication: string; // 申請理由
 }

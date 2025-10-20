@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot, orderBy, query, where, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { ReplyDoc } from '../types/reply';
 
 export interface Reply {

@@ -1,5 +1,5 @@
 import { collection, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 
 /**
  * ローカルストレージの車両関連データをクリア

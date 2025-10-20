@@ -1,5 +1,5 @@
 import { getDownloadURL, ref, uploadBytes, uploadBytesResumable } from 'firebase/storage';
-import { storage } from '../firebase/clients';
+import { storage } from '../firebase/init';
 
 // 画像をプリロードする関数
 const preloadImage = (url: string): Promise<void> => {

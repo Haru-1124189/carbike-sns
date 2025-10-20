@@ -23,6 +23,22 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
   const { isLiked, likeCount, loading } = useMaintenanceLikes(post.id, user?.uid || '');
   const [showMenu, setShowMenu] = React.useState(false);
 
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
 
 
   const handleLikeClick = async (e: React.MouseEvent) => {
@@ -132,7 +148,7 @@ export const MaintenanceThumbnail: React.FC<MaintenanceThumbnailProps> = ({
               
               {showMenu && (
                 <div 
-                  className="absolute right-0 top-6 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[80px]"
+                  className="absolute right-0 bottom-6 bg-background border border-surface-light rounded-lg shadow-lg z-50 min-w-[80px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {isAuthor && (

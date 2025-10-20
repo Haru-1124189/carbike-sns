@@ -4,6 +4,7 @@ export interface CarModel {
   backgroundImage?: string; // 愛車の背景画像
 }
 
+
 export interface MaintenanceRecord {
   id: string;
   title: string;
@@ -30,6 +31,16 @@ export interface Thread {
   isDeleted?: boolean; // 削除フラグ
   isPinned?: boolean; // 固定フラグ
   pinnedAt?: Date | string; // 固定日時
+  car_tags?: Array<{
+    display_name: string;
+    selected_year_range_id?: string;
+    selected_year_range?: {
+      start_year: number;
+      start_month: number;
+      end_year: number;
+      end_month: number;
+    };
+  }>;
 }
 
 export interface ThreadDoc {
@@ -49,25 +60,60 @@ export interface ThreadDoc {
   vehicleKey?: string; // 車種キー
   isDeleted?: boolean;
   images?: string[]; // 画像URLの配列
+  car_tags?: Array<{
+    display_name: string;
+    selected_year_range_id?: string;
+    selected_year_range?: {
+      start_year: number;
+      start_month: number;
+      end_year: number;
+      end_month: number;
+    };
+  }>;
+}
+
+export interface MaintenancePostDoc {
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  carModel?: string;
+  tags: string[];
+  images?: string[];
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+  isDeleted?: boolean;
+  car_tags?: Array<{
+    display_name: string;
+    selected_year_range_id?: string;
+    selected_year_range?: {
+      start_year: number;
+      start_month: number;
+      end_year: number;
+      end_month: number;
+    };
+  }>;
 }
 
 export interface Video {
   id: string;
   title: string;
-  description: string;
-  thumbnailUrl: string;
+  description?: string;
+  thumbnailUrl?: string;
   videoUrl: string;
-  duration: string;
+  duration?: number; // 動画の長さ（秒）
   views: number;
   likes: number;
   author: string;
   authorId: string;
   channelId: string;
-  uploadedAt: string;
-  createdAt: Date;
-  status: 'active' | 'hidden' | 'deleted';
-  tags: string[];
-  category: 'car' | 'bike' | 'maintenance' | 'review' | 'other';
+  uploadedAt?: string;
+  createdAt: any; // Firestore Timestamp
+  status?: 'active' | 'hidden' | 'deleted';
+  tags?: string[];
+  category?: 'car' | 'bike' | 'maintenance' | 'review' | 'other';
   // 分析データ
   analytics?: VideoAnalytics;
 }
@@ -197,6 +243,17 @@ export interface Follow {
   createdAt: any; // Firestore Timestamp
 }
 
+export interface FollowRequest {
+  id: string;
+  requesterId: string; // 申請者のUID
+  targetUserId: string; // 申請対象のUID
+  status: 'pending' | 'approved' | 'rejected'; // 申請状態
+  message?: string; // 申請メッセージ（任意）
+  createdAt: any; // Firestore Timestamp
+  respondedAt?: any; // Firestore Timestamp
+  respondedBy?: string; // 応答者のUID
+}
+
 export interface UserProfile {
   uid: string;
   displayName: string;
@@ -303,7 +360,7 @@ export interface MaintenancePostDoc {
   authorId: string;
   authorName: string;
   authorAvatar?: string;
-  carModel: string;
+  carModel?: string;
   carImage?: string;
   mileage: number;
   cost: number;
@@ -355,7 +412,7 @@ export interface CreatorApplication {
 export interface NotificationDoc {
   id: string;
   userId: string; // 通知を受け取るユーザーのUID
-  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply';
+  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply' | 'follow_request' | 'follow_approved' | 'follow_rejected';
   title: string;
   content: string;
   isRead: boolean;
@@ -394,7 +451,7 @@ export interface NotificationDoc {
 
 export interface CreateNotificationData {
   userId: string;
-  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply';
+  type: 'like' | 'reply' | 'follow' | 'maintenance' | 'vehicle_request' | 'nearby_touring' | 'contact_reply' | 'follow_request' | 'follow_approved' | 'follow_rejected';
   title: string;
   content: string;
   targetId?: string;

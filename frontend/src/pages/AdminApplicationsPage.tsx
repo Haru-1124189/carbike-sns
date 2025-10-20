@@ -67,7 +67,7 @@ export const AdminApplicationsPage: React.FC<AdminApplicationsPageProps> = ({
     
     setIsReviewing(true);
     try {
-      await reviewApplication(applicationId, status, reviewNotes, user.uid);
+      await reviewApplication(applicationId, status, reviewNotes);
       setReviewNotes('');
       setShowDetail(false);
       setSelectedApplication(null);

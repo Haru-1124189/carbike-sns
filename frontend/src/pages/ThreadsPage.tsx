@@ -4,11 +4,14 @@ import { AppHeader } from '../components/ui/AppHeader';
 import { NativeAd, insertNativeAds } from '../components/ui/NativeAd';
 import { SearchBar } from '../components/ui/SearchBar';
 import { ThreadCard } from '../components/ui/ThreadCard';
-import { currentUser, threadAds } from '../data/dummy';
+import { threadAds } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
+import { useFavoriteCars } from '../hooks/useFavoriteCars';
 import { useSearch } from '../hooks/useSearch';
 import { useThreads } from '../hooks/useThreads';
+import { useVehicles } from '../hooks/useVehicles';
 import { deleteThread } from '../lib/threads';
+import { filterThreadsByUserVehicles } from '../utils/yearRangeFilter';
 
 type TabType = 'post' | 'question';
 type CarTabType = 'all' | 'my-cars' | 'interested-cars';
@@ -18,6 +21,7 @@ interface ThreadsPageProps {
   onUserClick?: (author: string) => void;
   onDeleteThread?: (threadId: string) => void;
   blockedUsers?: string[];
+  mutedWords?: string[];
   onBlockUser?: (author: string) => void;
   onReportThread?: (threadId: string, author: string) => void;
   onNewThread?: (type: 'post' | 'question') => void;
@@ -29,10 +33,11 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
   onUserClick, 
   onDeleteThread, 
   blockedUsers = [], 
+  mutedWords = [],
   onBlockUser, 
   onReportThread, 
-  onNewThread,
-  initialTab = 'post'
+  onNewThread, 
+  initialTab = 'post' 
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [activeCarTab, setActiveCarTab] = useState<CarTabType>('all');
@@ -41,8 +46,14 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
   // useThreadsフックを使用してFirestoreからデータを取得（プライバシーフィルタリング付き）
   const { threads, loading, error, refresh } = useThreads({ 
     type: activeTab,
-    currentUserId: user?.uid 
+    currentUserId: user?.uid,
+    blockedUsers,
+    mutedWords
   });
+
+  // ユーザーの愛車とお気に入り車種を取得
+  const { vehicles } = useVehicles();
+  const { favoriteCars } = useFavoriteCars();
 
   // 検索機能を実装
   const { searchQuery, setSearchQuery, filteredItems: searchedThreads } = useSearch(threads, ['title', 'content', 'tags']);
@@ -72,60 +83,16 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
     let allThreads = searchedThreads.filter((t: any) => !blockedUsers.includes(t.author));
     
     if (activeCarTab === 'my-cars') {
-      const myCarModels = currentUser.cars;
-      // 車種名のマッピング（フルネーム → 短縮名）
-      const carNameMapping: { [key: string]: string[] } = {
-        "Nissan S13": ["S13", "Nissan S13"],
-        "Civic EK9": ["EK9", "Civic EK9"],
-        "Swift Sport ZC32S": ["Swift Sport", "ZC32S"],
-        "Skyline R34": ["R34", "Skyline R34"]
-      };
-      
-      allThreads = allThreads.filter((thread: any) => {
-        // carModelフィールドがある場合は直接比較
-        if ('carModel' in thread && typeof thread.carModel === 'string') {
-          return myCarModels.includes(thread.carModel);
-        }
-        // ない場合はタイトル、コンテンツ、タグで検索
-        return myCarModels.some(carModel => {
-          const shortNames = carNameMapping[carModel] || [carModel];
-          return shortNames.some(shortName => 
-            thread.title.includes(shortName) || 
-            thread.content.includes(shortName) ||
-            thread.tags.some((tag: any) => tag.includes(shortName))
-          );
-        });
-      });
+      // 年式レンジフィルタリングを使用
+      return filterThreadsByUserVehicles(allThreads, vehicles);
     } else if (activeCarTab === 'interested-cars') {
-      const interestedCarModels = currentUser.interestedCars;
-      // お気に入り車種名のマッピング
-      const interestedCarNameMapping: { [key: string]: string[] } = {
-        "RX-7 FD3S": ["RX-7", "FD3S"],
-        "Trueno AE86": ["AE86", "Trueno"],
-        "S2000 AP1": ["S2000", "AP1"],
-        "Supra A80": ["Supra", "A80"]
-      };
-      
-      allThreads = allThreads.filter((thread: any) => {
-        // carModelフィールドがある場合は直接比較
-        if ('carModel' in thread && typeof thread.carModel === 'string') {
-          return interestedCarModels.includes(thread.carModel);
-        }
-        // ない場合はタイトル、コンテンツ、タグで検索
-        return interestedCarModels.some(carModel => {
-          const shortNames = interestedCarNameMapping[carModel] || [carModel];
-          return shortNames.some(shortName => 
-            thread.title.includes(shortName) || 
-            thread.content.includes(shortName) ||
-            thread.tags.some((tag: any) => tag.includes(shortName))
-          );
-        });
-      });
+      // お気に入り車種の年式レンジフィルタリングを使用
+      return filterThreadsByUserVehicles(allThreads, favoriteCars);
     }
     
     // タイプフィルタリングを再度有効化
     return allThreads.filter((thread: any) => thread.type === activeTab);
-  }, [searchedThreads, activeTab, activeCarTab, blockedUsers]);
+  }, [searchedThreads, activeTab, activeCarTab, blockedUsers, vehicles, favoriteCars]);
 
   // スレッドと広告を組み合わせて表示
   const displayItems = useMemo(() => {
@@ -248,7 +215,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
 
           {/* スレッド一覧（ネイティブ広告含む） */}
           <div key={`${activeTab}-${activeCarTab}`} className="fade-in">
-            {insertNativeAds(displayItems, 4).map((item) => {
+            {useMemo(() => insertNativeAds(displayItems, 4), [displayItems]).map((item) => {
               if ('type' in item && item.type === 'ad') {
                 return <NativeAd key={item.id} ad={item.ad} />;
               }
@@ -261,6 +228,7 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
                   onBlockUser={onBlockUser}
                   onReportThread={onReportThread}
                   onUserClick={onUserClick}
+                  blockedUsers={blockedUsers}
                 />
               );
             })}

@@ -1,5 +1,5 @@
 import { Calendar, Car, Clock, DollarSign, Heart, MapPin, MessageCircle, MoreHorizontal, Package, Pin, Wrench } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useMaintenanceLikes } from '../../hooks/useLikes';
 import { useUserName } from '../../hooks/useUserName';
@@ -16,14 +16,35 @@ interface MaintenanceCardProps {
   onClick?: () => void;
   onUserClick?: (userId: string, displayName: string) => void;
   onDelete?: (postId: string) => void;
+  blockedUsers?: string[];
 }
 
-export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick, onUserClick, onDelete }) => {
+export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick, onUserClick, onDelete, blockedUsers = [] }) => {
   const { user } = useAuth();
   const { isLiked, likeCount, toggleLike, loading: likeLoading } = useMaintenanceLikes(post.id, user?.uid || '');
   const { displayName: authorDisplayName, photoURL: authorPhotoURL, loading: authorLoading } = useUserName(post.authorId || '');
   const [showMenu, setShowMenu] = React.useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   
+  const isBlocked = React.useMemo(() => {
+    return post.authorId ? blockedUsers.includes(post.authorId) : false;
+  }, [post.authorId, blockedUsers]);
+
+  // 外部クリックでメニューを閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showMenu]);
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -52,8 +73,32 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
     setShowMenu(false);
   };
 
+  const [menuPosition, setMenuPosition] = React.useState({ top: 0, right: 0 });
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMenu) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
   const handleMenuClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    const button = e.currentTarget as HTMLElement;
+    const rect = button.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.top - 100, // メニューの高さ分上に配置
+      right: window.innerWidth - rect.right
+    });
     setShowMenu(!showMenu);
   };
 
@@ -154,7 +199,7 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
           <span className={`px-2 py-1 text-xs font-medium rounded-full transition-all duration-300 ${getCategoryColor(post.category)}`}>
             {getCategoryLabel(post.category)}
           </span>
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
               onClick={handleMenuClick}
               className="p-1 rounded-full hover:bg-surface/50 transition-colors"
@@ -163,7 +208,13 @@ export const MaintenanceCard: React.FC<MaintenanceCardProps> = ({ post, onClick,
             </button>
             
                          {showMenu && (
-               <div className="absolute right-0 top-8 bg-background border border-surface-light rounded-lg shadow-lg z-10 min-w-[120px]">
+               <div 
+                 className="fixed bg-background border border-surface-light rounded-lg shadow-lg z-[9999] min-w-[120px]"
+                 style={{
+                   top: `${menuPosition.top}px`,
+                   right: `${menuPosition.right}px`
+                 }}
+               >
                  {user?.uid === post.authorId && (
                    <>
                      <button

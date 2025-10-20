@@ -2,7 +2,7 @@ import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from 'firebase/firest
 import { ArrowLeft } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { useAuth } from '../hooks/useAuth';
 import { validateMuteWord } from '../utils/muteWords';
 

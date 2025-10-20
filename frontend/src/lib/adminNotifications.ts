@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 
 export interface AdminNotificationData {
   type: 'contact_inquiry' | 'user_report' | 'creator_application' | 'vehicle_request';

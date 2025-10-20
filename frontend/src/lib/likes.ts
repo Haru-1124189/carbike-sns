@@ -1,5 +1,5 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { createNotificationWithCheck } from './notifications';
 
 export type LikeTarget = 'thread' | 'maintenance' | 'touring';

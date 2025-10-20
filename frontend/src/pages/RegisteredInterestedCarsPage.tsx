@@ -2,8 +2,8 @@ import { ArrowLeft } from 'lucide-react';
 import React, { useState } from 'react';
 import { MotoIcon } from '../components/icons/MotoIcon';
 import { AppHeader } from '../components/ui/AppHeader';
+import { EnhancedCarApplicationForm } from '../components/ui/EnhancedCarApplicationForm';
 import { InterestedCarCard } from '../components/ui/InterestedCarCard';
-import { VehicleRequestModal } from '../components/ui/VehicleRequestModal';
 import { useAuth } from '../hooks/useAuth';
 import { useVehicleCatalog } from '../hooks/useVehicleCatalog';
 import { useVehicleYears } from '../hooks/useVehicleYears';
@@ -221,11 +221,16 @@ export const RegisteredInterestedCarsPage: React.FC<RegisteredInterestedCarsPage
         </div>
       </main>
 
-      {/* 車種申請モーダル */}
-      <VehicleRequestModal
+      {/* 車種申請モーダル（愛車登録と同一UIに統一） */}
+      <EnhancedCarApplicationForm
         isOpen={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
-        onSubmit={handleVehicleRequest}
+        onSuccess={(result) => {
+          console.log('Car application result (favorites):', result);
+          setIsRequestModalOpen(false);
+          // 申請成功後に必要なら再読込
+          window.location.reload();
+        }}
       />
     </div>
   );

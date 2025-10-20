@@ -1,7 +1,8 @@
-import { Loader2, UserMinus, UserPlus } from 'lucide-react';
-import React from 'react';
+import { Clock, Loader2, UserMinus, UserPlus } from 'lucide-react';
+import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useFollow } from '../../hooks/useFollow';
+import { useFollowRequests, useIsPrivateAccount } from '../../hooks/useFollowRequests';
 
 interface FollowButtonProps {
   targetUserId: string;
@@ -20,6 +21,10 @@ export const FollowButton: React.FC<FollowButtonProps> = ({
 }) => {
   const { user } = useAuth();
   const { isFollowing, loading, toggleFollow } = useFollow(targetUserId);
+  const { isPrivate: isTargetPrivate } = useIsPrivateAccount(targetUserId);
+  const { followRequest, loading: requestLoading, sendRequest, cancelRequest } = useFollowRequests(targetUserId);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
 
 
 
@@ -95,47 +100,142 @@ export const FollowButton: React.FC<FollowButtonProps> = ({
     console.log('FollowButton clicked:', { 
       targetUserId, 
       currentUser: user?.uid, 
-      loading 
+      loading,
+      isTargetPrivate,
+      followRequest
     });
     
-    if (loading) return;
+    if (loading || requestLoading) return;
     
     try {
+      // 既にフォローしている場合はアンフォロー
+      if (isFollowing) {
+        await toggleFollow();
+        return;
+      }
+
+      // フォロー申請が送信済みの場合はキャンセル
+      if (followRequest?.status === 'pending') {
+        await cancelRequest();
+        return;
+      }
+
+      // 鍵アカウントの場合はフォロー申請
+      if (isTargetPrivate) {
+        setShowRequestModal(true);
+        return;
+      }
+
+      // 公開アカウントの場合は直接フォロー
       await toggleFollow();
     } catch (error) {
       console.error('FollowButton error:', error);
     }
   };
 
+  const handleSendRequest = async () => {
+    if (!requestMessage.trim()) {
+      alert('申請メッセージを入力してください');
+      return;
+    }
+
+    try {
+      await sendRequest(requestMessage);
+      setShowRequestModal(false);
+      setRequestMessage('');
+    } catch (error) {
+      console.error('Error sending follow request:', error);
+    }
+  };
+
+  // ボタンの状態を決定
+  const getButtonState = () => {
+    if (loading || requestLoading) return 'loading';
+    if (isFollowing) return 'following';
+    if (followRequest?.status === 'pending') return 'requested';
+    if (followRequest?.status === 'approved') return 'following';
+    if (followRequest?.status === 'rejected') return 'follow';
+    return 'follow';
+  };
+
+  const buttonState = getButtonState();
+
+  const getButtonText = () => {
+    switch (buttonState) {
+      case 'loading':
+        return '処理中...';
+      case 'following':
+        return 'フォロー中';
+      case 'requested':
+        return '申請中';
+      default:
+        return 'フォロー';
+    }
+  };
+
+  const getButtonIcon = () => {
+    if (buttonState === 'loading') return <Loader2 size={getIconSize()} className="animate-spin" />;
+    if (buttonState === 'following') return <UserMinus size={getIconSize()} />;
+    if (buttonState === 'requested') return <Clock size={getIconSize()} />;
+    return <UserPlus size={getIconSize()} />;
+  };
+
   return (
-    <button
-      onClick={handleClick}
-      disabled={loading}
-      className={`
-        ${getVariantClasses()}
-        ${getSizeClasses()}
-        font-medium rounded-xl
-        transition-all duration-200
-        disabled:opacity-50 disabled:cursor-not-allowed
-        flex items-center justify-center space-x-2
-        ${size === 'xs' ? 'min-w-[60px]' : 'min-w-[80px]'}
-        ${className}
-      `}
-    >
-      {loading ? (
-        <Loader2 size={getIconSize()} className="animate-spin" />
-      ) : (
-        <>
-          {showIcon && size !== 'xs' && (
-            isFollowing ? 
-              <UserMinus size={getIconSize()} /> : 
-              <UserPlus size={getIconSize()} />
-          )}
-          <span>
-            {isFollowing ? 'フォロー中' : 'フォロー'}
-          </span>
-        </>
+    <>
+      <button
+        onClick={handleClick}
+        disabled={loading || requestLoading}
+        className={`
+          ${getVariantClasses()}
+          ${getSizeClasses()}
+          font-medium rounded-xl
+          transition-all duration-200
+          disabled:opacity-50 disabled:cursor-not-allowed
+          flex items-center justify-center space-x-2
+          ${size === 'xs' ? 'min-w-[60px]' : 'min-w-[80px]'}
+          ${className}
+        `}
+      >
+        {showIcon && size !== 'xs' && getButtonIcon()}
+        <span>{getButtonText()}</span>
+      </button>
+
+      {/* フォロー申請モーダル */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-bold text-white mb-4">フォロー申請</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              このアカウントは鍵アカウントです。フォローするには申請が必要です。
+            </p>
+            <textarea
+              value={requestMessage}
+              onChange={(e) => setRequestMessage(e.target.value)}
+              placeholder="申請メッセージ（必須）"
+              className="w-full p-3 bg-surface border border-surface-light rounded-lg text-white placeholder-gray-400 mb-4 resize-none"
+              rows={3}
+            />
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowRequestModal(false);
+                  setRequestMessage('');
+                }}
+                className="flex-1 py-2 px-4 bg-surface-light text-white rounded-lg hover:bg-surface transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSendRequest}
+                disabled={!requestMessage.trim() || requestLoading}
+                className="flex-1 py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+              >
+                {requestLoading ? '送信中...' : '申請する'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </button>
+    </>
   );
 };

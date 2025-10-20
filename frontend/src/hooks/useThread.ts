@@ -1,6 +1,6 @@
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { ThreadDoc } from '../types';
 
 export const useThread = (threadId: string) => {

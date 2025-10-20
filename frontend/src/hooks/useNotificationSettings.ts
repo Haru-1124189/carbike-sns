@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { useAuth } from './useAuth';
 
 export interface NotificationSettings {

@@ -60,7 +60,7 @@ export const EditMaintenancePage: React.FC<EditMaintenancePageProps> = ({
       return;
     }
 
-    if (!carModel.trim()) {
+    if (!carModel?.trim()) {
       setError('車種を入力してください');
       return;
     }
@@ -89,7 +89,7 @@ export const EditMaintenancePage: React.FC<EditMaintenancePageProps> = ({
       const maintenanceData = {
         title: title.trim(),
         content: content.trim(),
-        carModel: carModel.trim(),
+        carModel: carModel?.trim(),
         mileage: parseInt(mileage) || 0,
         cost: parseInt(cost) || 0,
         workDate: workDate || new Date().toISOString().split('T')[0],
@@ -199,7 +199,7 @@ export const EditMaintenancePage: React.FC<EditMaintenancePageProps> = ({
             </div>
             <button
               onClick={handleSubmit}
-              disabled={loading || !title.trim() || !carModel.trim()}
+              disabled={loading || !title.trim() || !carModel?.trim()}
               className="p-2 rounded-xl bg-primary border border-primary hover:scale-95 active:scale-95 transition-transform shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={20} className="text-white" />

@@ -7,10 +7,10 @@ import { InAppBrowser } from '../components/ui/InAppBrowser';
 import { SearchBar } from '../components/ui/SearchBar';
 import { Section } from '../components/ui/Section';
 import { SectionTitle } from '../components/ui/SectionTitle';
+import { TodayWeatherWidget } from '../components/ui/TodayWeatherWidget';
 import { VehicleCard } from '../components/ui/VehicleCard';
 import { useAuth } from '../hooks/useAuth';
 import { useNews } from '../hooks/useNews';
-import { useSearch } from '../hooks/useSearch';
 import { useThreads } from '../hooks/useThreads';
 import { useVehicles } from '../hooks/useVehicles';
 import { useVideos } from '../hooks/useVideos';
@@ -30,6 +30,7 @@ interface HomePageProps {
   onViewAllVideos?: () => void;
   onTouringChatClick?: () => void;
   blockedUsers?: string[];
+  mutedWords?: string[];
   onBlockUser?: (author: string) => void;
   onReportThread?: (threadId: string, author: string) => void;
   interestedCars?: string[];
@@ -49,13 +50,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   onViewAllVideos,
   onTouringChatClick,
   blockedUsers = [],
+  mutedWords = [],
   onBlockUser,
   onReportThread,
   interestedCars = []
 }) => {
   const { news, loading: newsLoading, error: newsError } = useNews(24);
   const { user, userDoc } = useAuth();
-  const { threads } = useThreads();
+  const { threads } = useThreads({ blockedUsers, mutedWords });
   const { videos } = useVideos(user?.uid);
   const { vehicles, loading: vehiclesLoading } = useVehicles();
   
@@ -71,8 +73,29 @@ export const HomePage: React.FC<HomePageProps> = ({
     setSelectedNewsItem(null);
   };
   
-  // 検索機能を実装
-  const { searchQuery, setSearchQuery, filteredItems: searchedThreads } = useSearch(threads, ['title', 'content', 'tags']);
+  // アプリ内機能一覧
+  const appFeatures = [
+    { id: 'threads', name: 'Link', description: '投稿・質問', action: () => onViewAllThreads?.() },
+    { id: 'maintenance', name: '整備記録', description: 'メンテナンス記録', action: () => onQuickAction?.('maintenance') },
+    { id: 'marketplace', name: 'Revフリマ', description: 'マーケットプレイス', action: () => onQuickAction?.('marketplace') },
+    { id: 'videos', name: '動画', description: '動画視聴', action: () => onQuickAction?.('videos') },
+    { id: 'creator-analytics', name: 'クリエイター分析', description: '動画分析・統計', action: () => onQuickAction?.('creator-analytics') },
+    { id: 'vehicles', name: '愛車管理', description: '車両管理', action: () => onShowRegisteredCars?.() },
+    { id: 'favorite-cars', name: 'お気に入り車種', description: '車種検索・登録', action: () => onQuickAction?.('favorite-cars') },
+    { id: 'profile', name: 'プロフィール', description: 'ユーザー情報', action: () => onQuickAction?.('profile') },
+    { id: 'settings', name: '設定', description: 'アプリ設定', action: () => onQuickAction?.('settings') },
+    { id: 'help', name: 'ヘルプ', description: 'ヘルプ・FAQ', action: () => onQuickAction?.('help') },
+    { id: 'contact', name: 'お問い合わせ', description: 'サポート', action: () => onQuickAction?.('contact') },
+  ];
+
+  // 機能検索を実装
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredFeatures = searchQuery
+    ? appFeatures.filter(feature => 
+        feature.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        feature.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   const handleThreadClick = (threadId: string) => {
     onThreadClick?.(threadId);
@@ -110,6 +133,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     onVehicleClick?.(vehicleId);
   };
 
+
   // interestedCarsの登録・削除は親(App)で管理
 
   return (
@@ -138,9 +162,47 @@ export const HomePage: React.FC<HomePageProps> = ({
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="投稿を検索..."
+              placeholder="機能を検索..."
             />
           </div>
+
+          {/* 検索結果 */}
+          {searchQuery && filteredFeatures.length > 0 && (
+            <div className="px-4 pb-3">
+              <div className="space-y-2">
+                {filteredFeatures.map(feature => (
+                  <button
+                    key={feature.id}
+                    onClick={() => {
+                      feature.action();
+                      setSearchQuery(''); // 検索クエリをクリア
+                    }}
+                    className="w-full p-3 bg-surface border border-surface-light rounded-xl text-left hover:bg-surface-light transition-colors"
+                  >
+                    <div className="text-sm font-medium text-white">{feature.name}</div>
+                    <div className="text-xs text-gray-400">{feature.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 検索結果なし */}
+          {searchQuery && filteredFeatures.length === 0 && (
+            <div className="px-4 pb-3">
+              <div className="p-3 bg-surface border border-surface-light rounded-xl text-center">
+                <div className="text-sm text-gray-400">「{searchQuery}」に一致する機能が見つかりません</div>
+              </div>
+            </div>
+          )}
+
+          {/* 天気予報（プロフィールの住所から表示） */}
+          <Section spacing="sm" className="mb-4">
+            <TodayWeatherWidget
+              prefecture={userDoc?.address?.prefecture}
+              city={userDoc?.address?.city}
+            />
+          </Section>
 
            {/* 愛車セクション */}
            <Section spacing="md" className="mb-6">
@@ -275,7 +337,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                                 {/* サムネイル */}
                                 <div className="w-full h-20 rounded-lg overflow-hidden bg-surface-light relative">
                                   <img
-                                    src={video.thumbnailUrl || 'https://via.placeholder.com/96x64/666666/FFFFFF?text=Video'}
+                                    src={video.thumbnailUrl || '/api/placeholder/96x64/666666/FFFFFF?text=Video'}
                                     alt={video.title}
                                     className="w-full h-full object-cover"
                                   />
@@ -310,7 +372,9 @@ export const HomePage: React.FC<HomePageProps> = ({
 
           {/* ニュース */}
           <div className="mt-8">
-            <h2 className="text-xl font-semibold text-text-primary mb-6">車・バイクニュース</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-text-primary">車・バイクニュース</h2>
+            </div>
             {newsLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
@@ -331,32 +395,23 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <p className="text-sm text-text-secondary">ニュースがありません</p>
               </div>
             ) : (() => {
-              // サムネイルがある記事のみをフィルタリング
-              const allNewsWithThumbnails = news.filter(item => item.thumbnailUrl);
+              // サムネイルの有無に関係なく表示（なければプレースホルダー）
+              const newsToShow = news; // 件数が4未満でもそのまま表示
               
-              // 4の倍数になるように調整（各グループ4個ずつにするため）
-              const groupCount = Math.floor(allNewsWithThumbnails.length / 4) * 4;
-              const newsWithThumbnails = allNewsWithThumbnails.slice(0, groupCount);
-              
-              // デバッグ: フィルタリング結果を確認
-              console.log('全記事数:', news.length);
-              console.log('サムネイル付き記事数:', allNewsWithThumbnails.length);
-              console.log('4の倍数調整後の記事数:', newsWithThumbnails.length);
-              
-              if (newsWithThumbnails.length === 0) {
+              if (newsToShow.length === 0) {
                 return (
                   <div className="text-center py-8">
-                    <p className="text-sm text-text-secondary">サムネイル付きニュースがありません</p>
+                    <p className="text-sm text-text-secondary">ニュースがありません</p>
                   </div>
                 );
               }
               
               return (
                 <div className="flex overflow-x-auto space-x-4 pb-2 scrollbar-hide">
-                  {Array.from({ length: Math.ceil(newsWithThumbnails.length / 4) }, (_, groupIndex) => {
+                  {Array.from({ length: Math.ceil(newsToShow.length / 4) }, (_, groupIndex) => {
                     const startIndex = groupIndex * 4;
-                    const endIndex = Math.min(startIndex + 4, newsWithThumbnails.length);
-                    const groupItems = newsWithThumbnails.slice(startIndex, endIndex);
+                    const endIndex = Math.min(startIndex + 4, newsToShow.length);
+                    const groupItems = newsToShow.slice(startIndex, endIndex);
                     
                     return (
                       <div key={groupIndex} className="flex-shrink-0 w-80">
@@ -370,29 +425,19 @@ export const HomePage: React.FC<HomePageProps> = ({
                             <div className="space-y-2">
                               {/* サムネイル */}
                               <div className="w-full h-20 rounded-lg overflow-hidden bg-surface-light relative">
-                                <img
-                                  src={newsItem.thumbnailUrl}
-                                  alt={newsItem.title}
-                                  className="w-full h-full object-cover"
-                                  onLoad={() => {
-                                    // デバッグログはコンソールのみに出力
-                                    console.log('画像読み込み成功:', newsItem.thumbnailUrl);
-                                  }}
-                                  onError={(e) => {
-                                    console.log('画像読み込みエラー:', {
-                                      title: newsItem.title,
-                                      thumbnailUrl: newsItem.thumbnailUrl,
-                                      error: e
-                                    });
-                                    e.currentTarget.style.display = 'none';
-                                    const fallback = e.currentTarget.parentElement?.querySelector('.fallback-image');
-                                    if (fallback) {
-                                      fallback.classList.remove('hidden');
-                                    }
-                                  }}
-                                />
-                                {/* エラー時のフォールバック（初期は非表示） */}
-                                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center absolute inset-0 hidden fallback-image">
+                                {newsItem.thumbnailUrl ? (
+                                  <img
+                                    src={newsItem.thumbnailUrl}
+                                    alt={newsItem.title}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      const fallback = e.currentTarget.parentElement?.querySelector('.fallback-image');
+                                      if (fallback) fallback.classList.remove('hidden');
+                                    }}
+                                  />
+                                ) : null}
+                                <div className={`w-full h-full bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center absolute inset-0 ${newsItem.thumbnailUrl ? 'hidden fallback-image' : ''}`}>
                                   <div className="text-center">
                                     <ExternalLink size={20} className="text-white mb-1 mx-auto" />
                                     <div className="text-[8px] text-white font-medium">ニュース</div>

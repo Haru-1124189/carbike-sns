@@ -1,5 +1,5 @@
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 
 // スレッド投稿を固定/固定解除
 export const toggleThreadPin = async (threadId: string, userId: string, isPinned: boolean) => {

@@ -2,7 +2,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { ArrowLeft } from 'lucide-react';
 import React, { useState } from 'react';
 import { checkAdminNotifications, checkAdminUsers } from '../debug/adminCheck';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { useAuth } from '../hooks/useAuth';
 import { notifyAdmins } from '../lib/adminNotifications';
 

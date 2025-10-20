@@ -1,8 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import React, { useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
+import { EnhancedCarApplicationForm } from '../components/ui/EnhancedCarApplicationForm';
 import { SingleImageUpload } from '../components/ui/SingleImageUpload';
-import { VehicleRequestModal } from '../components/ui/VehicleRequestModal';
 import { YearRangeModal } from '../components/ui/YearRangeModal';
 import { useAuth } from '../hooks/useAuth';
 import { useVehicleCatalog } from '../hooks/useVehicleCatalog';
@@ -262,6 +262,17 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick, onV
                 )}
               </div>
             </div>
+
+            {/* 新規申請ボタン */}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setIsRequestModalOpen(true)}
+                className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+              >
+                新規申請
+              </button>
+            </div>
           </div>
 
           {/* 車両名/車種タイプ/年式レンジ（下部）は非表示に変更 */}
@@ -280,10 +291,15 @@ export const AddVehiclePage: React.FC<AddVehiclePageProps> = ({ onBackClick, onV
        </main>
 
        {/* 車種申請モーダル */}
-       <VehicleRequestModal
+       <EnhancedCarApplicationForm
          isOpen={isRequestModalOpen}
          onClose={() => setIsRequestModalOpen(false)}
-         onSubmit={handleVehicleRequest}
+         onSuccess={(result) => {
+           console.log('Car application result:', result);
+           setIsRequestModalOpen(false);
+           // 成功時はデータをリフレッシュ
+           window.location.reload();
+         }}
        />
 
       {/* 年式レンジモーダル */}

@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { MaintenancePostDoc, ThreadDoc } from '../types';
 
 export interface CreateThreadData {

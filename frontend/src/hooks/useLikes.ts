@@ -1,6 +1,6 @@
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { db } from '../firebase/clients';
+import { db } from '../firebase/init';
 import { getLikeHistory, LikeTarget, toggleLike } from '../lib/likes';
 
 export const useLikes = (targetId: string, userId: string, targetType: LikeTarget = 'thread') => {
