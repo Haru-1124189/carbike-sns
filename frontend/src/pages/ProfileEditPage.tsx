@@ -65,9 +65,16 @@ export const ProfileEditPage: React.FC<ProfileEditPageProps> = ({ onBackClick })
     setAvatarError('');
 
     try {
+      console.log('プロフィール画像更新開始:', imageUrl);
       await updateUserDoc({ photoURL: imageUrl || '' });
       console.log('プロフィール画像が正常に更新されました');
+      
+      // 成功メッセージを表示
+      setTimeout(() => {
+        alert('プロフィール画像を更新しました');
+      }, 100);
     } catch (err: any) {
+      console.error('プロフィール画像更新エラー:', err);
       setAvatarError(err.message || 'アバターの更新に失敗しました');
     } finally {
       setUploadingAvatar(false);

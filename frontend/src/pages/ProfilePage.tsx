@@ -618,16 +618,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       <AppHeader
         user={userDoc ? { 
           id: user.uid, 
-          name: userDoc.displayName || user?.displayName || 'ユーザー', 
+          name: userDoc.displayName || user?.displayName || user?.email?.split('@')[0] || 'ユーザー', 
           avatar: userDoc.photoURL || user?.photoURL || '', 
           cars: userDoc.cars || [], 
-          interestedCars: userDoc.interestedCars || [] 
+          interestedCars: userDoc.interestedCars || []
         } : { 
           id: user.uid, 
-          name: user?.displayName || 'ユーザー', 
+          name: user?.displayName || user?.email?.split('@')[0] || 'ユーザー', 
           avatar: user?.photoURL || '', 
           cars: [], 
-          interestedCars: [] 
+          interestedCars: []
         }}
         onNotificationClick={() => console.log('Notifications clicked')}
         onProfileClick={onSettingsClick}
@@ -709,7 +709,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             
             <div className="flex-1">
               <h2 className="text-lg font-bold text-white">
-                {userDoc?.displayName || user?.displayName || 'ユーザー'}
+                {userDoc?.displayName || user?.displayName || user?.email?.split('@')[0] || 'ユーザー'}
               </h2>
               
               {/* フォロー統計 */}

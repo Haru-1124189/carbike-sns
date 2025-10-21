@@ -340,7 +340,13 @@ export const SingleImageUpload: React.FC<SingleImageUploadProps> = ({
         {image || video ? (
           <>
             {image ? (
-              <img src={image} alt="アップロード画像" className="w-full h-full object-cover" />
+              <img 
+                src={image} 
+                alt="アップロード画像" 
+                className="w-full h-full object-cover"
+                onLoad={() => console.log('プロフィール画像読み込み完了:', image)}
+                onError={(e) => console.error('プロフィール画像読み込みエラー:', e)}
+              />
             ) : (
               <video src={video || ''} className="w-full h-full object-cover" controls muted />
             )}

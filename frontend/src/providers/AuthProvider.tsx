@@ -1,4 +1,4 @@
-import { User, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { User, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import React, { createContext, useEffect, useState } from 'react';
 import { auth, db } from '../firebase/init';
@@ -55,7 +55,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.log('AuthProvider: Found existing user doc', { 
               displayName: userDoc.displayName,
               role: userDoc.role,
-              isAdmin: userDoc.isAdmin
+              isAdmin: userDoc.isAdmin,
+              firebaseAuthDisplayName: user.displayName
             });
             setUserDoc(userDoc);
             
@@ -144,6 +145,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      // Firebase AuthのdisplayNameを更新
+      console.log('Setting Firebase Auth displayName:', displayName);
+      await updateProfile(user, {
+        displayName: displayName
+      });
+      console.log('Firebase Auth displayName set successfully');
+      
       // ユーザードキュメントを作成
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc: UserDoc = {
@@ -162,6 +170,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         mutedWords: [],
       };
       await setDoc(userDocRef, userDoc);
+      console.log('User document created successfully with displayName:', displayName);
       
       // 新規登録時は初回ログインフラグを設定
       localStorage.setItem('is-first-login', 'true');
@@ -189,6 +198,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       const userDocRef = doc(db, 'users', user.uid);
+      
+      // プロフィール画像の場合はFirebase Authも更新
+      if (updates.photoURL !== undefined) {
+        console.log('Updating Firebase Auth photoURL:', updates.photoURL);
+        await updateProfile(user, {
+          photoURL: updates.photoURL || null
+        });
+        console.log('Firebase Auth photoURL updated successfully');
+      }
+      
+      // displayNameの場合はFirebase Authも更新
+      if (updates.displayName !== undefined) {
+        console.log('Updating Firebase Auth displayName:', updates.displayName);
+        await updateProfile(user, {
+          displayName: updates.displayName
+        });
+        console.log('Firebase Auth displayName updated successfully');
+      }
+      
+      // Firestoreを更新
       await updateDoc(userDocRef, {
         ...updates,
         updatedAt: new Date(),
@@ -202,6 +231,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         return { ...prev, ...updates, updatedAt: new Date() };
       });
+      
+      console.log('User document updated successfully:', updates);
     } catch (error) {
       console.error('Update user doc error:', error);
       throw error;
