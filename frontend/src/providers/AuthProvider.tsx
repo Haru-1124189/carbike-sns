@@ -126,6 +126,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      
+      // 初回ログインフラグを設定（PWAインストールプロンプト用）
+      const hasLoggedInBefore = localStorage.getItem('has-logged-in-before');
+      if (!hasLoggedInBefore) {
+        localStorage.setItem('is-first-login', 'true');
+        localStorage.setItem('has-logged-in-before', 'true');
+      }
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -155,6 +162,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         mutedWords: [],
       };
       await setDoc(userDocRef, userDoc);
+      
+      // 新規登録時は初回ログインフラグを設定
+      localStorage.setItem('is-first-login', 'true');
+      localStorage.setItem('has-logged-in-before', 'true');
     } catch (error) {
       console.error('Register error:', error);
       throw error;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Theme } from '../types';
 
 interface ThemeContextType {
@@ -84,10 +84,34 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     root.style.setProperty('--text-primary', colors.textPrimary);
     root.style.setProperty('--text-secondary', colors.textSecondary);
     root.style.setProperty('--border', colors.border);
+    
+    // PWAのステータスバー色を更新
+    updateStatusBarColor(colors.background);
   };
 
   // 現在のテーマの色を取得
   const getThemeColors = () => themeColors[theme];
+
+  // PWAのステータスバー色を更新する関数
+  const updateStatusBarColor = (backgroundColor: string) => {
+    // manifest.jsonのtheme_colorを動的に更新
+    const manifestLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+    if (manifestLink) {
+      // 一時的にmanifestを無効化して再読み込み
+      manifestLink.href = '';
+      setTimeout(() => {
+        manifestLink.href = '/manifest.json';
+        // meta theme-colorを更新
+        let themeColorMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement;
+        if (!themeColorMeta) {
+          themeColorMeta = document.createElement('meta');
+          themeColorMeta.name = 'theme-color';
+          document.head.appendChild(themeColorMeta);
+        }
+        themeColorMeta.content = backgroundColor;
+      }, 100);
+    }
+  };
 
   // 初期化時にCSS変数を設定
   useEffect(() => {
@@ -105,6 +129,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     root.style.setProperty('--text-primary', colors.textPrimary);
     root.style.setProperty('--text-secondary', colors.textSecondary);
     root.style.setProperty('--border', colors.border);
+    
+    // PWAのステータスバー色を更新
+    updateStatusBarColor(colors.background);
   }, [theme]);
 
   return (

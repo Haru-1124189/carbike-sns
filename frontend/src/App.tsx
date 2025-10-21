@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { LoadingScreen } from './components/ui/LoadingScreen';
+import { PWAInstallPrompt } from './components/ui/PWAInstallPrompt';
 import { TabBar } from './components/ui/TabBar';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { currentUser, videos } from './data/dummy';
 import { useAuth } from './hooks/useAuth';
 import { useMaintenancePosts } from './hooks/useMaintenancePosts';
 import { useNotifications } from './hooks/useNotifications';
+import { usePWAInstallPrompt } from './hooks/usePWAInstallPrompt';
 import { useThreads } from './hooks/useThreads';
 import { useTouringThreads } from './hooks/useTouringThreads';
 import { useVehicles } from './hooks/useVehicles';
@@ -19,6 +21,10 @@ import AdminReportManagementPage from './pages/AdminReportManagementPage';
 import AdminUserManagementPage from './pages/AdminUserManagementPage';
 import { AuthPage } from './pages/AuthPage';
 import { BlockListPage } from './pages/BlockListPage';
+import { initializeMemoryOptimization } from './utils/memoryOptimization';
+import { initializeNetworkOptimization } from './utils/networkOptimization';
+import { serviceWorkerManager } from './utils/serviceWorker';
+import { initializeUIOptimization } from './utils/uiOptimization';
 
 import { ChannelsPage } from './pages/ChannelsPage';
 import { ContactPage } from './pages/ContactPage';
@@ -87,6 +93,7 @@ function AppContent() {
   const { threads: touringThreads } = useTouringThreads();
   const { unreadCount, fetchUnreadCount } = useNotifications();
   const { vehicles, deleteVehicle, loading: vehiclesLoading } = useVehicles();
+  const { showPrompt, handleClose } = usePWAInstallPrompt();
   
 
   const [activeTab, setActiveTab] = useState('home');
@@ -183,6 +190,18 @@ function AppContent() {
   // アプリ起動時にキャッシュのクリーンアップを実行
   useEffect(() => {
     cleanupExpiredCache();
+  }, []);
+
+  // Service Workerの初期化
+  useEffect(() => {
+    serviceWorkerManager.register();
+  }, []);
+
+  // パフォーマンス最適化システムの初期化
+  useEffect(() => {
+    initializeMemoryOptimization();
+    initializeNetworkOptimization();
+    initializeUIOptimization();
   }, []);
 
   // ユーザーデータからブロックリストとミュートワードを取得
@@ -1502,6 +1521,7 @@ function AppContent() {
     <div className="App">
        {renderPage()}
        <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+       {showPrompt && <PWAInstallPrompt onClose={handleClose} />}
      </div>
    );
 }

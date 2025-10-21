@@ -1,5 +1,5 @@
-import { addDoc, collection, deleteDoc, doc, increment, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { addDoc, collection, deleteDoc, doc, getDocs, increment, limit, onSnapshot, orderBy, query, serverTimestamp, startAfter, updateDoc } from 'firebase/firestore';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { db } from '../firebase/init';
 import { Video } from '../types';
 
@@ -8,27 +8,90 @@ export const useVideos = (userId?: string) => {
   const [userVideos, setUserVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState<any>(null);
 
-  // すべての動画を取得（許可されたユーザーと管理者のみ）
+  // 最適化された動画取得
+  const fetchVideos = useCallback(async (isInitial = false) => {
+    try {
+      setLoading(true);
+      
+      const baseQuery = query(
+        collection(db, 'videos'),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+
+      const paginatedQuery = isInitial 
+        ? baseQuery 
+        : query(baseQuery, startAfter(lastDoc));
+
+      // executePaginatedQueryの代わりに直接Firestoreクエリを実行
+      const snapshot = await getDocs(paginatedQuery);
+      const videoList: Video[] = [];
+      let lastDocSnapshot = null;
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.status === 'active') {
+          videoList.push({ id: doc.id, ...data } as Video);
+        }
+        lastDocSnapshot = doc;
+      });
+
+      const result = {
+        data: videoList,
+        hasMore: snapshot.docs.length === 20, // 20件取得した場合はまだデータがある可能性
+        lastDoc: lastDocSnapshot
+      };
+
+      if (isInitial) {
+        setVideos(result.data);
+      } else {
+        setVideos(prev => [...prev, ...result.data]);
+      }
+
+      setHasMore(result.hasMore);
+      setLastDoc(result.lastDoc);
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching videos:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [lastDoc]);
+
+  // 初期読み込み
+  useEffect(() => {
+    fetchVideos(true);
+  }, []);
+
+  // リアルタイム更新（最初の20件のみ）
   useEffect(() => {
     const q = query(
       collection(db, 'videos'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(20)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const videoList: Video[] = [];
       snapshot.forEach((doc) => {
         const videoData = doc.data();
-        // クライアントサイドでstatusフィルタリング
         if (videoData.status === 'active') {
           videoList.push({ id: doc.id, ...videoData } as Video);
         }
       });
-      setVideos(videoList);
+      
+      // リアルタイム更新は最初の20件のみ
+      setVideos(prev => {
+        const existingIds = new Set(prev.map(v => v.id));
+        const newVideos = videoList.filter(v => !existingIds.has(v.id));
+        return [...newVideos, ...prev].slice(0, 20);
+      });
     }, (err) => {
-      console.error('Error fetching videos:', err);
-      setError(err.message);
+      console.error('Error in real-time update:', err);
     });
 
     return () => unsubscribe();
@@ -151,11 +214,17 @@ export const useVideos = (userId?: string) => {
     }
   };
 
+  // メモ化された値
+  const memoizedVideos = useMemo(() => videos, [videos]);
+  const memoizedUserVideos = useMemo(() => userVideos, [userVideos]);
+
   return {
-    videos,
-    userVideos,
+    videos: memoizedVideos,
+    userVideos: memoizedUserVideos,
     loading,
     error,
+    hasMore,
+    loadMore: () => fetchVideos(false),
     uploadVideo,
     updateVideo,
     deleteVideo,

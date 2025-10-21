@@ -2,10 +2,12 @@ import { ArrowLeft, Eye, Globe, Lock, Tag, Upload } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
 import { ThumbnailGenerator } from '../components/ui/ThumbnailGenerator';
+import { VideoAdPlacement } from '../components/ui/VideoAdPlacement';
 import { VideoUploader } from '../components/ui/VideoUploader';
 import { useAuth } from '../hooks/useAuth';
 import { useVideos } from '../hooks/useVideos';
 import { uploadToStorage } from '../lib/upload';
+import { OptimizedVideoResult } from '../utils/videoOptimization';
 
 interface UploadVideoPageProps {
   onBack?: () => void;
@@ -27,7 +29,7 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
 
   const permissionColor = getPermissionColor();
 
-  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<OptimizedVideoResult | null>(null);
   const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -44,6 +46,14 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
   const [durationSec, setDurationSec] = useState<number | null>(null);
   const [uiError, setUiError] = useState<string | null>(null);
   const thumbnailSectionRef = useRef<HTMLDivElement>(null);
+  
+  // 広告挿入位置の管理
+  const [adPlacements, setAdPlacements] = useState<Array<{
+    id: string;
+    timestamp: number;
+    type: 'midroll' | 'preroll' | 'postroll';
+    duration?: number;
+  }>>([]);
 
   const formatFileSize = (bytes: number) => {
     if (!bytes) return '0 Bytes';
@@ -61,16 +71,10 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
     return `${minutes}:${String(secs).padStart(2,'0')}`;
   };
 
-  const handleVideoSelect = (file: File) => {
-    setVideoFile(file);
+  const handleVideoSelect = (result: OptimizedVideoResult) => {
+    setVideoFile(result);
     // 長さを取得
-    const v = document.createElement('video');
-    v.preload = 'metadata';
-    v.onloadedmetadata = () => {
-      setDurationSec(v.duration || 0);
-      URL.revokeObjectURL(v.src);
-    };
-    v.src = URL.createObjectURL(file);
+    setDurationSec(result.metadata.duration);
   };
 
   const handleVideoRemove = () => {
@@ -132,7 +136,7 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
     try {
       // 動画をStorageにアップロードして実URLを取得
       setUploadProgress(5);
-      const storageVideoUrl = await uploadToStorage(user.uid, videoFile, false, false, (p)=>{
+      const storageVideoUrl = await uploadToStorage(user.uid, videoFile.file, false, false, (p)=>{
         // p: 0-100
         // サムネ処理やメタデータ保存の余地を残して最大を70%に制限
         const capped = Math.min(70, Math.max(5, Math.round(p * 0.7)));
@@ -210,7 +214,7 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
             <VideoUploader
               onVideoSelect={handleVideoSelect}
               onRemove={handleVideoRemove}
-              selectedFile={videoFile}
+              selectedResult={videoFile}
               isUploading={isUploading}
               uploadProgress={uploadProgress}
             />
@@ -223,12 +227,16 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
                 <p className="text-xs text-gray-400">動画を選択するとここに情報が表示されます。</p>
               ) : (
                 <ul className="text-sm text-gray-300 space-y-1">
-                  <li>ファイル名: <span className="text-gray-200">{videoFile.name}</span></li>
-                  <li>サイズ: <span className="text-gray-200">{formatFileSize(videoFile.size)}</span></li>
+                  <li>ファイル名: <span className="text-gray-200">{videoFile.file.name}</span></li>
+                  <li>サイズ: <span className="text-gray-200">{formatFileSize(videoFile.metadata.size)}</span></li>
                   {durationSec !== null && (
                     <li>再生時間: <span className="text-gray-200">{formatDuration(durationSec)}</span></li>
                   )}
-                  <li>形式: <span className="text-gray-200">{videoFile.type || '不明'}</span></li>
+                  <li>解像度: <span className="text-gray-200">{videoFile.metadata.width}×{videoFile.metadata.height}</span></li>
+                  <li>形式: <span className="text-gray-200">{videoFile.metadata.format || '不明'}</span></li>
+                  {videoFile.compressed && videoFile.compressionRatio && (
+                    <li>圧縮率: <span className="text-green-400">{videoFile.compressionRatio.toFixed(1)}%削減</span></li>
+                  )}
                 </ul>
               )}
             </div>
@@ -382,7 +390,7 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
           <aside className="md:col-span-5 md:sticky md:top-4 space-y-4">
             <div ref={thumbnailSectionRef}>
               <ThumbnailGenerator
-                videoFile={videoFile}
+                videoFile={videoFile?.file || null}
                 onThumbnailSelect={setSelectedThumbnail}
                 selectedThumbnail={selectedThumbnail}
               />
@@ -441,6 +449,22 @@ export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
               </label>
             </div>
           </aside>
+
+          {/* 広告挿入設定（クリエイターのみ） */}
+          {(userDoc?.role === 'creator' || userDoc?.isAdmin) && durationSec && (
+            <div className="mt-6">
+              <VideoAdPlacement
+                videoDuration={durationSec}
+                adPlacements={adPlacements}
+                onAdPlacementsChange={setAdPlacements}
+                onPreview={(timestamp) => {
+                  // 動画プレビュー機能（実装は後で）
+                  console.log('Preview at:', timestamp);
+                }}
+                disabled={isUploading}
+              />
+            </div>
+          )}
         </form>
       </main>
     </div>

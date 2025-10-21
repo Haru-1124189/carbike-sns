@@ -3,16 +3,19 @@ import {
     collection,
     deleteDoc,
     getDocs,
-    onSnapshot,
     orderBy,
     query,
     serverTimestamp,
     where
 } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { db } from '../firebase/init';
 import { MarketplaceItem } from '../types/marketplace';
 import { useAuth } from './useAuth';
+
+// キャッシュ管理
+const favoritesCache = new Map<string, { data: { itemIds: Set<string>; items: MarketplaceItem[] }; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5分
 
 // お気に入り機能のフック
 export const useFavorites = (marketplaceType?: 'individual' | 'shop') => {
@@ -21,9 +24,31 @@ export const useFavorites = (marketplaceType?: 'individual' | 'shop') => {
   const [favoriteItemIds, setFavoriteItemIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
-  // お気に入りアイテムIDの取得
-  useEffect(() => {
+  // キャッシュキーを生成
+  const getCacheKey = useCallback(() => {
+    return `favorites_${user?.uid || 'none'}_${marketplaceType || 'all'}`;
+  }, [user?.uid, marketplaceType]);
+
+  // キャッシュからデータを取得
+  const getFromCache = useCallback(() => {
+    const key = getCacheKey();
+    const cached = favoritesCache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  }, [getCacheKey]);
+
+  // キャッシュにデータを保存
+  const saveToCache = useCallback((data: { itemIds: Set<string>; items: MarketplaceItem[] }) => {
+    const key = getCacheKey();
+    favoritesCache.set(key, { data, timestamp: Date.now() });
+  }, [getCacheKey]);
+
+  // お気に入りデータを読み込み（バッチ読み取り最適化）
+  const loadFavorites = useCallback(async () => {
     if (!user) {
       setFavoriteItemIds(new Set());
       setFavoriteItems([]);
@@ -31,66 +56,49 @@ export const useFavorites = (marketplaceType?: 'individual' | 'shop') => {
       return;
     }
 
-    const favoritesQuery = query(
-      collection(db, 'favorites'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(
-      favoritesQuery,
-      (snapshot) => {
-        console.log('📡 Favorites updated:', { 
-          count: snapshot.size, 
-          userId: user.uid,
-          docs: snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }))
-        }); // デバッグ用に再有効化
-        const itemIds = new Set<string>();
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          itemIds.add(data.itemId);
-        });
-        console.log('💾 Favorite IDs set:', Array.from(itemIds)); // デバッグ用に再有効化
-        setFavoriteItemIds(itemIds);
+    try {
+      setError(null);
+      
+      // キャッシュチェック
+      const cached = getFromCache();
+      if (cached) {
+        console.log('📦 お気に入りキャッシュから取得');
+        setFavoriteItemIds(cached.itemIds);
+        setFavoriteItems(cached.items);
         setLoading(false);
-      },
-      (err) => {
-        console.error('お気に入り取得エラー:', err);
-        setError('お気に入りの取得に失敗しました');
-        setLoading(false);
+        return;
       }
-    );
 
-    return () => unsubscribe();
-  }, [user]);
+      console.log('🔍 お気に入りバッチ読み取り開始');
+      
+      const favoritesQuery = query(
+        collection(db, 'favorites'),
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
 
-  // お気に入り商品の詳細情報を取得
-  useEffect(() => {
-    if (favoriteItemIds.size === 0) {
-      setFavoriteItems([]);
-      return;
-    }
+      const snapshot = await getDocs(favoritesQuery);
+      
+      const itemIds = new Set<string>();
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        itemIds.add(data.itemId);
+      });
+      
+      console.log('📦 お気に入りバッチ取得完了:', itemIds.size, '件');
 
-    let itemsQuery = query(
-      collection(db, 'items'),
-      where('__name__', 'in', Array.from(favoriteItemIds)),
-      where('status', '==', 'active')
-    );
+      // お気に入り商品の詳細情報を取得
+      if (itemIds.size > 0) {
+        const itemsQuery = query(
+          collection(db, 'items'),
+          where('__name__', 'in', Array.from(itemIds)),
+          where('status', '==', 'active')
+        );
 
-    // マーケットプレイスタイプでフィルタリング
-    if (marketplaceType === 'individual') {
-      // フリーマーケット: sellerTypeが'shop'でない商品のみ
-      // クライアントサイドでフィルタリング（Firestoreの複合クエリ制限のため）
-    } else if (marketplaceType === 'shop') {
-      // Shop: sellerTypeが'shop'の商品のみ
-      // クライアントサイドでフィルタリング（Firestoreの複合クエリ制限のため）
-    }
-
-    const unsubscribe = onSnapshot(
-      itemsQuery,
-      (snapshot) => {
+        const itemsSnapshot = await getDocs(itemsQuery);
         const items: MarketplaceItem[] = [];
-        snapshot.forEach((doc) => {
+        
+        itemsSnapshot.forEach((doc) => {
           const item = { id: doc.id, ...doc.data() } as MarketplaceItem;
           
           // マーケットプレイスタイプでフィルタリング
@@ -105,20 +113,42 @@ export const useFavorites = (marketplaceType?: 'individual' | 'shop') => {
               items.push(item);
             }
           } else {
-            // フィルタなしの場合は全て表示
+            // 全ての商品
             items.push(item);
           }
         });
-        setFavoriteItems(items);
-      },
-      (err) => {
-        console.error('お気に入り商品詳細取得エラー:', err);
-        setError('お気に入り商品の取得に失敗しました');
-      }
-    );
 
-    return () => unsubscribe();
-  }, [favoriteItemIds, marketplaceType]);
+        console.log('📦 お気に入り商品詳細取得完了:', items.length, '件');
+
+        // キャッシュに保存
+        saveToCache({ itemIds, items });
+        
+        setFavoriteItemIds(itemIds);
+        setFavoriteItems(items);
+      } else {
+        setFavoriteItemIds(itemIds);
+        setFavoriteItems([]);
+      }
+      
+      setLoading(false);
+      
+    } catch (err: any) {
+      console.error('お気に入り取得エラー:', err);
+      setError('お気に入りの取得に失敗しました');
+      setLoading(false);
+    }
+  }, [user, marketplaceType, getFromCache, saveToCache]);
+
+  useEffect(() => {
+    // 連続実行を防ぐ
+    const now = Date.now();
+    if (now - lastFetchRef.current < 1000) {
+      return;
+    }
+    lastFetchRef.current = now;
+    
+    loadFavorites();
+  }, [loadFavorites]);
 
   // お気に入りに追加
   const addToFavorites = async (itemId: string, sellerType?: 'individual' | 'shop') => {
@@ -135,6 +165,11 @@ export const useFavorites = (marketplaceType?: 'individual' | 'shop') => {
         createdAt: serverTimestamp()
       });
       console.log('✅ Added to favorites successfully:', { docId: docRef.id, itemId });
+      
+      // キャッシュをクリアして再読み込み
+      const key = getCacheKey();
+      favoritesCache.delete(key);
+      loadFavorites();
     } catch (err) {
       console.error('❌ お気に入り追加エラー:', err);
       throw new Error('お気に入りの追加に失敗しました');
@@ -160,6 +195,11 @@ export const useFavorites = (marketplaceType?: 'individual' | 'shop') => {
       await Promise.all(deletePromises);
       
       console.log('お気に入りから削除しました:', itemId);
+      
+      // キャッシュをクリアして再読み込み
+      const key = getCacheKey();
+      favoritesCache.delete(key);
+      loadFavorites();
     } catch (err) {
       console.error('お気に入り削除エラー:', err);
       throw new Error('お気に入りの削除に失敗しました');

@@ -4,7 +4,6 @@ import { AppHeader } from '../components/ui/AppHeader';
 import { NativeAd, insertNativeAds } from '../components/ui/NativeAd';
 import { SearchBar } from '../components/ui/SearchBar';
 import { ThreadCard } from '../components/ui/ThreadCard';
-import { threadAds } from '../data/dummy';
 import { useAuth } from '../hooks/useAuth';
 import { useFavoriteCars } from '../hooks/useFavoriteCars';
 import { useSearch } from '../hooks/useSearch';
@@ -94,27 +93,9 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
     return allThreads.filter((thread: any) => thread.type === activeTab);
   }, [searchedThreads, activeTab, activeCarTab, blockedUsers, vehicles, favoriteCars]);
 
-  // スレッドと広告を組み合わせて表示
+  // スレッドのみを表示（ネイティブ広告は別途挿入）
   const displayItems = useMemo(() => {
-    // 7-15件のランダムな間隔で広告を挿入
-    const items: any[] = [];
-    let threadIndex = 0;
-    let adIndex = 0;
-    
-    while (threadIndex < filteredThreads.length) {
-      // スレッドを追加
-      items.push(filteredThreads[threadIndex]);
-      threadIndex++;
-      
-      // ランダムな間隔で広告を挿入（7-15件の間隔）
-      const interval = Math.floor(Math.random() * 9) + 7; // 7-15
-      if (threadIndex % interval === 0 && adIndex < threadAds.length) {
-        items.push(threadAds[adIndex % threadAds.length]);
-        adIndex++;
-      }
-    }
-    
-    return items;
+    return filteredThreads;
   }, [filteredThreads]);
 
   const handleThreadClick = (threadId: string) => {
@@ -215,14 +196,14 @@ export const ThreadsPage: React.FC<ThreadsPageProps> = ({
 
           {/* スレッド一覧（ネイティブ広告含む） */}
           <div key={`${activeTab}-${activeCarTab}`} className="fade-in">
-            {useMemo(() => insertNativeAds(displayItems, 4), [displayItems]).map((item) => {
+            {useMemo(() => insertNativeAds(displayItems, 4), [displayItems.length, activeTab, activeCarTab]).map((item) => {
               if ('type' in item && item.type === 'ad') {
-                return <NativeAd key={item.id} ad={item.ad} />;
+                return <NativeAd key={item.id} ad={(item as any).ad} />;
               }
               return (
                 <ThreadCard
                   key={item.id}
-                  thread={item}
+                  thread={item as any}
                   onClick={() => handleThreadClick(item.id)}
                   onDelete={handleDeleteThread}
                   onBlockUser={onBlockUser}

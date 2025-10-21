@@ -178,16 +178,14 @@ export const useItemSearch = (filter: ItemSearchFilter, sortOption: SortOption =
       setError(null);
     }
     
-    const unsubscribe = loadItems();
+    loadItems();
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      // バッチ読み取りではunsubscribeは不要
     };
     // JSON文字列化して依存比較を安定化（useMemoされたfilterでもネスト差分を検出）
   }, [JSON.stringify(filter), sortOption]);
 
-  const loadItems = () => {
+  const loadItems = async () => {
     console.log('🔍 loadItems called with filter:', filter);
     setLoading(true);
     setError(null);
@@ -251,194 +249,154 @@ export const useItemSearch = (filter: ItemSearchFilter, sortOption: SortOption =
         note: 'シンプルなクエリで全商品を取得（sellerTypeフィルタなし）'
       });
 
-      // エラーハンドリングを強化し、リトライ機能を追加
-      const executeQuery = (retryCount = 0) => {
-        // デバッグログを削除（多すぎるため）
-        return onSnapshot(
-          q,
-          (snapshot) => {
-            let newItems: MarketplaceItem[] = [];
-            snapshot.forEach((doc) => {
-              newItems.push({ id: doc.id, ...doc.data() } as MarketplaceItem);
-            });
-
-            // クライアントサイドでstatusとsellerType、通貨/国/言語/価格をフィルタリング
-            if (filter.status) {
-              newItems = newItems.filter(item => (item.status || 'active') === filter.status);
-            }
-            if (filter.currency) {
-              newItems = newItems.filter(item => (item.currency || 'JPY') === filter.currency);
-            }
-            if (filter.country) {
-              newItems = newItems.filter(item => (item.sellerCountry || 'JP') === filter.country);
-            }
-            if (filter.language) {
-              newItems = newItems.filter(item => (item.sellerLanguage || 'ja') === filter.language);
-            }
-            if (filter.priceMin !== undefined) {
-              newItems = newItems.filter(item => (item.price || 0) >= (filter.priceMin as number));
-            }
-            if (filter.priceMax !== undefined) {
-              newItems = newItems.filter(item => (item.price || 0) <= (filter.priceMax as number));
-            }
-            // sellerTypeフィルタリングを完全に削除 - 全ての商品を表示
-            console.log('🔧 全商品表示:', {
-              beforeFiltering: newItems.length,
-              note: 'sellerTypeフィルタリングを削除して全商品を表示'
-            });
-
-            // 価格フィルタをクライアントサイドで適用
-            if (filter.priceMin !== undefined) {
-              const beforeCount = newItems.length;
-              newItems = newItems.filter(item => (item.price || 0) >= filter.priceMin!);
-              console.log('💰 最低価格フィルタ適用:', {
-                priceMin: filter.priceMin,
-                beforeCount,
-                afterCount: newItems.length
-              });
-            }
-            
-            if (filter.priceMax !== undefined) {
-              const beforeCount = newItems.length;
-              newItems = newItems.filter(item => (item.price || 0) <= filter.priceMax!);
-              console.log('💰 最高価格フィルタ適用:', {
-                priceMax: filter.priceMax,
-                beforeCount,
-                afterCount: newItems.length
-              });
-            }
-
-            // 状態フィルタをクライアントサイドで適用
-            if (filter.condition) {
-              const beforeCount = newItems.length;
-              newItems = newItems.filter(item => item.condition === filter.condition);
-              console.log('🏷️ 状態フィルタ適用:', {
-                condition: filter.condition,
-                beforeCount,
-                afterCount: newItems.length
-              });
-            }
-
-            // フィルタがない場合は、クライアントサイドでソート
-            if (!hasFilters) {
-              newItems.sort((a, b) => {
-                const aTime = a.createdAt?.toDate?.() || new Date();
-                const bTime = b.createdAt?.toDate?.() || new Date();
-                return bTime.getTime() - aTime.getTime(); // 新着順
-              });
-              console.log('📅 クライアントサイドソート適用（フィルタなし）');
-            }
-
-            // 詳細なログ出力
-            console.log('🔍 Firestoreクエリ結果:', {
-              rawCount: snapshot.docs.length,
-              filteredCount: newItems.length,
-              filter: filter,
-              sellerTypeFilter: filter.sellerType,
-              timestamp: new Date().toISOString()
-            });
-            
-            // 各商品のsellerTypeをログ出力
-            if (snapshot.docs.length > 0) {
-              console.log('📦 取得された商品のsellerType:', 
-                snapshot.docs.map(doc => ({
-                  id: doc.id,
-                  sellerType: doc.data().sellerType || 'undefined',
-                  title: doc.data().title
-                }))
-              );
-            }
-            
-            if (newItems.length <= 5) {
-              console.warn('⚠️ 商品数が少ない:', {
-                rawCount: snapshot.docs.length,
-                filteredCount: newItems.length,
-                filter: filter,
-                timestamp: new Date().toISOString()
-              });
-            }
-
-            // createdAtの降順で再ソート（Firestoreのタイムスタンプ有/Date混在を考慮）
-            newItems.sort((a, b) => {
-              const getTimestamp = (item: any) => {
-                const createdAt = item.createdAt;
-                if (!createdAt) return 0;
-                
-                // Firestore Timestampの場合
-                if (createdAt.toDate && typeof createdAt.toDate === 'function') {
-                  return createdAt.toDate().getTime();
-                }
-                
-                // Dateオブジェクトの場合
-                if (createdAt instanceof Date) {
-                  return createdAt.getTime();
-                }
-                
-                // 数値の場合（ミリ秒）
-                if (typeof createdAt === 'number') {
-                  return createdAt;
-                }
-                
-                // 文字列の場合
-                if (typeof createdAt === 'string') {
-                  return new Date(createdAt).getTime();
-                }
-                
-                return 0;
-              };
-              
-              const timeA = getTimestamp(a);
-              const timeB = getTimestamp(b);
-              
-              // ソートログは削除（多すぎるため）
-              
-              return timeB - timeA; // 降順（新しいものが上）
-            });
-            setItems(newItems);
-
-            // hasMoreの判定を修正：取得したドキュメント数がlimitと同じ場合のみ次のページがあると判定
-            setHasMore(snapshot.docs.length === 20);
-            if (snapshot.docs.length > 0) {
-              setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-            }
+      // バッチ読み取り最適化（リアルタイムリスナーではなく一度だけ取得）
+      const executeQuery = async (retryCount = 0) => {
+        try {
+          console.log('🔍 バッチ読み取り開始（Firestore読み取り最適化）');
+          
+          // キャッシュチェック（5分間有効）
+          const cacheKey = `marketplace-items-${JSON.stringify(filter)}-${sortOption}`;
+          const cachedData = localStorage.getItem(cacheKey);
+          const cacheTime = localStorage.getItem(`${cacheKey}-time`);
+          
+          if (cachedData && cacheTime && Date.now() - parseInt(cacheTime) < 5 * 60 * 1000) {
+            console.log('📦 キャッシュから商品データを取得');
+            const parsedData = JSON.parse(cachedData);
+            setItems(parsedData.items);
+            setHasMore(parsedData.hasMore);
+            setLastDoc(parsedData.lastDoc);
             setLoading(false);
-            setError(null); // 成功時はエラーをクリア
-          },
-          (err) => {
-            console.error('❌ 商品検索エラー:', err);
-            console.error('❌ エラーの詳細:', {
-              message: err.message,
-              code: err.code,
-              stack: err.stack,
-              filter: filter,
-              sortOption: sortOption,
-              retryCount
-            });
-            
-            // リトライロジック（最大5回、間隔を延長）
-            if (retryCount < 5 && (err.code === 'unavailable' || err.code === 'deadline-exceeded' || err.code === 'failed-precondition')) {
-              const delay = Math.pow(2, retryCount) * 1000; // 指数バックオフ: 1s, 2s, 4s, 8s
-              console.log(`🔄 Retrying query in ${delay/1000} seconds... (attempt ${retryCount + 1}/5)`);
-              setTimeout(() => {
-                executeQuery(retryCount + 1);
-              }, delay);
-              return;
-            }
-            
-            setError('商品の取得に失敗しました');
-            setLoading(false);
+            return;
           }
-        );
-      };
-      
-      const unsubscribe = executeQuery();
 
-      return unsubscribe;
+          // 一度だけ取得（onSnapshotではなくgetDocs）
+          const snapshot = await getDocs(q);
+          
+          let newItems: MarketplaceItem[] = [];
+          snapshot.forEach((doc) => {
+            const itemData = { id: doc.id, ...doc.data() } as MarketplaceItem;
+            
+            // 最初の3件のみログ出力（読み取り削減）
+            if (newItems.length < 3) {
+              console.log('📦 商品データ詳細:', {
+                id: itemData.id,
+                title: itemData.title,
+                hasThumbnail: !!itemData.thumbnail,
+                thumbnail: itemData.thumbnail,
+                hasImages: !!(itemData.images && itemData.images.length > 0),
+                imagesCount: itemData.images?.length || 0,
+                images: itemData.images
+              });
+            }
+            
+            newItems.push(itemData);
+          });
+
+          console.log('📦 バッチ取得完了:', newItems.length, '件');
+
+          // クライアントサイドで全フィルタリング（一度に処理）
+          let filteredItems = newItems.filter(item => {
+            // ステータスフィルタ
+            if (item.status !== 'active') return false;
+            
+            // カテゴリフィルタ
+            if (filter.category && item.category !== filter.category) {
+              return false;
+            }
+            
+            // 価格フィルタ
+            if (filter.priceMin !== undefined && item.price < filter.priceMin) {
+              return false;
+            }
+            if (filter.priceMax !== undefined && item.price > filter.priceMax) {
+              return false;
+            }
+            
+            // 状態フィルタ
+            if (filter.condition && item.condition !== filter.condition) {
+              return false;
+            }
+            
+            // 通貨フィルタ
+            if (filter.currency && item.currency !== filter.currency) {
+              return false;
+            }
+            
+            // 出品者タイプフィルタ
+            if (filter.sellerType) {
+              if (filter.sellerType === 'individual' && item.sellerType !== 'individual') return false;
+              if (filter.sellerType === 'shop' && item.sellerType !== 'shop') return false;
+            }
+            
+            // 検索クエリフィルタ（searchQueryプロパティが存在しない場合はスキップ）
+            if ((filter as any).searchQuery && (filter as any).searchQuery.trim()) {
+              const query = (filter as any).searchQuery.toLowerCase().trim();
+              const searchableText = `${item.title} ${item.description} ${item.tags?.join(' ') || ''}`.toLowerCase();
+              if (!searchableText.includes(query)) return false;
+            }
+            
+            return true;
+          });
+
+          // クライアントサイドソート
+          filteredItems = filteredItems.sort((a, b) => {
+            switch (sortOption) {
+              case 'newest':
+                return b.createdAt.toMillis() - a.createdAt.toMillis();
+              case 'price_low':
+                return a.price - b.price;
+              case 'price_high':
+                return b.price - a.price;
+              case 'popular':
+                // 人気順は作成日時で代替（favoriteCountプロパティが存在しないため）
+                return b.createdAt.toMillis() - a.createdAt.toMillis();
+              default:
+                return b.createdAt.toMillis() - a.createdAt.toMillis();
+            }
+          });
+
+          console.log('✅ フィルタリング完了:', {
+            total: newItems.length,
+            filtered: filteredItems.length,
+            filter: filter,
+            sortOption: sortOption
+          });
+
+          // 結果をキャッシュに保存
+          const cacheData = {
+            items: lastDoc ? [...items, ...filteredItems] : filteredItems,
+            hasMore: snapshot.docs.length === 20,
+            lastDoc: snapshot.docs[snapshot.docs.length - 1] || null
+          };
+          
+          localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          localStorage.setItem(`${cacheKey}-time`, Date.now().toString());
+
+          if (lastDoc) {
+            // 追加読み込み
+            setItems(prev => [...prev, ...filteredItems]);
+          } else {
+            // 初回読み込み
+            setItems(filteredItems);
+          }
+
+          setHasMore(snapshot.docs.length === 20);
+          setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+          setLoading(false);
+
+        } catch (error) {
+          console.error('バッチ読み取りエラー:', error);
+          setError('商品の取得に失敗しました');
+          setLoading(false);
+        }
+      };
+
+      // クエリ実行
+      await executeQuery();
     } catch (err) {
       console.error('商品検索エラー:', err);
       setError('商品の取得に失敗しました');
       setLoading(false);
-      return () => {};
     }
   };
 

@@ -148,7 +148,7 @@ export const NativeAd: React.FC<{ ad: NativeAdProps }> = ({ ad }) => {
   );
 };
 
-// 投稿一覧に広告を挿入するためのヘルパー関数
+// 投稿一覧に広告を挿入するためのヘルパー関数（完全固定版）
 export const insertNativeAds = <T extends { id: string }>(
   items: T[],
   adFrequency: number = 5 // 5件に1回の頻度で広告を挿入
@@ -159,23 +159,27 @@ export const insertNativeAds = <T extends { id: string }>(
     return result;
   }
   
+  // 固定の広告を事前に生成（同じキーで常に同じ広告を返す）
+  const fixedAds: NativeAdProps[] = [];
+  const maxAds = Math.ceil(items.length / adFrequency);
+  for (let i = 0; i < maxAds; i++) {
+    fixedAds.push(getRandomAd(`fixed-ad-${i}`));
+  }
+  
+  let adIndex = 0;
   items.forEach((item, index) => {
     result.push(item);
     
     // 指定された頻度で広告を挿入（最初の投稿の後は除く）
-    if (index > 0 && (index + 1) % adFrequency === 0) {
-      try {
-        const ad = getRandomAd(`ad-${Math.floor(index / adFrequency)}`);
-        if (ad) {
-          result.push({
-            type: 'ad',
-            ad,
-            id: `ad-${index}-${ad.id}`
-          });
-        }
-      } catch (error) {
-        console.error('Error generating ad:', error);
-        // エラーが発生した場合は広告を挿入しない
+    if (index > 0 && (index + 1) % adFrequency === 0 && adIndex < fixedAds.length) {
+      const ad = fixedAds[adIndex];
+      if (ad) {
+        result.push({
+          type: 'ad',
+          ad,
+          id: `fixed-ad-${index}-${ad.id}`
+        });
+        adIndex++;
       }
     }
   });

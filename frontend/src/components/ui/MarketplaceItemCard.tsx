@@ -1,6 +1,7 @@
-import { Heart, MapPin, Star } from 'lucide-react';
-import React, { useState } from 'react';
+import { Heart, Star } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { Currency, MarketplaceItem } from '../../types/marketplace';
+import { createMemoizedComponent, useStableCallback } from '../../utils/componentOptimization';
 
 interface MarketplaceItemCardProps {
   item: MarketplaceItem;
@@ -39,7 +40,7 @@ const CATEGORY_ICONS: { [key in MarketplaceItem['category']]: string } = {
   other: '📦'
 };
 
-export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
+const MarketplaceItemCardComponent: React.FC<MarketplaceItemCardProps> = ({
   item,
   viewMode,
   onClick,
@@ -49,7 +50,16 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
   sellerRating = 0,
   sellerRatingCount = 0
 }) => {
-  // デバッグログを削除（不要なログを削除）
+  // 画像問題のデバッグのためログを有効化
+  console.log('🖼️ MarketplaceItemCard レンダリング:', {
+    id: item.id,
+    title: item.title,
+    hasThumbnail: !!item.thumbnail,
+    thumbnail: item.thumbnail,
+    hasImages: !!(item.images && item.images.length > 0),
+    imagesCount: item.images?.length || 0,
+    images: item.images
+  });
 
   const currencySymbol = CURRENCY_SYMBOLS[item.currency];
   const conditionLabel = CONDITION_LABELS[item.condition];
@@ -57,19 +67,17 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
 
   // 画像ローディング状態（スケルトン制御）
   const [imgLoaded, setImgLoaded] = useState(false);
+  
+  // 画像URLが変更されたときにローディング状態をリセット
+  useEffect(() => {
+    setImgLoaded(false);
+  }, [item.thumbnail, item.images]);
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    console.log('💖 MarketplaceItemCard handleFavoriteClick called:', { 
-      itemId: item.id, 
-      isFavorite, 
-      hasToggleFunction: !!onToggleFavorite,
-      sellerType: item.sellerType,
-      currentTime: new Date().toISOString()
-    });
+  const handleFavoriteClick = useStableCallback((e: React.MouseEvent) => {
     e.preventDefault(); // デフォルトの動作を防ぐ
     e.stopPropagation(); // 親要素のクリックイベントを防ぐ
     onToggleFavorite?.(item.sellerType);
-  };
+  }, [onToggleFavorite, item.sellerType]);
 
   const formatPrice = (price: number, currency: Currency): string => {
     const symbol = CURRENCY_SYMBOLS[currency];
@@ -80,21 +88,6 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
     }
   };
 
-  const formatDate = (timestamp: any): string => {
-    if (!timestamp) return '';
-    
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return '1時間以内';
-    if (diffInHours < 24) return `${diffInHours}時間前`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}日前`;
-    
-    return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
-  };
 
   if (viewMode === 'list') {
     return (
@@ -105,11 +98,19 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
         <div className="flex space-x-4">
           {/* サムネイル */}
           <div className="w-20 h-20 bg-surface-light rounded-lg overflow-hidden flex-shrink-0">
-            {item.thumbnail || (item.images && item.images.length > 0) ? (
+            {(item.thumbnail && item.thumbnail.trim()) || (item.images && item.images.length > 0 && item.images[0]?.trim()) ? (
               <img
-                src={item.thumbnail || item.images[0]}
+                src={item.thumbnail?.trim() || item.images[0]?.trim()}
                 alt={item.title}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('❌ リスト画像読み込みエラー:', {
+                    url: item.thumbnail || item.images[0],
+                    title: item.title,
+                    itemId: item.id
+                  });
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-text-secondary">
@@ -155,19 +156,6 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
               )}
             </div>
 
-            <div className="flex items-center space-x-4 text-xs text-text-secondary">
-              <span className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary rounded-full">
-                {conditionLabel}
-              </span>
-              <span className="inline-flex items-center px-2 py-1 bg-surface-light rounded-full">
-                {categoryIcon} {item.category}
-              </span>
-              <span className="inline-flex items-center">
-                <MapPin size={10} className="mr-1" />
-                {item.sellerCountry}
-              </span>
-              <span>{formatDate(item.createdAt)}</span>
-            </div>
 
             {/* 出品者評価 */}
             {sellerRating > 0 && (
@@ -222,21 +210,63 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
       className="bg-white rounded-lg overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer"
     >
       {/* サムネイル */}
-      <div className="aspect-square bg-gray-100 relative">
+      <div className="aspect-square bg-gray-100 relative overflow-hidden">
         {/* スケルトン */}
         {!imgLoaded && <div className="absolute inset-0 animate-pulse bg-gray-200" />}
-        {item.thumbnail || (item.images && item.images.length > 0) ? (
+        {(item.thumbnail && item.thumbnail.trim()) || (item.images && item.images.length > 0 && item.images[0]?.trim()) ? (
           <img
-            src={item.thumbnail || item.images[0]}
+            src={item.thumbnail?.trim() || item.images[0]?.trim()}
             alt={item.title}
-            className={`w-full h-full object-cover ${imgLoaded ? '' : 'opacity-0'}`}
-            loading="lazy"
-            decoding="async"
-            onError={(e) => {
-              console.error('画像読み込みエラー:', item.thumbnail || item.images[0]);
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center'
             }}
-            onLoad={() => setImgLoaded(true)}
+            onLoad={() => {
+              console.log('✅ 画像読み込み成功:', item.thumbnail || item.images[0]);
+              setImgLoaded(true);
+            }}
+            onError={(e) => {
+              console.error('❌ 画像読み込みエラー詳細:', {
+                url: item.thumbnail || item.images[0],
+                title: item.title,
+                itemId: item.id,
+                hasThumbnail: !!item.thumbnail,
+                hasImages: !!(item.images && item.images.length > 0),
+                imagesCount: item.images?.length || 0,
+                thumbnailValue: item.thumbnail,
+                imagesValue: item.images,
+                errorEvent: e,
+                imgElement: e.currentTarget
+              });
+              
+              // 画像URLを直接テスト
+              if (item.thumbnail || (item.images && item.images[0])) {
+                const testUrl = item.thumbnail || item.images[0];
+                console.log('🔍 画像URLテスト:', testUrl);
+                
+                // 画像URLが有効かチェック
+                fetch(testUrl, { method: 'HEAD' })
+                  .then(response => {
+                    console.log('📡 画像URLレスポンス:', {
+                      url: testUrl,
+                      status: response.status,
+                      statusText: response.statusText,
+                      headers: Object.fromEntries(response.headers.entries())
+                    });
+                  })
+                  .catch(fetchError => {
+                    console.error('🌐 画像URLフェッチエラー:', {
+                      url: testUrl,
+                      error: fetchError
+                    });
+                  });
+              }
+              
+              setImgLoaded(true);
+            }}
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
@@ -271,9 +301,6 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
             onClick={handleFavoriteClick}
             onMouseDown={(e) => {
               e.stopPropagation();
-            }}
-            onMouseEnter={() => {
-              console.log('🖱️ Mouse entered heart button');
             }}
             className={`p-2 rounded-full hover:bg-white transition-colors cursor-pointer border-2 ${
               isFavorite ? 'bg-red-500 border-red-500' : 'bg-white border-white shadow-lg'
@@ -310,45 +337,27 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({
           {item.title}
         </h3>
 
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-          <div className="flex items-center space-x-1">
-            <span className="inline-flex items-center px-1 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-              {categoryIcon}
-            </span>
-            <span className="inline-flex items-center">
-              <MapPin size={8} className="mr-1" />
-              {item.sellerCountry}
-            </span>
-          </div>
-          <span className="text-xs">{formatDate(item.createdAt)}</span>
-        </div>
 
-        {/* 車種タグ（コンパクト版） */}
-        {item.vehicleTags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {item.vehicleTags.slice(0, 1).map((tag, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-1 py-0.5 bg-blue-100 text-blue-600 rounded text-xs"
-              >
-                {tag}
-              </span>
-            ))}
-            {item.vehicleTags.length > 1 && (
-              <span className="text-xs text-gray-500">
-                +{item.vehicleTags.length - 1}
-              </span>
-            )}
-          </div>
-        )}
 
-        {/* 出品者評価（コンパクト版） */}
-        <div className="flex items-center space-x-1 mt-1">
-          <Star size={10} className="text-yellow-400 fill-current" />
-          <span className="text-xs text-gray-600 font-medium">4.5</span>
-          <span className="text-xs text-gray-500">(12)</span>
-        </div>
       </div>
     </div>
   );
 };
+
+// メモ化されたコンポーネントをエクスポート
+export const MarketplaceItemCard = createMemoizedComponent(
+  MarketplaceItemCardComponent,
+  (prevProps, nextProps) => {
+    return (
+      prevProps.item.id === nextProps.item.id &&
+      prevProps.item.title === nextProps.item.title &&
+      prevProps.item.price === nextProps.item.price &&
+      prevProps.item.thumbnail === nextProps.item.thumbnail &&
+      prevProps.isFavorite === nextProps.isFavorite &&
+      prevProps.viewMode === nextProps.viewMode &&
+      prevProps.showSellerType === nextProps.showSellerType &&
+      prevProps.sellerRating === nextProps.sellerRating &&
+      prevProps.sellerRatingCount === nextProps.sellerRatingCount
+    );
+  }
+);

@@ -4,13 +4,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RatingList } from '../components/RatingList';
 import { AppHeader } from '../components/ui/AppHeader';
 import { MarketplaceItemCard } from '../components/ui/MarketplaceItemCard';
+import { NativeAd, insertNativeAds } from '../components/ui/NativeAd';
 import { PersistentImage } from '../components/ui/PersistentImage';
 import { PrivacyToggle } from '../components/ui/PrivacyToggle';
 import { SectionTitle } from '../components/ui/SectionTitle';
 import { SingleImageUpload } from '../components/ui/SingleImageUpload';
 import { ThreadCard } from '../components/ui/ThreadCard';
 import { VehicleCard } from '../components/ui/VehicleCard';
-import { threadAds } from '../data/dummy';
 import { db } from '../firebase/init';
 import { useAuth } from '../hooks/useAuth';
 import { useMyFollowData } from '../hooks/useFollow';
@@ -181,40 +181,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     return maintenancePosts.filter(post => post.authorId === user.uid);
   }, [maintenancePosts, user?.uid]);
 
-  // スレッドと広告を組み合わせて表示
+  // スレッドのみを表示（ネイティブ広告は別途挿入）
   const displayItems = useMemo(() => {
-    let filteredThreads: any[] = [];
-    
     switch (activeTab) {
       case 'posts':
-        filteredThreads = userPosts;
-        break;
+        return userPosts;
       case 'questions':
-        filteredThreads = userQuestions;
-        break;
+        return userQuestions;
       default:
         return [];
     }
-    
-    // 7-15件のランダムな間隔で広告を挿入
-    const items: any[] = [];
-    let threadIndex = 0;
-    let adIndex = 0;
-    
-    while (threadIndex < filteredThreads.length) {
-      // スレッドを追加
-      items.push(filteredThreads[threadIndex]);
-      threadIndex++;
-      
-      // ランダムな間隔で広告を挿入（7-15件の間隔）
-      const interval = Math.floor(Math.random() * 9) + 7; // 7-15
-      if (threadIndex % interval === 0 && adIndex < threadAds.length) {
-        items.push(threadAds[adIndex % threadAds.length]);
-        adIndex++;
-      }
-    }
-    
-    return items;
   }, [activeTab, userPosts, userQuestions]);
 
   const handleThreadClick = (threadId: string) => {
@@ -250,6 +226,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   };
 
+  // ネイティブ広告付きの表示アイテムを生成（完全固定）
+  const displayItemsWithAds = useMemo(() => {
+    return insertNativeAds(displayItems, 4);
+  }, [displayItems.length, activeTab]); // displayItemsの内容ではなく長さとタブのみで判定
+
   const renderTabContent = () => {
     if (threadsLoading || maintenanceLoading || itemsLoading) {
       return (
@@ -263,18 +244,23 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       case 'posts':
         return (
           <div className="space-y-4">
-            {displayItems.length > 0 ? (
-              displayItems.map((item) => (
-                <ThreadCard
-                  key={item.id}
-                  thread={item}
-                  onClick={() => handleThreadClick(item.id)}
-                  onDelete={onDeleteThread}
-                  onBlockUser={onBlockUser}
-                  onReportThread={onReportThread}
-                  onUserClick={onUserClick}
-                />
-              ))
+            {displayItemsWithAds.length > 0 ? (
+              displayItemsWithAds.map((item) => {
+                if ('type' in item && item.type === 'ad') {
+                  return <NativeAd key={item.id} ad={(item as any).ad} />;
+                }
+                return (
+                  <ThreadCard
+                    key={item.id}
+                    thread={item as any}
+                    onClick={() => handleThreadClick(item.id)}
+                    onDelete={onDeleteThread}
+                    onBlockUser={onBlockUser}
+                    onReportThread={onReportThread}
+                    onUserClick={onUserClick}
+                  />
+                );
+              })
             ) : (
               <div className="text-center py-8">
                 <div className="text-sm text-gray-400">投稿がありません</div>
@@ -285,18 +271,23 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       case 'questions':
         return (
           <div className="space-y-4">
-            {displayItems.length > 0 ? (
-              displayItems.map((item) => (
-                <ThreadCard
-                  key={item.id}
-                  thread={item}
-                  onClick={() => handleThreadClick(item.id)}
-                  onDelete={onDeleteThread}
-                  onBlockUser={onBlockUser}
-                  onReportThread={onReportThread}
-                  onUserClick={onUserClick}
-                />
-              ))
+            {displayItemsWithAds.length > 0 ? (
+              displayItemsWithAds.map((item) => {
+                if ('type' in item && item.type === 'ad') {
+                  return <NativeAd key={item.id} ad={(item as any).ad} />;
+                }
+                return (
+                  <ThreadCard
+                    key={item.id}
+                    thread={item as any}
+                    onClick={() => handleThreadClick(item.id)}
+                    onDelete={onDeleteThread}
+                    onBlockUser={onBlockUser}
+                    onReportThread={onReportThread}
+                    onUserClick={onUserClick}
+                  />
+                );
+              })
             ) : (
               <div className="text-center py-8">
                 <div className="text-sm text-gray-400">質問がありません</div>
@@ -798,58 +789,58 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <div className="flex space-x-1 mb-6 bg-surface rounded-xl p-0.5 shadow-sm">
           <button
             onClick={() => setActiveTab('posts')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors flex flex-col items-center justify-center space-y-1 ${
               activeTab === 'posts'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <MessageSquare size={14} />
-            <span>投稿</span>
+            <MessageSquare size={16} />
+            <span className="text-xs leading-tight">投稿</span>
           </button>
           <button
             onClick={() => setActiveTab('questions')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors flex flex-col items-center justify-center space-y-1 ${
               activeTab === 'questions'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <MessageSquare size={14} />
-            <span>質問</span>
+            <MessageSquare size={16} />
+            <span className="text-xs leading-tight">質問</span>
           </button>
           <button
             onClick={() => setActiveTab('maintenance')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors flex flex-col items-center justify-center space-y-1 ${
               activeTab === 'maintenance'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Wrench size={14} />
-            <span>整備</span>
+            <Wrench size={16} />
+            <span className="text-xs leading-tight">整備</span>
           </button>
           <button
             onClick={() => setActiveTab('items')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors flex flex-col items-center justify-center space-y-1 ${
               activeTab === 'items'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Package size={14} />
-            <span>商品</span>
+            <Package size={16} />
+            <span className="text-xs leading-tight">商品</span>
           </button>
           <button
             onClick={() => setActiveTab('ratings')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors flex flex-col items-center justify-center space-y-1 ${
               activeTab === 'ratings'
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Star size={14} />
-            <span>評価</span>
+            <Star size={16} />
+            <span className="text-xs leading-tight">評価</span>
           </button>
         </div>
         <div key={activeTab} className="fade-in">

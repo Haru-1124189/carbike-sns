@@ -29,8 +29,14 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:analyze": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js",
+    "build:prod": "GENERATE_SOURCEMAP=false npm run build",
+    "build:optimized": "GENERATE_SOURCEMAP=false INLINE_RUNTIME_CHUNK=false npm run build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lighthouse": "lighthouse http://localhost:3000 --output html --output-path ./lighthouse-report.html",
+    "perf:analyze": "npm run build:analyze",
+    "perf:lighthouse": "npm run lighthouse"
   },
   "eslintConfig": {
     "extends": [

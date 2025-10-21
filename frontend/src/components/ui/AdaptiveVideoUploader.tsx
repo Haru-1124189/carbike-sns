@@ -1,6 +1,6 @@
-import { AlertCircle, Camera, CheckCircle, FolderOpen, Play, Upload, X } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle, Clock, FileVideo, FolderOpen, Play, Upload, X, Zap } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { getMaxFileSizeForDevice, getVideoQualityForDevice, getVideoUploadMode } from '../../utils/deviceDetection';
+import { getDeviceInfo, getMaxFileSizeForDevice, getVideoQualityForDevice, getVideoUploadMode } from '../../utils/deviceDetection';
 import {
     generateVideoThumbnail,
     OptimizedVideoResult,
@@ -9,7 +9,7 @@ import {
     VideoUploadProgress
 } from '../../utils/videoOptimization';
 
-interface VideoUploaderProps {
+interface AdaptiveVideoUploaderProps {
   onVideoSelect: (result: OptimizedVideoResult) => void;
   onRemove: () => void;
   selectedResult: OptimizedVideoResult | null;
@@ -21,7 +21,7 @@ interface VideoUploaderProps {
   enableThumbnail?: boolean;
 }
 
-export const VideoUploader: React.FC<VideoUploaderProps> = ({
+export const AdaptiveVideoUploader: React.FC<AdaptiveVideoUploaderProps> = ({
   onVideoSelect,
   onRemove,
   selectedResult,
@@ -41,6 +41,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   const uploadProgressManager = useRef(new VideoUploadProgress());
 
   // デバイス情報を取得
+  const deviceInfo = getDeviceInfo();
   const uploadMode = getVideoUploadMode();
   const maxFileSize = getMaxFileSizeForDevice();
   const qualitySettings = getVideoQualityForDevice();
@@ -129,7 +130,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     }
   }, [handleFileSelect]);
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -137,7 +138,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
@@ -148,18 +149,68 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getVideoDuration = (file: File): Promise<number> => {
-    return new Promise((resolve) => {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.onloadedmetadata = () => {
-        window.URL.revokeObjectURL(video.src);
-        resolve(video.duration);
-      };
-      video.src = URL.createObjectURL(file);
-    });
-  };
+  // エラー表示
+  if (error) {
+    return (
+      <div className="bg-red-900/20 border border-red-500 rounded-xl p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <AlertCircle size={24} className="text-red-400" />
+          <h3 className="text-lg font-medium text-red-400">エラーが発生しました</h3>
+        </div>
+        <p className="text-red-300 mb-4">{error}</p>
+        <button
+          onClick={() => {
+            setError(null);
+            fileInputRef.current?.click();
+          }}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          再試行
+        </button>
+      </div>
+    );
+  }
 
+  // 最適化中
+  if (isOptimizing) {
+    return (
+      <div className="bg-surface rounded-xl border-2 border-primary p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+            <Zap size={24} className="text-white animate-pulse" />
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-white">動画を最適化中...</h3>
+            <p className="text-sm text-gray-400">
+              {uploadMode === 'mobile' ? 'スマホ用に最適化しています' : '高品質に最適化しています'}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-300">最適化進捗</span>
+            <span className="text-primary">{optimizationProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${optimizationProgress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center space-x-2 text-xs text-gray-400">
+          <Clock size={14} />
+          <span>
+            {uploadMode === 'mobile' ? '通常10-30秒程度' : '通常30秒〜2分程度'}かかります
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // 動画選択済み
   if (selectedResult) {
     return (
       <div className="bg-surface rounded-xl border-2 border-primary p-6">
@@ -266,7 +317,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
 
           <div className="space-y-3 text-xs text-gray-500 mb-6">
             <div className="flex items-center justify-center space-x-2">
-              <AlertCircle size={14} />
+              <FileVideo size={14} />
               <span>対応形式: MP4, MOV</span>
             </div>
             <div className="flex items-center justify-center space-x-2">
@@ -275,7 +326,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
             </div>
             {enableCompression && (
               <div className="flex items-center justify-center space-x-2">
-                <AlertCircle size={14} />
+                <Zap size={14} />
                 <span>自動最適化: {qualitySettings.maxWidth}×{qualitySettings.maxHeight}</span>
               </div>
             )}
@@ -326,9 +377,9 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
           動画ファイルをドラッグ&ドロップするか、クリックして選択してください
         </p>
 
-        <div className="space-y-3 text-xs text-gray-500">
+        <div className="space-y-3 text-xs text-gray-500 mb-6">
           <div className="flex items-center justify-center space-x-2">
-            <AlertCircle size={14} />
+            <FileVideo size={14} />
             <span>対応形式: MP4, WebM, OGG, AVI, MOV, WMV</span>
           </div>
           <div className="flex items-center justify-center space-x-2">
@@ -337,13 +388,13 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
           </div>
           {enableCompression && (
             <div className="flex items-center justify-center space-x-2">
-              <AlertCircle size={14} />
+              <Zap size={14} />
               <span>自動最適化: {qualitySettings.maxWidth}×{qualitySettings.maxHeight}, 高品質圧縮</span>
             </div>
           )}
           {userType === 'creator' && (
             <div className="flex items-center justify-center space-x-2">
-              <AlertCircle size={14} />
+              <Zap size={14} />
               <span>クリエイター向け: 高品質・大容量対応</span>
             </div>
           )}
@@ -351,7 +402,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="mt-6 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
+          className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
         >
           動画を選択
         </button>
@@ -367,4 +418,3 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
     </div>
   );
 };
-

@@ -5,13 +5,14 @@ import {
   List,
   ShoppingBag
 } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MarketplaceItemCard } from '../components/ui/MarketplaceItemCard';
 import { SearchBar } from '../components/ui/SearchBar';
 import { useAuth } from '../hooks/useAuth';
 import { useFavorites } from '../hooks/useFavorites';
 import { useItemSearch } from '../hooks/useMarketplace';
 import { Currency, ItemCategory, ItemCondition, SortOption } from '../types/marketplace';
+import { useDebouncedCallback, useInfiniteScroll, useVirtualScroll } from '../utils/componentOptimization';
 
 const CATEGORIES: { value: ItemCategory; label: string; icon: string }[] = [
   { value: 'engine', label: 'エンジン', icon: '🔧' },
@@ -75,16 +76,30 @@ export const MarketplaceHomePage: React.FC<MarketplaceHomePageProps> = ({
   const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [scrollTop, setScrollTop] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
   // マーケットプレイスタイプの分けを削除
 
   // 検索クエリのデバウンス
+  const debouncedSearchQueryCallback = useDebouncedCallback(
+    (query: string) => {
+      setDebouncedSearchQuery(query);
+    },
+    300,
+    []
+  );
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    debouncedSearchQueryCallback(searchQuery);
+  }, [searchQuery, debouncedSearchQueryCallback]);
+
+  // スクロール位置の監視
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
+
+  // 仮想スクロールと無限スクロールの設定は後で移動
 
   const searchFilter = useMemo(() => ({
     category: selectedCategory,
@@ -135,6 +150,22 @@ export const MarketplaceHomePage: React.FC<MarketplaceHomePageProps> = ({
   // タブに応じて表示する商品を決定
   const displayItems = filteredItems;
   const displayLoading = activeTab === 'favorites' ? favoritesLoading : loading;
+
+  // 仮想スクロールの計算（グリッド表示時のみ）
+  const virtualScrollConfig = useVirtualScroll(
+    200, // アイテムの高さ（推定）
+    600, // コンテナの高さ（推定）
+    displayItems.length,
+    scrollTop
+  );
+
+  // 無限スクロールの最適化
+  const lastElementRef = useInfiniteScroll(
+    hasMore,
+    loading,
+    loadMore,
+    100 // 閾値
+  );
   
   // 重要な表示状態のみログ出力
   if (displayItems.length === 0 && items.length > 0) {
@@ -202,7 +233,11 @@ export const MarketplaceHomePage: React.FC<MarketplaceHomePageProps> = ({
   // Stripeで管理するため、すべての認証チェックを削除
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div 
+      ref={containerRef}
+      className="min-h-screen bg-background overflow-y-auto"
+      onScroll={handleScroll}
+    >
       {/* メルカリスタイルのヘッダー */}
       {/* 固定ヘッダー */}
       <div className="sticky top-0 bg-gray-900 text-white z-10">
@@ -291,7 +326,7 @@ export const MarketplaceHomePage: React.FC<MarketplaceHomePageProps> = ({
             </div>
       </div>
 
-        <div className="max-w-4xl mx-auto pb-24" style={{ paddingBottom: '100px' }}>
+        <div className="max-w-4xl mx-auto">
 
         {/* 最適化されたフィルタパネル */}
         {showFilters && (
@@ -542,7 +577,7 @@ export const MarketplaceHomePage: React.FC<MarketplaceHomePageProps> = ({
 
 
         {/* 商品一覧 */}
-        <div className="p-4 pt-6 pb-8">
+        <div className="p-4 pt-6 pb-4">
           {displayLoading && displayItems.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -582,30 +617,50 @@ export const MarketplaceHomePage: React.FC<MarketplaceHomePageProps> = ({
               {/* 商品グリッド/リスト */}
               <div
                 id="marketplace-items"
-                onScroll={(e) => {
-                  const el = e.currentTarget as HTMLElement;
-                  if (hasMore && !loading && el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
-                    loadMore();
-                  }
-                }}
+                ref={containerRef}
+                onScroll={handleScroll}
                 className={
                 viewMode === 'grid' 
                   ? 'grid grid-cols-3 gap-3 mt-4'
                   : 'space-y-4 mt-4'
               }
-                style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}
+                style={{ 
+                  maxHeight: 'calc(100vh - 200px)', 
+                  overflowY: 'auto',
+                  paddingBottom: '80px' // 下部ナビゲーション分の余白
+                }}
               >
-                {displayItems.map((item) => (
-                   <MarketplaceItemCard
-                     key={item.id}
-                     item={item}
-                     viewMode={viewMode}
-                     onClick={() => onItemClick?.(item)}
-                     isFavorite={isFavorite(item.id)}
-                     onToggleFavorite={(sellerType) => toggleFavorite(item.id, sellerType)}
-                     showSellerType={true}
-                   />
-                ))}
+                {viewMode === 'grid' ? (
+                  // グリッド表示：通常の表示（仮想スクロールを一時的に無効化）
+                  displayItems.map((item, index) => (
+                    <MarketplaceItemCard
+                      key={item.id}
+                      item={item}
+                      viewMode={viewMode}
+                      onClick={() => onItemClick?.(item)}
+                      isFavorite={isFavorite(item.id)}
+                      onToggleFavorite={(sellerType) => toggleFavorite(item.id, sellerType)}
+                      showSellerType={true}
+                    />
+                  ))
+                ) : (
+                  // リスト表示：通常の表示
+                  displayItems.map((item, index) => (
+                    <div
+                      key={item.id}
+                      ref={index === displayItems.length - 1 ? lastElementRef : null}
+                    >
+                      <MarketplaceItemCard
+                        item={item}
+                        viewMode={viewMode}
+                        onClick={() => onItemClick?.(item)}
+                        isFavorite={isFavorite(item.id)}
+                        onToggleFavorite={(sellerType) => toggleFavorite(item.id, sellerType)}
+                        showSellerType={true}
+                      />
+                    </div>
+                  ))
+                )}
 
                 {/* スケルトン（読み込み中のプレースホルダー） */}
                 {loading && (
@@ -616,6 +671,20 @@ export const MarketplaceHomePage: React.FC<MarketplaceHomePageProps> = ({
                   </>
                 )}
               </div>
+
+              {/* 無限スクロール用のトリガー要素 */}
+              {hasMore && (
+                <div 
+                  ref={lastElementRef}
+                  className="h-4 w-full"
+                  onScroll={(e) => {
+                    const el = e.currentTarget as HTMLElement;
+                    if (hasMore && !loading && el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
+                      loadMore();
+                    }
+                  }}
+                />
+              )}
 
               {/* もっと見るボタン（フォールバック） */}
               {hasMore && (

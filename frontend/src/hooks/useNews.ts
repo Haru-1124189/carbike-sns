@@ -1,6 +1,4 @@
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { db } from '../firebase/init';
 import { NewsItem } from '../types';
 
 export const useNews = (limitCount: number = 10) => {
@@ -9,53 +7,38 @@ export const useNews = (limitCount: number = 10) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const newsRef = collection(db, 'news');
-    const q = query(
-      newsRef,
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const newsData: NewsItem[] = [];
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/fetch-news');
+        const data = await response.json();
         
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          const newsItem: NewsItem = {
-            id: doc.id,
-            title: data.title || '',
-            link: data.link || '',
-            summary: data.summary || '',
-            published: data.published || '',
-            source: data.source || '',
-            thumbnailUrl: data.thumbnailUrl || undefined,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt)
-          };
+        if (data.success) {
+          const newsData: NewsItem[] = data.news.slice(0, limitCount).map((item: any) => ({
+            id: item.link, // リンクをIDとして使用
+            title: item.title,
+            link: item.link,
+            summary: item.description,
+            published: item.pubDate,
+            source: item.source,
+            thumbnailUrl: undefined, // 必要に応じて追加
+            createdAt: new Date(item.pubDate)
+          }));
           
-          // デバッグ情報を出力
-          console.log('ニュースアイテム:', {
-            title: newsItem.title,
-            hasThumbnail: !!newsItem.thumbnailUrl,
-            thumbnailUrl: newsItem.thumbnailUrl
-          });
-          
-          newsData.push(newsItem);
-        });
-
-        setNews(newsData);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
+          setNews(newsData);
+          setError(null);
+        } else {
+          setError('ニュースの取得に失敗しました');
+        }
+      } catch (err) {
         console.error('ニュース取得エラー:', err);
         setError('ニュースの取得に失敗しました');
+      } finally {
         setLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    fetchNews();
   }, [limitCount]);
 
   return { news, loading, error };
@@ -67,24 +50,27 @@ export const useNewsCount = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const newsRef = collection(db, 'news');
-    const q = query(newsRef);
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setCount(snapshot.size);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
+    const fetchNewsCount = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/fetch-news');
+        const data = await response.json();
+        
+        if (data.success) {
+          setCount(data.totalSaved);
+          setError(null);
+        } else {
+          setError('ニュース件数の取得に失敗しました');
+        }
+      } catch (err) {
         console.error('ニュース件数取得エラー:', err);
         setError('ニュース件数の取得に失敗しました');
+      } finally {
         setLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    fetchNewsCount();
   }, []);
 
   return { count, loading, error };

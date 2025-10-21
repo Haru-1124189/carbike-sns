@@ -1,7 +1,7 @@
-import { BarChart3, Play, Plus, Trash2, Users } from 'lucide-react';
+import { BarChart3, Play, Plus, Users } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AppHeader } from '../components/ui/AppHeader';
-import { ClickableUserName } from '../components/ui/ClickableUserName';
+import { OptimizedVideoGrid } from '../components/ui/OptimizedVideoGrid';
 import { SearchBar } from '../components/ui/SearchBar';
 import { useAuth } from '../hooks/useAuth';
 import { useChannelSubscriberCount, useChannelSubscriptions } from '../hooks/useChannelSubscriptions';
@@ -65,7 +65,7 @@ interface VideosPageProps {
 
 export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo, onUploadVideo, onCreatorApplication, onShowChannels, onVideoAnalytics, onCreatorAnalytics }) => {
   const { user, userDoc } = useAuth();
-  const { videos, userVideos, deleteVideo } = useVideos(user?.uid);
+  const { videos, userVideos, deleteVideo, hasMore, loadMore, loading } = useVideos(user?.uid);
   const { userApplication } = useCreatorApplication(user?.uid);
   const { subscriptions, subscribedChannelIds: subscribedChannelIdsFromHook, subscribe, unsubscribe, isSubscribed } = useChannelSubscriptions(user?.uid);
   
@@ -388,108 +388,23 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
             ))}
           </div>
         ) : (
-          /* 動画グリッド - 横に2つずつ */
-          <div key={`${activeTab}-${selectedChannel ?? 'none'}`} className="grid grid-cols-2 gap-3 fade-in">
-            {displayVideos.length > 0 ? (
-              displayVideos.map((video) => {
-                const channel = channels.find(ch => ch.id === video.channelId);
-                const isOwnVideo = video.authorId === user?.uid;
-                
-                
-                return (
-                  <div
-                    key={video.id}
-                    onClick={() => handleVideoClick(video.id)}
-                    className="cursor-pointer hover:scale-95 active:scale-95 transition-transform"
-                  >
-                    {/* サムネイル */}
-                    <div className="relative mb-2">
-                      <div className="w-full h-20 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center relative overflow-hidden">
-                        {video.thumbnailUrl ? (
-                          <img
-                            src={video.thumbnailUrl}
-                            alt={video.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Play size={20} className="text-white relative z-10" />
-                        )}
-                        {/* 背景装飾 */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black to-transparent opacity-20"></div>
-                      </div>
-                      {/* 再生時間 */}
-                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-80 text-white text-xs px-1 rounded">
-                        {video.duration}
-                      </div>
-                      {/* 登録チャンネルバッジ */}
-                      {channel?.isSubscribed && (
-                        <div className="absolute top-1 left-1 bg-primary text-white text-xs px-1 rounded">
-                          登録済み
-                        </div>
-                      )}
-                      {/* ホバー時の再生ボタン */}
-                      <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
-                        <div className="w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-                          <Play size={12} className="text-black ml-0.5" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 動画情報 */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-white line-clamp-2 leading-tight flex-1">{video.title}</h3>
-                        {isOwnVideo && (
-                          <div className="flex space-x-1 ml-1 flex-shrink-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onVideoAnalytics?.(video.id);
-                              }}
-                              className="p-1 rounded-full hover:bg-blue-500 hover:bg-opacity-20 transition-colors"
-                              title="分析"
-                            >
-                              <BarChart3 size={12} className="text-blue-400 hover:text-blue-300" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteVideo(video.id);
-                              }}
-                              className="p-1 rounded-full hover:bg-red-500 hover:bg-opacity-20 transition-colors"
-                              title="削除"
-                            >
-                              <Trash2 size={12} className="text-red-400 hover:text-red-300" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <ClickableUserName 
-                        key={`${video.id}-${video.authorId}`}
-                        userId={video.authorId || ''} 
-                        fallbackName={video.author}
-                        size="sm"
-                        showAvatar={false}
-                        onClick={(userId, displayName) => {
-                          handleUserClick(userId, displayName);
-                        }}
-                        className="text-xs text-gray-400 hover:text-primary transition-colors"
-                      />
-                      <div className="flex items-center space-x-1 text-xs text-gray-500">
-                        <span>{video.views.toLocaleString()}回</span>
-                        <span>•</span>
-                        <span>{video.uploadedAt}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="col-span-2 text-center py-8">
-                <div className="text-sm text-gray-400">動画がありません</div>
-              </div>
-            )}
-          </div>
+          /* 最適化された動画グリッド */
+          <OptimizedVideoGrid
+            key={`${activeTab}-${selectedChannel ?? 'none'}`}
+            videos={displayVideos as any}
+            channels={channels}
+            currentUserId={user?.uid}
+            onVideoClick={handleVideoClick}
+            onUserClick={handleUserClick}
+            onVideoAnalytics={onVideoAnalytics}
+            onDeleteVideo={handleDeleteVideo}
+            onLoadMore={loadMore}
+            hasMore={hasMore}
+            loading={loading}
+            enableVirtualScroll={displayVideos.length > 20}
+            enableInfiniteScroll={true}
+            enablePreloading={true}
+          />
         )}
 
         {/* 無限スクロール用のプレースホルダー */}

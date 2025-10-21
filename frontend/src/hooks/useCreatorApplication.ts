@@ -1,4 +1,3 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { useEffect, useState } from 'react';
 import { CreatorApplication } from '../types';
 
@@ -27,13 +26,11 @@ export const useCreatorApplication = (userId?: string) => {
 
     const fetchApplicationStatus = async () => {
       try {
-        const functions = getFunctions();
-        const getUserCreatorApplicationStatus = httpsCallable(functions, 'getUserCreatorApplicationStatus');
-        const result = await getUserCreatorApplicationStatus();
+        const response = await fetch(`/api/creator-applications?userId=${userId}`);
+        const data = await response.json();
         
-        const data = result.data as CreatorApplicationStatusResponse;
-        if (data && data.hasApplication) {
-          setUserApplication(data.application || null);
+        if (data.success && data.applications.length > 0) {
+          setUserApplication(data.applications[0]);
         } else {
           setUserApplication(null);
         }
@@ -56,29 +53,35 @@ export const useCreatorApplication = (userId?: string) => {
     setError(null);
 
     try {
-      const functions = getFunctions();
-      const submitCreatorApplication = httpsCallable(functions, 'submitCreatorApplication');
-      const result = await submitCreatorApplication(applicationData);
+      const response = await fetch('/api/creator-applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          ...applicationData
+        }),
+      });
       
-      // 申請状況を再取得
-      const getUserCreatorApplicationStatus = httpsCallable(functions, 'getUserCreatorApplicationStatus');
-      const statusResult = await getUserCreatorApplicationStatus();
+      const result = await response.json();
       
-      const statusData = statusResult.data as CreatorApplicationStatusResponse;
-      if (statusData && statusData.hasApplication) {
-        setUserApplication(statusData.application || null);
+      if (result.success) {
+        // 申請状況を再取得
+        const statusResponse = await fetch(`/api/creator-applications?userId=${userId}`);
+        const statusData = await statusResponse.json();
+        
+        if (statusData.success && statusData.applications.length > 0) {
+          setUserApplication(statusData.applications[0]);
+        }
       }
 
-      return result.data;
+      return result;
     } catch (err: any) {
       console.error('Error creating creator application:', err);
       
       let errorMessage = '申請の作成に失敗しました';
-      if (err.code === 'permission-denied') {
-        errorMessage = '権限がありません。ログイン状態を確認してください。';
-      } else if (err.code === 'unavailable') {
-        errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-      } else if (err.message) {
+      if (err.message) {
         errorMessage = err.message;
       }
       
@@ -95,12 +98,10 @@ export const useCreatorApplication = (userId?: string) => {
     setError(null);
 
     try {
-      const functions = getFunctions();
-      const getCreatorApplications = httpsCallable(functions, 'getCreatorApplications');
-      const result = await getCreatorApplications();
+      const response = await fetch('/api/creator-applications');
+      const data = await response.json();
       
-      const data = result.data as CreatorApplicationsResponse;
-      if (data && data.applications) {
+      if (data.success && data.applications) {
         setApplications(data.applications);
         return data.applications;
       }
@@ -120,18 +121,27 @@ export const useCreatorApplication = (userId?: string) => {
     setError(null);
 
     try {
-      const functions = getFunctions();
-      const reviewCreatorApplication = httpsCallable(functions, 'reviewCreatorApplication');
-      const result = await reviewCreatorApplication({
-        applicationId,
-        status,
-        adminNotes
+      const response = await fetch('/api/creator-applications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          applicationId,
+          status,
+          reviewNotes: adminNotes,
+          reviewedBy: 'admin' // 実際の実装では認証されたユーザーIDを使用
+        }),
       });
       
-      // 申請一覧を更新
-      await getAllApplications();
+      const result = await response.json();
       
-      return result.data;
+      if (result.success) {
+        // 申請一覧を更新
+        await getAllApplications();
+      }
+      
+      return result;
     } catch (err: any) {
       console.error('Error reviewing creator application:', err);
       setError(err.message);
