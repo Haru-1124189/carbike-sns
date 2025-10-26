@@ -199,35 +199,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const userDocRef = doc(db, 'users', user.uid);
       
-      // プロフィール画像の場合はFirebase Authも更新（URLが短い場合のみ）
+      // プロフィール画像はFirestoreのみに保存（Firebase Authは更新しない）
+      // Firebase AuthのphotoURLはURL長制限があるため、Firestoreのみで管理
       if (updates.photoURL !== undefined) {
-        const photoUrl = updates.photoURL;
-        
-        // Firebase AuthのphotoURLはURLの長さ制限があるため、短い場合のみ更新
-        // 長いURL（100文字以上）の場合はFirestoreのみに保存
-        if (photoUrl && photoUrl.length < 100) {
-          try {
-            console.log('Updating Firebase Auth photoURL:', photoUrl);
-            await updateProfile(user, {
-              photoURL: photoUrl
-            });
-            console.log('Firebase Auth photoURL updated successfully');
-          } catch (profileError: any) {
-            console.warn('Firebase Auth photoURL update failed:', profileError);
-            // Firebase Auth更新失敗は無視（Firestoreのみに保存）
-          }
-        } else if (!photoUrl || photoUrl.length === 0) {
-          // 空文字列の場合は削除として扱う
-          try {
-            await updateProfile(user, {
-              photoURL: null
-            });
-          } catch (profileError: any) {
-            console.warn('Firebase Auth photoURL deletion failed:', profileError);
-          }
-        } else {
-          console.log('PhotoURL too long, skipping Firebase Auth update (length:', photoUrl.length, ')');
-        }
+        const photoUrlLength = updates.photoURL?.length || 0;
+        console.log('Saving photoURL to Firestore only (length:', photoUrlLength, ')');
+        // Firebase Authへの更新は行わない
       }
       
       // displayNameの場合はFirebase Authも更新
