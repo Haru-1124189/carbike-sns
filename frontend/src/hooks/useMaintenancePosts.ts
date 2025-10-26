@@ -77,10 +77,17 @@ export const useMaintenancePosts = (options: UseMaintenancePostsOptions = {}) =>
         } as MaintenancePostDoc;
       });
 
-      // ブロックユーザーの投稿を除外
+      // currentUserIdが指定されている場合、そのユーザーの投稿のみを表示（プロフィールページ用）
       let filteredPosts = posts;
-      if (blockedUsers.length > 0) {
+      if (currentUserId) {
         filteredPosts = posts.filter(post => 
+          post.authorId === currentUserId
+        );
+      }
+
+      // ブロックユーザーの投稿を除外
+      if (blockedUsers.length > 0) {
+        filteredPosts = filteredPosts.filter(post => 
           !post.authorId || !blockedUsers.includes(post.authorId)
         );
       }

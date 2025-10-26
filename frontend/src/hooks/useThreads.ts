@@ -6,7 +6,8 @@ import { Thread } from '../types';
 import { filterMutedPosts } from '../utils/muteWords';
 
 interface UseThreadsOptions {
-  currentUserId?: string;
+  currentUserId?: string; // 特定ユーザーの投稿のみを取得する場合に指定
+  viewerUserId?: string; // 投稿を見るユーザーのID（鍵アカウント判定用）
   limit?: number;
   type?: 'post' | 'question' | 'all';
   blockedUsers?: string[];
@@ -27,7 +28,7 @@ const threadCache = new Map<string, { data: Thread[]; timestamp: number }>();
 const CACHE_DURATION = 10 * 60 * 1000; // 10分（5分から延長）
 
 export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn => {
-  const { currentUserId, limit: limitCount = 15, type = 'all', blockedUsers = [], mutedWords = [] } = options;
+  const { currentUserId, viewerUserId, limit: limitCount = 15, type = 'all', blockedUsers = [], mutedWords = [] } = options;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +38,8 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
 
   // キャッシュキーを生成
   const getCacheKey = useCallback(() => {
-    return `threads_${currentUserId || 'all'}_${type}_${limitCount}_${blockedUsers.join(',')}_${mutedWords.join(',')}`;
-  }, [currentUserId, type, limitCount, blockedUsers, mutedWords]);
+    return `threads_${currentUserId || 'all'}_${viewerUserId || 'all'}_${type}_${limitCount}_${blockedUsers.join(',')}_${mutedWords.join(',')}`;
+  }, [currentUserId, viewerUserId, type, limitCount, blockedUsers, mutedWords]);
 
   // キャッシュからデータを取得
   const getFromCache = useCallback(() => {
@@ -59,31 +60,18 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
 
   // クエリを構築
   const buildQuery = useCallback(() => {
-    // currentUserIdフィルタがある場合はFirestoreでフィルタ（インデックスが必要）
-    // currentUserIdがない場合は全件取得してクライアントサイドでフィルタ
-    if (currentUserId) {
-      let q = query(
-        collection(db, 'threads'), 
-        where('authorId', '==', currentUserId),
-        orderBy('createdAt', 'desc'), 
-        limit(limitCount)
-      );
-      
-      if (type !== 'all') {
-        q = query(q, where('type', '==', type));
-      }
-      
-      return q;
-    } else {
-      // currentUserIdがない場合は全件取得してクライアントサイドでフィルタ
-      let q = query(collection(db, 'threads'), orderBy('createdAt', 'desc'), limit(limitCount));
-      
-      if (type !== 'all') {
-        q = query(q, where('type', '==', type));
-      }
-      
-      return q;
+    // currentUserIdオプションはフィルタリング用のフラグとして使用
+    // currentUserIdがundefinedの場合は全ユーザーの投稿を取得
+    // currentUserIdが設定されている場合は、そのユーザーの投稿のみを取得
+    
+    // 全ユーザーの投稿を取得（デフォルト）
+    let q = query(collection(db, 'threads'), orderBy('createdAt', 'desc'), limit(limitCount));
+    
+    if (type !== 'all') {
+      q = query(q, where('type', '==', type));
     }
+    
+    return q;
   }, [currentUserId, type, limitCount]);
 
   // データを読み込み
@@ -112,6 +100,13 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
       // 削除された投稿を除外
       let filteredThreads = newThreads.filter(thread => !thread.isDeleted);
 
+      // currentUserIdが指定されている場合、そのユーザーの投稿のみを表示（プロフィールページ用）
+      if (currentUserId) {
+        filteredThreads = filteredThreads.filter(thread => 
+          thread.authorId === currentUserId
+        );
+      }
+
       // ブロックユーザーの投稿を除外
       if (blockedUsers.length > 0) {
         filteredThreads = filteredThreads.filter(thread => 
@@ -125,11 +120,11 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
       }
 
       // 鍵アカウントのLink(threads)はフォロワーのみ表示
-      if (currentUserId) {
+      if (viewerUserId && !currentUserId) { // 自分のプロフィールを見る時はスキップ
         const visibilityChecked = await Promise.all(
           filteredThreads.map(async (t) => {
             if (!t.authorId) return t;
-            const canView = await canViewUserContent(t.authorId, currentUserId);
+            const canView = await canViewUserContent(t.authorId, viewerUserId);
             return canView ? t : null;
           })
         );

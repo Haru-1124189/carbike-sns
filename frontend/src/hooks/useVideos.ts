@@ -7,7 +7,14 @@ import { Video } from '../types';
 const videoCache = new Map<string, { data: Video[]; timestamp: number; lastDoc: any }>();
 const CACHE_DURATION = 10 * 60 * 1000; // 10分（課金削減のため延長）
 
-export const useVideos = (userId?: string) => {
+interface UseVideosOptions {
+  userId?: string; // ユーザーID（オプショナル）
+  currentUserId?: string; // 特定ユーザーの動画のみを取得する場合に指定
+}
+
+export const useVideos = (options: UseVideosOptions = {}) => {
+  const userId = options?.userId;
+  const currentUserId = options?.currentUserId;
   const [videos, setVideos] = useState<Video[]>([]);
   const [userVideos, setUserVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,7 +58,10 @@ export const useVideos = (userId?: string) => {
       snapshot.forEach((doc) => {
         const data = doc.data();
         if (data.status === 'active') {
-          videoList.push({ id: doc.id, ...data } as Video);
+          // currentUserIdが指定されている場合、そのユーザーの動画のみを表示
+          if (!currentUserId || data.authorId === currentUserId) {
+            videoList.push({ id: doc.id, ...data } as Video);
+          }
         }
         lastDocSnapshot = doc;
       });
@@ -84,7 +94,7 @@ export const useVideos = (userId?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [lastDoc]);
+  }, [lastDoc, currentUserId]);
 
   // 初期読み込み
   useEffect(() => {
