@@ -10,7 +10,13 @@ export const useNews = (limitCount: number = 10) => {
     const fetchNews = async () => {
       try {
         setLoading(true);
+        // VercelのAPI Routesを使用
         const response = await fetch('/api/fetch-news');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -50,27 +56,9 @@ export const useNewsCount = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchNewsCount = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/fetch-news');
-        const data = await response.json();
-        
-        if (data.success) {
-          setCount(data.totalSaved);
-          setError(null);
-        } else {
-          setError('ニュース件数の取得に失敗しました');
-        }
-      } catch (err) {
-        console.error('ニュース件数取得エラー:', err);
-        setError('ニュース件数の取得に失敗しました');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNewsCount();
+    // VercelではバックエンドAPIが使えないため、ニュース機能を無効化
+    setLoading(false);
+    setError('ニュース機能は現在ご利用いただけません');
   }, []);
 
   return { count, loading, error };

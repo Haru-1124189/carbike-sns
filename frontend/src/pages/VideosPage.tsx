@@ -210,30 +210,33 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
 
         {/* アクションボタン */}
         <div className="flex items-center justify-end mb-6">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 overflow-x-auto">
             {canUploadVideos && (
               <>
                 <button
                   onClick={handleUploadClick}
-                  className={`flex items-center space-x-2 px-3 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors shadow-sm ${permissionColor}`}
+                  className={`flex items-center space-x-1 px-2 py-2 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary-dark transition-colors shadow-sm whitespace-nowrap ${permissionColor}`}
+                  style={{ minWidth: 'auto' }}
                 >
-                  <Plus size={16} />
+                  <Plus size={12} />
                   <span>アップロード</span>
                 </button>
                 <button
                   onClick={() => onCreatorAnalytics?.()}
-                  className="flex items-center space-x-2 px-3 py-2 bg-surface border border-surface-light rounded-xl text-sm font-medium hover:scale-95 active:scale-95 transition-transform shadow-sm"
+                  className="flex items-center space-x-1 px-2 py-2 bg-surface border border-surface-light rounded-lg text-xs font-medium hover:scale-95 active:scale-95 transition-transform shadow-sm whitespace-nowrap"
+                  style={{ minWidth: 'auto' }}
                 >
-                  <BarChart3 size={16} />
+                  <BarChart3 size={12} />
                   <span>分析</span>
                 </button>
               </>
             )}
             <button
               onClick={() => onShowChannels?.()}
-              className="flex items-center space-x-2 px-3 py-2 bg-surface border border-surface-light rounded-xl text-sm font-medium hover:scale-95 active:scale-95 transition-transform shadow-sm"
+              className="flex items-center space-x-1 px-2 py-2 bg-surface border border-surface-light rounded-lg text-xs font-medium hover:scale-95 active:scale-95 transition-transform shadow-sm whitespace-nowrap"
+              style={{ minWidth: 'auto' }}
             >
-              <Users size={16} />
+              <Users size={12} />
               <span>チャンネル一覧</span>
             </button>
           </div>
@@ -265,7 +268,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
                 <button
                   key={channel.id}
                   onClick={() => handleChannelClick(channel.id)}
-                  className={`flex flex-col items-center space-y-2 min-w-[60px] transition-transform hover:scale-105 ${
+                  className={`flex flex-col items-center space-y-2 min-w-[60px] transition-transform hover:scale-105 flex-shrink-0 ${
                     selectedChannel === channel.id ? 'opacity-100' : 'opacity-70 hover:opacity-100'
                   }`}
                 >
@@ -280,7 +283,9 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <ChannelDisplayName userId={channel.id} fallbackName={channel.name} />
+                  <div className="text-center">
+                    <ChannelDisplayName userId={channel.id} fallbackName={channel.name} />
+                  </div>
                 </button>
               ))}
             </div>
@@ -319,7 +324,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
           <div className="flex space-x-1 mb-4 bg-surface rounded-xl p-0.5">
             <button
               onClick={() => setActiveTab('subscribed')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'subscribed'
                   ? 'bg-primary text-white shadow-sm'
                   : 'text-gray-400 hover:text-white'
@@ -329,7 +334,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClic
             </button>
             <button
               onClick={() => setActiveTab('all')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'all'
                   ? 'bg-primary text-white shadow-sm'
                   : 'text-gray-400 hover:text-white'

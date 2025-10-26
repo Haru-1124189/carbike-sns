@@ -217,7 +217,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     setAdminAvatarError('');
 
     try {
-      await updateUserDoc({ photoURL: imageUrl || '' });
+      // imageUrlがnullの場合はundefinedを渡す（フィールドを更新しない）
+      await updateUserDoc({ photoURL: imageUrl || undefined });
       setIsAdminEditing(false);
     } catch (err: any) {
       setAdminAvatarError(err.message || 'アバターの更新に失敗しました');

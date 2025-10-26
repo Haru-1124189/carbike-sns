@@ -1,5 +1,6 @@
+import { doc, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes, uploadBytesResumable } from 'firebase/storage';
-import { storage } from '../firebase/init';
+import { db, storage } from '../firebase/init';
 
 // 画像をプリロードする関数
 const preloadImage = (url: string): Promise<void> => {
@@ -62,9 +63,9 @@ const uploadImageToFirebaseStorage = async (file: File, userId: string, isProfil
     // プロフィール画像の場合は小さくリサイズ
     let processedFile = file;
     
-    if (isProfileImage && file.size > 100 * 1024) {
-      // プロフィール画像は150x150にリサイズ
-      const resizedBlob = await resizeImage(file, 150, 150, 0.6);
+    if (isProfileImage && file.size > 50 * 1024) {
+      // プロフィール画像は100x100にリサイズ（URL長短縮のため）
+      const resizedBlob = await resizeImage(file, 100, 100, 0.5);
       processedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
     } else if (file.size > 512 * 1024) {
       // 512KB以上の画像は600x400にリサイズ
@@ -94,6 +95,16 @@ const uploadImageToFirebaseStorage = async (file: File, userId: string, isProfil
     const downloadURL = await getDownloadURL(snapshot.ref);
     
     console.log('Image uploaded to Firebase Storage:', downloadURL);
+    
+    // プロフィール画像の場合はBase64エンコードを使用（URL長制限回避）
+    if (isProfileImage) {
+      // Firebase StorageのURLが長すぎる場合はBase64を使用
+      if (downloadURL.length > 2000) {
+        console.log('URL too long, using Base64 for profile image');
+        return await fileToBase64(processedFile);
+      }
+      return downloadURL;
+    }
     
     return downloadURL;
   } catch (error) {
@@ -176,6 +187,34 @@ const fileToBase64 = (file: File): Promise<string> => {
     reader.onerror = (error) => reject(error);
     reader.readAsDataURL(file);
   });
+};
+
+// 短縮URLを生成する関数（プロフィール画像用）
+const createShortUrl = async (originalUrl: string, userId: string): Promise<string> => {
+  try {
+    // 短縮IDを生成（8文字のランダム文字列）
+    const shortId = Math.random().toString(36).substring(2, 10);
+    
+    // Firestoreに短縮URLマッピングを保存
+    const shortUrlRef = doc(db, 'short-urls', shortId);
+    await setDoc(shortUrlRef, {
+      originalUrl: originalUrl,
+      userId: userId,
+      createdAt: new Date(),
+      type: 'profile-image'
+    });
+    
+    // 短縮URLを生成（アプリのドメイン + 短縮ID）
+    const shortUrl = `${window.location.origin}/img/${shortId}`;
+    
+    console.log('Short URL created:', { shortUrl, originalUrl });
+    
+    return shortUrl;
+  } catch (error) {
+    console.error('Error creating short URL:', error);
+    // 短縮URL生成に失敗した場合は元のURLを返す
+    return originalUrl;
+  }
 };
 
 export const uploadToStorage = async (userId: string, file: File, isProfileImage: boolean = false, isMaintenanceImage: boolean = false, onProgress?: (progress: number) => void): Promise<string> => {

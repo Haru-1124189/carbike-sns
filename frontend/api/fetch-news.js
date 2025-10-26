@@ -1,18 +1,4 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-
-interface NewsItem {
-  title: string;
-  description: string;
-  link: string;
-  pubDate: string;
-  source: string;
-  thumbnailUrl?: string;
-}
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+module.exports = async (req, res) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -39,7 +25,7 @@ export default async function handler(
       'レクサス', 'スズキ', 'ダイハツ', 'ハイブリッド車', 'EV車', '電気自動車'
     ];
 
-    const allNews: NewsItem[] = [];
+    const allNews = [];
 
     // 各キーワードで検索（1日100件制限を考慮して8キーワードまで）
     for (const keyword of keywords.slice(0, 8)) {
@@ -58,7 +44,7 @@ export default async function handler(
         const data = await response.json();
 
         if (data.items && data.items.length > 0) {
-          data.items.forEach((item: any) => {
+          data.items.forEach((item) => {
             // 重複チェック
             const isDuplicate = allNews.some(news => news.link === item.link);
             if (!isDuplicate) {
@@ -104,9 +90,9 @@ export default async function handler(
       error: 'Failed to fetch news'
     });
   }
-}
+};
 
-function getSourceName(displayLink: string): string {
+function getSourceName(displayLink) {
   if (displayLink.includes('response.jp')) return 'Response';
   if (displayLink.includes('car.watch.impress.co.jp')) return 'Car Watch';
   if (displayLink.includes('autoc-one.jp')) return 'AUTOC ONE';

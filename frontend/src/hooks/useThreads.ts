@@ -59,17 +59,31 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
 
   // クエリを構築
   const buildQuery = useCallback(() => {
-    let q = query(collection(db, 'threads'), orderBy('createdAt', 'desc'), limit(limitCount));
-    
-    if (type !== 'all') {
-      q = query(q, where('type', '==', type));
-    }
-    
+    // currentUserIdフィルタがある場合はFirestoreでフィルタ（インデックスが必要）
+    // currentUserIdがない場合は全件取得してクライアントサイドでフィルタ
     if (currentUserId) {
-      q = query(q, where('authorId', '==', currentUserId));
+      let q = query(
+        collection(db, 'threads'), 
+        where('authorId', '==', currentUserId),
+        orderBy('createdAt', 'desc'), 
+        limit(limitCount)
+      );
+      
+      if (type !== 'all') {
+        q = query(q, where('type', '==', type));
+      }
+      
+      return q;
+    } else {
+      // currentUserIdがない場合は全件取得してクライアントサイドでフィルタ
+      let q = query(collection(db, 'threads'), orderBy('createdAt', 'desc'), limit(limitCount));
+      
+      if (type !== 'all') {
+        q = query(q, where('type', '==', type));
+      }
+      
+      return q;
     }
-    
-    return q;
   }, [currentUserId, type, limitCount]);
 
   // データを読み込み
@@ -86,7 +100,7 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
         }
       }
 
-      console.log('🔍 スレッドをFirestoreから取得');
+      console.log('② スレッドをFirestoreから取得');
       const q = buildQuery();
       const snapshot = await getDocs(q);
       

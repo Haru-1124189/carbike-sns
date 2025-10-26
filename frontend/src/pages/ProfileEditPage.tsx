@@ -66,7 +66,8 @@ export const ProfileEditPage: React.FC<ProfileEditPageProps> = ({ onBackClick })
 
     try {
       console.log('プロフィール画像更新開始:', imageUrl);
-      await updateUserDoc({ photoURL: imageUrl || '' });
+      // imageUrlがnullの場合はundefinedを渡す（フィールドを更新しない）
+      await updateUserDoc({ photoURL: imageUrl || undefined });
       console.log('プロフィール画像が正常に更新されました');
       
       // 成功メッセージを表示
