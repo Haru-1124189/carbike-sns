@@ -21,10 +21,10 @@ export interface WeatherForecast {
 }
 
 /**
- * 指定都市の天気予報データを取得するカスタムフック
+ * 指定都市の天気予報データを取得するカスタムフック（Vercel API使用）
  */
 export const useWeather = (cityName: string = '熊本市') => {
-  const [weatherData, setWeatherData] = useState<WeatherForecast | null>(null);
+  const [weatherData, setWeatherData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,52 +34,32 @@ export const useWeather = (cityName: string = '熊本市') => {
       return;
     }
 
-    const today = new Date();
-    const todayString = today.toISOString().split('T')[0]; // YYYY-MM-DD形式
-    const weatherId = `${cityName}_${todayString}`;
-
-    const q = query(
-      collection(db, 'weather'),
-      where('id', '==', weatherId),
-      limit(1)
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        setLoading(false);
+    const fetchWeather = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/weather?city=${encodeURIComponent(cityName)}`);
         
-        if (snapshot.empty) {
-          setWeatherData(null);
-          setError(`今日の${cityName}の天気データが見つかりません`);
-          return;
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        const doc = snapshot.docs[0];
-        const data = doc.data() as WeatherForecast;
         
-        // TimestampをDateに変換
-        const weatherForecast: WeatherForecast = {
-          ...data,
-          forecastTime: data.forecastTime instanceof Timestamp 
-            ? data.forecastTime.toDate() 
-            : new Date(data.forecastTime),
-          updatedAt: data.updatedAt instanceof Timestamp 
-            ? data.updatedAt.toDate() 
-            : new Date(data.updatedAt)
-        };
-
-        setWeatherData(weatherForecast);
-        setError(null);
-      },
-      (err) => {
-        console.error('Weather data fetch error:', err);
+        const data = await response.json();
+        
+        if (data.success) {
+          setWeatherData(data);
+          setError(null);
+        } else {
+          setError('天気情報の取得に失敗しました');
+        }
+      } catch (err) {
+        console.error('天気情報取得エラー:', err);
+        setError('天気情報の取得に失敗しました');
+      } finally {
         setLoading(false);
-        setError('天気データの取得に失敗しました');
       }
-    );
+    };
 
-    return () => unsubscribe();
+    fetchWeather();
   }, [cityName]);
 
   return { weatherData, loading, error };

@@ -48,22 +48,13 @@ module.exports = async (req, res) => {
             // 重複チェック
             const isDuplicate = allNews.some(news => news.link === item.link);
             if (!isDuplicate) {
-              // サムネイル画像を複数のソースから取得
-              const thumbnailUrl = 
-                item.pagemap?.cse_thumbnail?.[0]?.src || // Googleのサムネイル
-                item.pagemap?.cse_image?.[0]?.src || // 画像検索用
-                item.pagemap?.metatags?.[0]?.['og:image'] || // OpenGraph画像
-                item.pagemap?.metatags?.[0]?.['twitter:image'] || // Twitter画像
-                item.pagemap?.thumbnail?.[0]?.src || // サムネイル
-                null;
-              
               allNews.push({
                 title: item.title || '',
                 description: item.snippet || '',
                 link: item.link || '',
                 pubDate: item.pagemap?.metatags?.[0]?.['article:published_time'] || new Date().toISOString(),
                 source: getSourceName(item.displayLink || ''),
-                thumbnailUrl: thumbnailUrl
+                thumbnailUrl: item.pagemap?.cse_thumbnail?.[0]?.src || item.pagemap?.metatags?.[0]?.['og:image']
               });
             }
           });

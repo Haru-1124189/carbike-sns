@@ -117,29 +117,39 @@ export const TodayWeatherWidget: React.FC<TodayWeatherWidgetProps> = ({ prefectu
     );
   }
 
+  // 新APIのデータ構造に対応
+  const temperature = weatherData.temperature;
+  const description = weatherData.description || weatherData.weather;
+
   return (
     <div className="p-3 mb-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="text-lg">
-            {getWeatherEmoji(weatherData.weather)}
+            {getWeatherEmoji(description)}
           </div>
            <div>
              <div className="text-sm font-semibold text-text-primary">
-               {prefecture}の天気：{weatherData.weather}
+               {prefecture}の天気：{description}
              </div>
            </div>
         </div>
         
         <div className="text-right">
           <div className="text-sm font-bold text-text-primary">
-            <span className="text-orange-500">最高{Math.round(weatherData.temperature.max)}℃</span>
-            <span className="text-text-secondary mx-1">/</span>
-            <span className="text-blue-500">最低{Math.round(weatherData.temperature.min)}℃</span>
+            {temperature && typeof temperature === 'object' && temperature.max ? (
+              <>
+                <span className="text-orange-500">最高{Math.round(temperature.max)}℃</span>
+                <span className="text-text-secondary mx-1">/</span>
+                <span className="text-blue-500">最低{Math.round(temperature.min)}℃</span>
+              </>
+            ) : (
+              <span className="text-orange-500">{temperature}℃</span>
+            )}
           </div>
-          {weatherData.temperature.current && (
+          {weatherData.feelsLike && (
             <div className="text-xs text-text-secondary">
-              現在 {Math.round(weatherData.temperature.current)}℃
+              体感 {weatherData.feelsLike}℃
             </div>
           )}
         </div>
@@ -147,14 +157,12 @@ export const TodayWeatherWidget: React.FC<TodayWeatherWidgetProps> = ({ prefectu
       
       {/* 詳細情報 */}
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-surface-light">
-        <div className="flex items-center space-x-1 text-xs text-text-secondary">
-          <CloudRain size={12} />
-          <span>降水確率 {weatherData.precipitation}%</span>
-        </div>
-        <div className="flex items-center space-x-1 text-xs text-text-secondary">
-          <Wind size={12} />
-          <span>風速 {Math.round(weatherData.windSpeed)}m/s</span>
-        </div>
+        {weatherData.windSpeed && (
+          <div className="flex items-center space-x-1 text-xs text-text-secondary">
+            <Wind size={12} />
+            <span>風速 {weatherData.windSpeed}m/s</span>
+          </div>
+        )}
         {weatherData.humidity && (
           <div className="flex items-center space-x-1 text-xs text-text-secondary">
             <Droplets size={12} />
