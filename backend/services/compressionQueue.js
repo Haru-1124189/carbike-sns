@@ -3,14 +3,22 @@ const path = require('path');
 const crypto = require('crypto');
 
 /**
- * 圧縮ジョブ管理クラス
+ * 圧縮ジョブ管理クラス（最適化版）
  */
 class CompressionQueue {
   constructor() {
     this.jobs = new Map();
     this.activeWorkers = new Set();
-    this.maxConcurrentJobs = 3; // 同時実行ジョブ数
+    this.maxConcurrentJobs = 4; // 同時実行ジョブ数を増加（3 → 4）
     this.pendingJobs = [];
+    this.maxRetries = 2; // 最大リトライ回数
+    this.retryDelays = [5000, 10000]; // リトライ遅延時間（ms）
+    this.processStats = {
+      total: 0,
+      success: 0,
+      failed: 0,
+      averageTime: 0
+    };
   }
 
   /**
@@ -28,18 +36,52 @@ class CompressionQueue {
       createdAt: new Date(),
       startedAt: null,
       completedAt: null,
+      retryCount: 0,
+      priority: jobData.priority || 'normal', // 優先度追加
       ...jobData
     };
 
     this.jobs.set(jobId, job);
-    this.pendingJobs.push(jobId);
-
-    console.log(`Added compression job ${jobId} to queue`);
+    
+    // 優先度に基づいてジョブを挿入
+    this.insertJobByPriority(jobId);
+    
+    this.processStats.total++;
+    console.log(`Added compression job ${jobId} to queue (priority: ${job.priority})`);
     
     // ジョブを実行
     this.processNextJob();
     
     return jobId;
+  }
+
+  /**
+   * 優先度に基づいてジョブを挿入
+   */
+  insertJobByPriority(jobId) {
+    const job = this.jobs.get(jobId);
+    
+    if (this.pendingJobs.length === 0) {
+      this.pendingJobs.push(jobId);
+      return;
+    }
+
+    const priorities = { high: 0, normal: 1, low: 2 };
+    const jobPriority = priorities[job.priority] || 1;
+
+    let insertIndex = 0;
+    for (let i = 0; i < this.pendingJobs.length; i++) {
+      const existingJob = this.jobs.get(this.pendingJobs[i]);
+      const existingPriority = priorities[existingJob.priority] || 1;
+      
+      if (jobPriority < existingPriority) {
+        insertIndex = i;
+        break;
+      }
+      insertIndex = i + 1;
+    }
+
+    this.pendingJobs.splice(insertIndex, 0, jobId);
   }
 
   /**
@@ -60,7 +102,7 @@ class CompressionQueue {
     const job = this.jobs.get(jobId);
     
     if (!job) {
-      return;
+      return this.processNextJob(); // 次のジョブを処理
     }
 
     // ジョブを実行中に変更
@@ -71,7 +113,7 @@ class CompressionQueue {
   }
 
   /**
-   * ジョブを実行
+   * ジョブを実行（リトライ機能付き）
    */
   async executeJob(job) {
     return new Promise((resolve) => {
@@ -81,6 +123,16 @@ class CompressionQueue {
       });
 
       this.activeWorkers.add(worker);
+      const startTime = Date.now();
+
+      // タイムアウト設定（10分）
+      const timeout = setTimeout(() => {
+        console.error(`Job ${job.id} timed out`);
+        worker.terminate();
+        this.activeWorkers.delete(worker);
+        this.handleJobFailure(job, new Error('Job timeout'));
+        resolve();
+      }, 600000);
 
       // ワーカーからのメッセージを処理
       worker.on('message', (message) => {
@@ -91,21 +143,25 @@ class CompressionQueue {
             break;
             
           case 'success':
+            clearTimeout(timeout);
+            const duration = Date.now() - startTime;
             job.status = 'completed';
             job.result = message.result;
             job.completedAt = new Date();
             job.progress = 100;
-            console.log(`Job ${job.id} completed successfully`);
+            
+            this.updateStats(duration, true);
+            console.log(`Job ${job.id} completed successfully (${duration}ms)`);
+            
             this.cleanupWorker(worker, job.id);
             resolve();
             break;
             
           case 'error':
-            job.status = 'failed';
-            job.error = message.error;
-            job.completedAt = new Date();
+            clearTimeout(timeout);
             console.error(`Job ${job.id} failed:`, message.error);
             this.cleanupWorker(worker, job.id);
+            this.handleJobFailure(job, message.error, startTime);
             resolve();
             break;
         }
@@ -113,17 +169,67 @@ class CompressionQueue {
 
       // ワーカーのエラーハンドリング
       worker.on('error', (error) => {
-        job.status = 'failed';
-        job.error = error.message;
-        job.completedAt = new Date();
+        clearTimeout(timeout);
         console.error(`Worker error for job ${job.id}:`, error);
-        this.cleanupWorker(worker, job.id);
+        this.activeWorkers.delete(worker);
+        worker.terminate();
+        this.handleJobFailure(job, error, startTime);
         resolve();
       });
 
       // ジョブデータをワーカーに送信
       worker.postMessage(job);
     });
+  }
+
+  /**
+   * ジョブ失敗時の処理
+   */
+  handleJobFailure(job, error, startTime = Date.now()) {
+    const duration = Date.now() - startTime;
+    
+    if (job.retryCount < this.maxRetries) {
+      // リトライ
+      job.retryCount++;
+      job.status = 'pending';
+      job.startedAt = null;
+      job.error = null;
+      job.progress = 0;
+      
+      const delay = this.retryDelays[job.retryCount - 1] || 5000;
+      console.log(`Retrying job ${job.id} (attempt ${job.retryCount}/${this.maxRetries}) after ${delay}ms`);
+      
+      setTimeout(() => {
+        this.insertJobByPriority(job.id);
+        this.processNextJob();
+      }, delay);
+    } else {
+      // リトライ回数超過
+      job.status = 'failed';
+      job.error = error.message || error;
+      job.completedAt = new Date();
+      
+      this.updateStats(duration, false);
+      console.error(`Job ${job.id} failed after ${this.maxRetries} retries`);
+      
+      this.processNextJob();
+    }
+  }
+
+  /**
+   * 統計を更新
+   */
+  updateStats(duration, success) {
+    if (success) {
+      this.processStats.success++;
+    } else {
+      this.processStats.failed++;
+    }
+    
+    // 平均時間を更新（移動平均）
+    const total = this.processStats.success + this.processStats.failed;
+    this.processStats.averageTime = 
+      (this.processStats.averageTime * (total - 1) + duration) / total;
   }
 
   /**
@@ -156,17 +262,22 @@ class CompressionQueue {
    */
   cleanupOldJobs(maxAge = 24 * 60 * 60 * 1000) { // 24時間
     const cutoffTime = new Date(Date.now() - maxAge);
+    let cleanedCount = 0;
     
     for (const [jobId, job] of this.jobs) {
       if (job.createdAt < cutoffTime && (job.status === 'completed' || job.status === 'failed')) {
         this.jobs.delete(jobId);
-        console.log(`Cleaned up old job ${jobId}`);
+        cleanedCount++;
       }
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`Cleaned up ${cleanedCount} old job(s)`);
     }
   }
 
   /**
-   * キュー統計を取得
+   * キュー統計を取得（拡張版）
    */
   getStats() {
     const stats = {
@@ -175,7 +286,9 @@ class CompressionQueue {
       running: 0,
       completed: 0,
       failed: 0,
-      activeWorkers: this.activeWorkers.size
+      activeWorkers: this.activeWorkers.size,
+      maxConcurrentJobs: this.maxConcurrentJobs,
+      processStats: this.processStats
     };
 
     for (const job of this.jobs.values()) {
@@ -191,9 +304,9 @@ class CompressionQueue {
 // シングルトンインスタンス
 const compressionQueue = new CompressionQueue();
 
-// 定期クリーンアップ
+// 定期クリーンアップ（30分ごと）
 setInterval(() => {
   compressionQueue.cleanupOldJobs();
-}, 60 * 60 * 1000); // 1時間ごと
+}, 30 * 60 * 1000);
 
 module.exports = compressionQueue;

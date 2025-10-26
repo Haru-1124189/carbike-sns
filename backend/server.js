@@ -24,9 +24,47 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.raw({ type: 'application/json' })); // Stripe Webhook用
 
+// リクエストの最大サイズを制限（50MB）
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
+// パフォーマンス監視ミドルウェア
+app.use((req, res, next) => {
+  const start = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+  });
+  
+  next();
+});
+
+// メモリ使用量を監視
+setInterval(() => {
+  const usage = process.memoryUsage();
+  const mbUsage = {
+    rss: Math.round(usage.rss / 1024 / 1024),
+    heapTotal: Math.round(usage.heapTotal / 1024 / 1024),
+    heapUsed: Math.round(usage.heapUsed / 1024 / 1024),
+    external: Math.round(usage.external / 1024 / 1024)
+  };
+  
+  // メモリ使用量が500MBを超えたら警告
+  if (mbUsage.heapUsed > 500) {
+    console.warn(`⚠️ 高メモリ使用量: ${JSON.stringify(mbUsage)}`);
+    
+    // ガベージコレクションを強制実行（開発環境のみ）
+    if (global.gc) {
+      global.gc();
+    }
+  }
+}, 60000); // 1分ごと
+
 // Stripe Checkoutセッション作成エンドポイント
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
+    const startTime = Date.now();
     const { 
       productName, 
       productPrice, 
@@ -75,7 +113,8 @@ app.post('/api/create-checkout-session', async (req, res) => {
       }
     });
 
-    console.log('✅ Stripe Checkoutセッション作成成功:', session.id);
+    const duration = Date.now() - startTime;
+    console.log(`✅ Stripe Checkoutセッション作成成功: ${session.id} (${duration}ms)`);
 
     res.json({
       sessionId: session.id,
@@ -175,12 +214,22 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
   }
 }
 
-// ヘルスチェックエンドポイント
+// ヘルスチェックエンドポイント（拡張版）
 app.get('/api/health', (req, res) => {
+  const uptime = process.uptime();
+  const memory = process.memoryUsage();
+  
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
+    uptime: Math.round(uptime),
+    memory: {
+      rss: Math.round(memory.rss / 1024 / 1024),
+      heapTotal: Math.round(memory.heapTotal / 1024 / 1024),
+      heapUsed: Math.round(memory.heapUsed / 1024 / 1024),
+      external: Math.round(memory.external / 1024 / 1024)
+    }
   });
 });
 
@@ -230,12 +279,29 @@ app.use('*', (req, res) => {
   });
 });
 
+// グレースフルシャットダウン
+process.on('SIGTERM', () => {
+  console.log('SIGTERMシグナルを受信しました。グレースフルにシャットダウンします...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINTシグナルを受信しました。グレースフルにシャットダウンします...');
+  process.exit(0);
+});
+
+// 未処理のPromise拒否を監視
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('未処理のPromise拒否:', reason);
+});
+
 // サーバー起動
 app.listen(PORT, () => {
   console.log(`🚀 サーバーが起動しました: http://localhost:${PORT}`);
   console.log(`📊 環境: ${process.env.NODE_ENV}`);
   console.log(`🔑 Stripe公開キー: ${process.env.STRIPE_PUBLISHABLE_KEY ? '設定済み' : '未設定'}`);
   console.log(`🔐 Stripe秘密キー: ${process.env.STRIPE_SECRET_KEY ? '設定済み' : '未設定'}`);
+  console.log(`💾 メモリ使用量: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 });
 
 module.exports = app;

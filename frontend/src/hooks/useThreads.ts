@@ -1,4 +1,4 @@
-import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { db } from '../firebase/init';
 import { canViewUserContent } from '../lib/privacy';
@@ -22,12 +22,12 @@ interface UseThreadsReturn {
   refresh: () => Promise<void>;
 }
 
-// キャッシュ管理
+// キャッシュ管理（課金削減のため延長）
 const threadCache = new Map<string, { data: Thread[]; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5分
+const CACHE_DURATION = 10 * 60 * 1000; // 10分（5分から延長）
 
 export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn => {
-  const { currentUserId, limit: limitCount = 20, type = 'all', blockedUsers = [], mutedWords = [] } = options;
+  const { currentUserId, limit: limitCount = 15, type = 'all', blockedUsers = [], mutedWords = [] } = options;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +45,7 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
     const key = getCacheKey();
     const cached = threadCache.get(key);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('📦 スレッドキャッシュから取得');
       return cached.data;
     }
     return null;
@@ -85,6 +86,7 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
         }
       }
 
+      console.log('🔍 スレッドをFirestoreから取得');
       const q = buildQuery();
       const snapshot = await getDocs(q);
       
@@ -142,77 +144,14 @@ export const useThreads = (options: UseThreadsOptions = {}): UseThreadsReturn =>
     }
   }, [buildQuery, getFromCache, saveToCache, limitCount, currentUserId, type]);
 
-  // リアルタイムリスナーを設定
-  const setupRealtimeListener = useCallback(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
-
-    const q = buildQuery();
-    
-    unsubscribeRef.current = onSnapshot(
-      q,
-      async (snapshot) => {
-        const newThreads = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Thread[];
-        
-        // 削除された投稿を除外
-        let filteredThreads = newThreads.filter(thread => !thread.isDeleted);
-
-        // ブロックユーザーの投稿を除外
-        if (blockedUsers.length > 0) {
-          filteredThreads = filteredThreads.filter(thread => 
-            !thread.authorId || !blockedUsers.includes(thread.authorId)
-          );
-        }
-
-        // ミュートワードを含む投稿を除外
-        if (mutedWords.length > 0) {
-          filteredThreads = filterMutedPosts(filteredThreads, mutedWords);
-        }
-
-        // 鍵アカウントのLink(threads)はフォロワーのみ表示
-        if (currentUserId) {
-          const visibilityChecked = await Promise.all(
-            filteredThreads.map(async (t) => {
-              if (!t.authorId) return t;
-              const canView = await canViewUserContent(t.authorId, currentUserId);
-              return canView ? t : null;
-            })
-          );
-          filteredThreads = visibilityChecked.filter(Boolean) as Thread[];
-        }
-        
-        setThreads(filteredThreads);
-        saveToCache(filteredThreads);
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Error in realtime listener:', err);
-        setError(err.message);
-        setLoading(false);
-      }
-    );
-  }, [buildQuery, saveToCache]);
+  // ⚠️ リアルタイムリスナーを削除（課金削減）
+  // 必要に応じてユーザーが手動で更新できるようにする
 
   // 初期読み込み
   useEffect(() => {
     setLoading(true);
     loadData(true);
   }, [loadData]);
-
-  // リアルタイムリスナー
-  useEffect(() => {
-    setupRealtimeListener();
-    
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, [setupRealtimeListener]);
 
   // より多くのデータを読み込み
   const loadMore = useCallback(async () => {

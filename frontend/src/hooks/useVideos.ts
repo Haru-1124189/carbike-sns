@@ -1,7 +1,11 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, increment, limit, onSnapshot, orderBy, query, serverTimestamp, startAfter, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, increment, limit, orderBy, query, serverTimestamp, startAfter, updateDoc, where } from 'firebase/firestore';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { db } from '../firebase/init';
 import { Video } from '../types';
+
+// キャッシュ管理
+const videoCache = new Map<string, { data: Video[]; timestamp: number; lastDoc: any }>();
+const CACHE_DURATION = 10 * 60 * 1000; // 10分（課金削減のため延長）
 
 export const useVideos = (userId?: string) => {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -11,22 +15,35 @@ export const useVideos = (userId?: string) => {
   const [hasMore, setHasMore] = useState(true);
   const [lastDoc, setLastDoc] = useState<any>(null);
 
-  // 最適化された動画取得
+  // 最適化された動画取得（課金削減版）
   const fetchVideos = useCallback(async (isInitial = false) => {
     try {
       setLoading(true);
       
+      // キャッシュチェック
+      const cacheKey = `videos_all_${lastDoc?.id || 'initial'}`;
+      const cached = videoCache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        console.log('📦 動画キャッシュから取得');
+        setVideos(cached.data);
+        setLastDoc(cached.lastDoc);
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔍 動画をFirestoreから取得');
+      
       const baseQuery = query(
         collection(db, 'videos'),
         orderBy('createdAt', 'desc'),
-        limit(20)
+        limit(15) // 20 → 15に削減（課金削減）
       );
 
       const paginatedQuery = isInitial 
         ? baseQuery 
         : query(baseQuery, startAfter(lastDoc));
 
-      // executePaginatedQueryの代わりに直接Firestoreクエリを実行
       const snapshot = await getDocs(paginatedQuery);
       const videoList: Video[] = [];
       let lastDocSnapshot = null;
@@ -41,9 +58,16 @@ export const useVideos = (userId?: string) => {
 
       const result = {
         data: videoList,
-        hasMore: snapshot.docs.length === 20, // 20件取得した場合はまだデータがある可能性
+        hasMore: snapshot.docs.length === 15,
         lastDoc: lastDocSnapshot
       };
+
+      // キャッシュに保存
+      videoCache.set(cacheKey, {
+        data: result.data,
+        timestamp: Date.now(),
+        lastDoc: result.lastDoc
+      });
 
       if (isInitial) {
         setVideos(result.data);
@@ -67,61 +91,48 @@ export const useVideos = (userId?: string) => {
     fetchVideos(true);
   }, []);
 
-  // リアルタイム更新（最初の20件のみ）
-  useEffect(() => {
-    const q = query(
-      collection(db, 'videos'),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
+  // ⚠️ リアルタイム更新を削除（課金削減）
+  // 必要に応じてユーザーが手動で更新できるようにする
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const videoList: Video[] = [];
-      snapshot.forEach((doc) => {
-        const videoData = doc.data();
-        if (videoData.status === 'active') {
-          videoList.push({ id: doc.id, ...videoData } as Video);
-        }
-      });
-      
-      // リアルタイム更新は最初の20件のみ
-      setVideos(prev => {
-        const existingIds = new Set(prev.map(v => v.id));
-        const newVideos = videoList.filter(v => !existingIds.has(v.id));
-        return [...newVideos, ...prev].slice(0, 20);
-      });
-    }, (err) => {
-      console.error('Error in real-time update:', err);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // ユーザーの動画を取得
+  // ユーザーの動画を取得（最適化版）
   useEffect(() => {
     if (!userId) return;
 
+    const cacheKey = `videos_user_${userId}`;
+    const cached = videoCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('📦 ユーザー動画キャッシュから取得');
+      setUserVideos(cached.data);
+      return;
+    }
+
     const q = query(
       collection(db, 'videos'),
-      orderBy('createdAt', 'desc')
+      where('authorId', '==', userId), // Firestoreでフィルタリング（課金削減）
+      orderBy('createdAt', 'desc'),
+      limit(50) // リミット追加
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    getDocs(q).then((snapshot) => {
       const userVideoList: Video[] = [];
       snapshot.forEach((doc) => {
-        const videoData = doc.data();
-        // クライアントサイドでauthorIdフィルタリング
-        if (videoData.authorId === userId) {
-          userVideoList.push({ id: doc.id, ...videoData } as Video);
-        }
+        userVideoList.push({ id: doc.id, ...doc.data() } as Video);
       });
+      
+      // キャッシュに保存
+      videoCache.set(cacheKey, {
+        data: userVideoList,
+        timestamp: Date.now(),
+        lastDoc: null
+      });
+      
       setUserVideos(userVideoList);
-    }, (err) => {
+    }).catch((err) => {
       console.error('Error fetching user videos:', err);
       setError(err.message);
     });
 
-    return () => unsubscribe();
   }, [userId]);
 
   // 動画をアップロード
@@ -146,7 +157,7 @@ export const useVideos = (userId?: string) => {
         ageRestriction: videoData.ageRestriction || false,
         authorId: userId,
         author: authorName,
-        channelId: userId, // ユーザーIDをチャンネルIDとして使用
+        channelId: userId,
         views: 0,
         likes: 0,
         status: 'active' as const,
