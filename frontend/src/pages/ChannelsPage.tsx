@@ -50,7 +50,7 @@ interface ChannelsPageProps {
 
 export const ChannelsPage: React.FC<ChannelsPageProps> = ({ onBack, onChannelClick, onTabChange, activeTab = 'videos', onUserClick }) => {
   const { user, userDoc } = useAuth();
-  const { videos } = useVideos(user?.uid);
+  const { videos } = useVideos({ userId: user?.uid });
   const { subscribe, unsubscribe, isSubscribed } = useChannelSubscriptions(user?.uid);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);

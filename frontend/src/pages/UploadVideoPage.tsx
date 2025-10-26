@@ -15,7 +15,7 @@ interface UploadVideoPageProps {
 
 export const UploadVideoPage: React.FC<UploadVideoPageProps> = ({ onBack }) => {
   const { user, userDoc } = useAuth();
-  const { uploadVideo, loading, error } = useVideos(user?.uid);
+  const { uploadVideo, loading, error } = useVideos({ userId: user?.uid });
   
   // 権限に応じた色分けのロジック
   const getPermissionColor = () => {

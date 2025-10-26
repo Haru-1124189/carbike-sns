@@ -58,7 +58,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { news, loading: newsLoading, error: newsError } = useNews(24);
   const { user, userDoc } = useAuth();
   const { threads } = useThreads({ blockedUsers, mutedWords });
-  const { videos } = useVideos(user?.uid);
+  const { videos } = useVideos({ userId: user?.uid });
   const { vehicles, loading: vehiclesLoading } = useVehicles();
   
   // アプリ内ブラウザの状態管理

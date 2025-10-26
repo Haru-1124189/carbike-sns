@@ -65,7 +65,7 @@ interface VideosPageProps {
 
 export const VideosPage: React.FC<VideosPageProps> = ({ onVideoClick, onUserClick, onDeleteVideo, onUploadVideo, onCreatorApplication, onShowChannels, onVideoAnalytics, onCreatorAnalytics }) => {
   const { user, userDoc } = useAuth();
-  const { videos, userVideos, deleteVideo, hasMore, loadMore, loading } = useVideos(user?.uid);
+  const { videos, userVideos, deleteVideo, hasMore, loadMore, loading } = useVideos({ userId: user?.uid });
   const { userApplication } = useCreatorApplication(user?.uid);
   const { subscriptions, subscribedChannelIds: subscribedChannelIdsFromHook, subscribe, unsubscribe, isSubscribed } = useChannelSubscriptions(user?.uid);
   
